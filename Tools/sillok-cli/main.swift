@@ -123,6 +123,54 @@ func printChunk(_ chunk: AudioChunk) {
                  chunk.cutAfter.map { String(format: "  cutAfter %.2f", $0) } ?? ""))
 }
 
+func runFile(audio: String, vadModel: String, model: String, coreML: String?, language: String, output: String?) async throws {
+    let clock = ContinuousClock()
+    func seconds(_ d: Duration) -> Double { Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18 }
+
+    let source = try await AssetAudioSource(url: URL(fileURLWithPath: audio))
+    let vad = try WhisperVAD(modelURL: URL(fileURLWithPath: vadModel))
+    var map: SpeechMap?
+    let vadTime = try await clock.measure { map = try await SpeechMap.build(source: source, vad: vad) }
+    let chunks = ChunkPlanner().plan(map!)
+
+    let engine = WhisperCppEngine()
+    let files = ModelFiles(ggml: URL(fileURLWithPath: model), coreMLEncoder: coreML.map { URL(fileURLWithPath: $0) })
+    let loadTime = try await clock.measure { try await engine.loadModel(files, mode: .foregroundAccelerated) }
+    print(String(format: "audio %.1fs  vad %.1fs  chunks %d  load %.1fs", source.duration, seconds(vadTime), chunks.count, seconds(loadTime)))
+
+    var segments: [Segment] = []
+    var chunkTimes: [(audio: Double, wall: Double)] = []
+    let started = clock.now
+    for (index, chunk) in chunks.enumerated() {
+        let samples = try await source.read(from: chunk.start, to: chunk.end)
+        var raw: [Segment] = []
+        let wall = try await clock.measure {
+            raw = try await engine.transcribe(samples: samples, options: ChunkTranscribeOptions(language: language))
+        }
+        segments += OverlapMerger.trim(raw.map { $0.offset(by: chunk.start) }, to: chunk)
+        chunkTimes.append((chunk.duration, seconds(wall)))
+        let elapsed = seconds(clock.now - started)
+        print(String(format: "chunk %3d/%d  %5.1fs audio  %5.2fs wall  (x%.1f)  elapsed %6.1fs  done %6.1fs", index + 1, chunks.count, chunk.duration, seconds(wall), chunk.duration / seconds(wall), elapsed, chunk.end))
+        fflush(stdout)
+    }
+    let total = seconds(clock.now - started)
+    let walls = chunkTimes.map(\.wall).sorted()
+    let ratios = chunkTimes.map { $0.wall / $0.audio }.sorted()
+    print(String(format: "TOTAL transcribe %.1fs for %.1fs audio → %.1fx realtime (incl. vad+load %.1fs → %.1fx)",
+                 total, source.duration, source.duration / total,
+                 total + seconds(vadTime) + seconds(loadTime), source.duration / (total + seconds(vadTime) + seconds(loadTime))))
+    print(String(format: "chunk wall p50 %.2fs  p95 %.2fs  max %.2fs   wall/audio p50 %.3f  p95 %.3f  max %.3f",
+                 walls[walls.count / 2], walls[walls.count * 95 / 100], walls.last!,
+                 ratios[ratios.count / 2], ratios[ratios.count * 95 / 100], ratios.last!))
+    print(String(format: "peak footprint %.0f MB  segments %d", peakFootprintMB(), segments.count))
+
+    if let output {
+        let text = segments.map { String(format: "[%7.2f → %7.2f] ", $0.start, $0.end) + $0.text }.joined(separator: "\n")
+        try text.write(toFile: output, atomically: true, encoding: .utf8)
+        print("wrote \(output)")
+    }
+}
+
 enum CLIError: Error {
     case usage
 }
@@ -152,6 +200,17 @@ case "plan" where args.count >= 3:
         print("error: \(error)")
         exit(1)
     }
+case "run" where args.count >= 4:
+    func value(_ flag: String) -> String? {
+        args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+    }
+    do {
+        try await runFile(audio: args[1], vadModel: args[2], model: args[3], coreML: value("--coreml"),
+                          language: value("--lang") ?? "ko", output: value("--out"))
+    } catch {
+        print("error: \(error)")
+        exit(1)
+    }
 case "transcribe":
     do {
         try await transcribe(arguments: Array(args.dropFirst()))
@@ -162,5 +221,5 @@ case "transcribe":
         exit(1)
     }
 default:
-    print("usage: sillok-cli info | decode <file> [windowSeconds] | plan <audio> <vad.bin> | transcribe ...")
+    print("usage: sillok-cli info | decode <file> [windowSeconds] | plan <audio> <vad.bin> | run <audio> <vad.bin> <model.bin> [--coreml enc] [--lang ko] [--out file] | transcribe ...")
 }
