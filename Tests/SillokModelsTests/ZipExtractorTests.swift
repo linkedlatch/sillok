@@ -91,7 +91,7 @@ func installsRealCoreMLEncoderArchive() throws {
     for whisper in manifest.models where whisper.coreMLEncoderID != nil {
         let encoder = try #require(manifest.coreMLEncoder(for: whisper))
         #expect(encoder.kind == .coreMLEncoder)
-        #expect(encoder.installedName == ModelFiles.coreMLEncoderName(forGGML: whisper.fileName))
+        #expect(encoder.installedName == "ggml-large-v3-turbo-encoder.mlmodelc")
     }
     #expect(manifest.models.allSatisfy { $0.sha256.count == 64 && $0.size > 0 && !$0.urls.isEmpty })
 }

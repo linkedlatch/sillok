@@ -58,7 +58,7 @@ private struct ProjectRow: View {
         switch project.status {
         case .pending: "대기 중"
         case .transcribing: "이어서 전사 대기 중"
-        case .completed: [project.duration.map(TranscriptExporter.clock), "\(project.segments.count)개 구간"].compactMap { $0 }.joined(separator: " · ")
+        case .completed: [project.duration.map(TimeFormat.clock), "\(project.segments.count)개 구간"].compactMap { $0 }.joined(separator: " · ")
         case .cancelled: "취소됨"
         case .failed(let message): message
         }

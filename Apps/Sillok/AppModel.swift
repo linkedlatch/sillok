@@ -4,7 +4,7 @@ import SillokAudio
 import SillokCore
 import SillokModels
 import SillokPlatform
-import SillokWhisper
+import SillokNative
 
 @MainActor
 @Observable
@@ -33,7 +33,7 @@ final class AppModel {
     }
 
     private(set) var runningJob: UUID?
-    private let engine = WhisperCppEngine()
+    private let engine = NativeEngine()
     private let queue = JobQueue()
     private var loadedFiles: ModelFiles?
     private var modelTask: Task<Void, Never>?
@@ -147,7 +147,7 @@ final class AppModel {
         }
         if loadedFiles != nil {
             loadedFiles = nil
-            Task { await engine.unloadModel() }
+            Task { await engine.unload() }
         }
         try? modelStore.remove(entry)
         refreshModelStatus()
@@ -171,7 +171,7 @@ final class AppModel {
         modelStatus = .warmingUp
         try await prepareEngine()
         _ = try await engine.transcribe(samples: [Float](repeating: 0, count: PCMFormat.sampleRate), options: ChunkTranscribeOptions(language: "ko"))
-        await engine.unloadModel()
+        await engine.unload()
         loadedFiles = nil
     }
 
@@ -188,7 +188,7 @@ final class AppModel {
         let files = modelStore.modelFiles(for: whisper, useCoreML: settings.useCoreML && fits)
         if loadedFiles == files { return }
         loadedFiles = nil
-        try await engine.loadModel(files, mode: .foregroundAccelerated)
+        try await engine.load(files, mode: .foregroundAccelerated)
         loadedFiles = files
     }
 
@@ -334,8 +334,7 @@ final class AppModel {
                 $0.segments = []
             }
             var pipeline = FileTranscriptionPipeline(
-                engine: engine,
-                vad: try WhisperVAD(modelURL: modelStore.location(of: vadEntry)),
+                core: NativeCore(engine: engine, vadModel: modelStore.location(of: vadEntry)),
                 options: project.options,
                 modelID: whisper.id,
                 checkpointURL: projectStore.checkpointURL(for: id)
@@ -357,7 +356,7 @@ final class AppModel {
         }
 
         if await queue.pendingIDs.isEmpty {
-            await engine.unloadModel()
+            await engine.unload()
             loadedFiles = nil
         }
     }

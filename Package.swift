@@ -7,7 +7,7 @@ let package = Package(
     products: [
         .library(name: "SillokCore", targets: ["SillokCore"]),
         .library(name: "SillokAudio", targets: ["SillokAudio"]),
-        .library(name: "SillokWhisper", targets: ["SillokWhisper"]),
+        .library(name: "SillokNative", targets: ["SillokNative"]),
         .library(name: "SillokPlatform", targets: ["SillokPlatform"]),
         .library(name: "SillokModels", targets: ["SillokModels"]),
     ],
@@ -18,14 +18,29 @@ let package = Package(
         .target(name: "SillokModels", dependencies: ["SillokCore"]),
 
         .binaryTarget(name: "whisper", path: "Vendor/whisper.xcframework"),
-        .target(name: "SillokWhisper", dependencies: ["SillokCore", "whisper"]),
+        .target(
+            name: "CSillok",
+            dependencies: ["whisper"],
+            path: "Native",
+            exclude: ["CMakeLists.txt", "tests", "third_party/nlohmann/LICENSE.MIT", "third_party/doctest"],
+            sources: ["src"],
+            publicHeadersPath: "include",
+            cxxSettings: [.headerSearchPath("third_party")],
+            linkerSettings: [
+                .linkedLibrary("z"),
+                .linkedFramework("Accelerate"),
+                .linkedFramework("CoreML"),
+                .linkedFramework("Foundation"),
+                .linkedFramework("Metal"),
+            ]
+        ),
+        .target(name: "SillokNative", dependencies: ["SillokCore", "CSillok"]),
 
         .executableTarget(
             name: "sillok-cli",
-            dependencies: ["SillokCore", "SillokAudio", "SillokWhisper", "SillokPlatform"],
+            dependencies: ["SillokCore", "SillokAudio", "SillokNative", "SillokPlatform"],
             path: "Tools/sillok-cli"
         ),
-
         .executableTarget(
             name: "manifest-tool",
             dependencies: ["SillokCore"],
@@ -35,6 +50,7 @@ let package = Package(
         .testTarget(name: "SillokCoreTests", dependencies: ["SillokCore"]),
         .testTarget(name: "SillokModelsTests", dependencies: ["SillokModels"]),
         .testTarget(name: "SillokAudioTests", dependencies: ["SillokAudio"]),
-        .testTarget(name: "SillokWhisperTests", dependencies: ["SillokWhisper", "SillokAudio"]),
-    ]
+        .testTarget(name: "SillokNativeTests", dependencies: ["SillokNative", "SillokAudio"]),
+    ],
+    cxxLanguageStandard: .cxx20
 )

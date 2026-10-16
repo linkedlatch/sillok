@@ -14,18 +14,15 @@ public struct TranscribeProgress: Sendable {
 }
 
 public struct FileTranscriptionPipeline: Sendable {
-    public var engine: TranscriptionEngine
-    public var vad: VoiceActivityDetector
+    public var core: TranscriptionCore
     public var options: TranscriptionOptions
     public var modelID: String
     public var checkpointURL: URL
-    public var planner = ChunkPlanner()
     public var thermal: ThermalStateProvider?
     public var cooldown: Duration = .seconds(2)
 
-    public init(engine: TranscriptionEngine, vad: VoiceActivityDetector, options: TranscriptionOptions, modelID: String, checkpointURL: URL) {
-        self.engine = engine
-        self.vad = vad
+    public init(core: TranscriptionCore, options: TranscriptionOptions, modelID: String, checkpointURL: URL) {
+        self.core = core
         self.options = options
         self.modelID = modelID
         self.checkpointURL = checkpointURL
@@ -58,19 +55,17 @@ public struct FileTranscriptionPipeline: Sendable {
             ))
         } else {
             emit(TranscribeProgress(phase: .analyzing, fractionCompleted: 0, lastProcessedTimestamp: 0, newSegments: []))
-            let map = try await SpeechMap.build(source: source, vad: vad)
-            checkpoint = Checkpoint(modelID: modelID, options: options, chunks: planner.plan(map))
+            checkpoint = Checkpoint(modelID: modelID, options: options, chunks: try await core.plan(source: source))
             try VersionedStore.save(checkpoint, to: checkpointURL)
         }
 
-        let transcriber = ChunkTranscriber(engine: engine, options: options)
         while !checkpoint.state.isComplete(chunkCount: checkpoint.chunks.count) {
             try Task.checkCancellation()
             if checkpoint.state.nextChunk > 0, let thermal, thermal.level >= .serious {
                 try await Task.sleep(for: cooldown)
             }
             let before = checkpoint.state.segments.count
-            checkpoint.state = try await transcriber.step(checkpoint.state, chunks: checkpoint.chunks, source: source)
+            checkpoint.state = try await core.step(checkpoint.state, chunks: checkpoint.chunks, source: source, options: options)
             try VersionedStore.save(checkpoint, to: checkpointURL)
             emit(TranscribeProgress(
                 phase: .transcribing,

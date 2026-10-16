@@ -1,4 +1,5 @@
 import SillokCore
+import SillokNative
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -71,7 +72,7 @@ private struct SegmentRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Button(TranscriptExporter.clock(segment.start), action: play)
+            Button(TimeFormat.clock(segment.start), action: play)
                 .buttonStyle(.borderless)
                 .font(.callout.monospacedDigit())
                 .help("이 위치부터 재생")
@@ -111,8 +112,8 @@ enum ExportFormat {
 
     func render(_ segments: [Segment]) -> String {
         switch self {
-        case .txt: TranscriptExporter.txt(segments)
-        case .srt: TranscriptExporter.srt(segments)
+        case .txt: (try? NativeExport.render(segments, as: .txt)) ?? ""
+        case .srt: (try? NativeExport.render(segments, as: .srt)) ?? ""
         }
     }
 

@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000101 /* SillokCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000401 /* SillokCore */; };
-		A10000000000000000000102 /* SillokWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000402 /* SillokWhisper */; };
+		A10000000000000000000102 /* SillokNative in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000402 /* SillokNative */; };
 		B10000000000000000000101 /* SillokAudio in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000401 /* SillokAudio */; };
 		B10000000000000000000102 /* SillokModels in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000402 /* SillokModels */; };
 		B10000000000000000000103 /* SillokPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000403 /* SillokPlatform */; };
@@ -33,7 +33,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000101 /* SillokCore in Frameworks */,
-				A10000000000000000000102 /* SillokWhisper in Frameworks */,
+				A10000000000000000000102 /* SillokNative in Frameworks */,
 				B10000000000000000000101 /* SillokAudio in Frameworks */,
 				B10000000000000000000102 /* SillokModels in Frameworks */,
 				B10000000000000000000103 /* SillokPlatform in Frameworks */,
@@ -89,7 +89,7 @@
 			name = Sillok;
 			packageProductDependencies = (
 				A10000000000000000000401 /* SillokCore */,
-				A10000000000000000000402 /* SillokWhisper */,
+				A10000000000000000000402 /* SillokNative */,
 				B10000000000000000000401 /* SillokAudio */,
 				B10000000000000000000402 /* SillokModels */,
 				B10000000000000000000403 /* SillokPlatform */,
@@ -295,9 +295,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = SillokCore;
 		};
-		A10000000000000000000402 /* SillokWhisper */ = {
+		A10000000000000000000402 /* SillokNative */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SillokWhisper;
+			productName = SillokNative;
 		};
 		B10000000000000000000401 /* SillokAudio */ = {
 			isa = XCSwiftPackageProductDependency;

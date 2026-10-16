@@ -10,7 +10,7 @@ func decodesSupportedFormatToMono16k(ext: String) async throws {
     let source = try await AssetAudioSource(url: Fixtures.tone(ext))
     #expect(abs(source.duration - Fixtures.toneDuration) < (ext == "mov" ? 0.05 : 0.01))
 
-    let samples = try await source.read(from: 0, to: source.duration)
+    let samples = try await source.readAsync(from: 0, to: source.duration)
     #expect(samples.count == Int((source.duration * rate).rounded()))
     #expect(rms(samples[...]) > 0.05)
 }
@@ -18,8 +18,8 @@ func decodesSupportedFormatToMono16k(ext: String) async throws {
 @Test(arguments: ["wav", "m4a"])
 func rangeReadMatchesSameSliceOfFullRead(ext: String) async throws {
     let source = try await AssetAudioSource(url: Fixtures.tone(ext))
-    let full = try await source.read(from: 0, to: source.duration)
-    let part = try await source.read(from: 1.25, to: 3.5)
+    let full = try await source.readAsync(from: 0, to: source.duration)
+    let part = try await source.readAsync(from: 1.25, to: 3.5)
 
     #expect(part.count == 36_000)
     let expected = full[20_000..<56_000]
@@ -29,9 +29,9 @@ func rangeReadMatchesSameSliceOfFullRead(ext: String) async throws {
 
 @Test func readBeyondDurationIsClamped() async throws {
     let source = try await AssetAudioSource(url: Fixtures.tone("wav"))
-    let tail = try await source.read(from: 4.5, to: 10)
+    let tail = try await source.readAsync(from: 4.5, to: 10)
     #expect(tail.count == 8_000)
-    #expect(try await source.read(from: 6, to: 7).isEmpty)
+    #expect(try await source.readAsync(from: 6, to: 7).isEmpty)
 }
 
 @Test(arguments: ["mkv", "webm", "ogg"])
@@ -45,7 +45,7 @@ func rejectsUnsupportedContainer(ext: String) async throws {
 @Test(.enabled(if: Fixtures.hasLocalSample("sample.mp3")))
 func decodesLocalMP3Sample() async throws {
     let source = try await AssetAudioSource(url: Fixtures.localSample("sample.mp3"))
-    let samples = try await source.read(from: 0, to: min(source.duration, 10))
+    let samples = try await source.readAsync(from: 0, to: min(source.duration, 10))
     #expect(!samples.isEmpty)
     #expect(rms(samples[...]) > 0)
 }
@@ -58,7 +58,7 @@ func sampleRecordingDecodesFullLengthInWindows() async throws {
     var total = 0
     var start: TimeInterval = 0
     while start < source.duration {
-        total += try await source.read(from: start, to: start + 30).count
+        total += try await source.readAsync(from: start, to: start + 30).count
         start += 30
     }
     #expect(total == Int((source.duration * rate).rounded()))

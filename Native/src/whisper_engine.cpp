@@ -1,6 +1,7 @@
 #include "whisper_engine.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -8,6 +9,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
 
 #include <whisper.h>
 #include <zlib.h>
@@ -92,13 +94,45 @@ std::vector<WordTimestamp> assembleWords(const std::vector<TokenPiece>& tokens) 
     return words;
 }
 
+namespace {
+
+std::mutex liveEnginesMutex;
+std::atomic<bool> shuttingDown{false};
+std::unordered_set<WhisperEngine*>& liveEngines() {
+    static auto* engines = new std::unordered_set<WhisperEngine*>();
+    return *engines;
+}
+
+void releaseLiveEngines() {
+    shuttingDown.store(true);
+    std::lock_guard lock(liveEnginesMutex);
+    for (auto* engine : liveEngines()) engine->unload();
+}
+
+void releaseBeforeBackendShutdown() {
+    static std::once_flag once;
+    std::call_once(once, [] { std::atexit(releaseLiveEngines); });
+}
+
+}
+
+WhisperEngine::WhisperEngine() {
+    std::lock_guard lock(liveEnginesMutex);
+    liveEngines().insert(this);
+}
+
 WhisperEngine::~WhisperEngine() {
+    {
+        std::lock_guard lock(liveEnginesMutex);
+        liveEngines().erase(this);
+    }
     unload();
 }
 
 void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& coreMLEncoder, bool useGPU) {
     configureLogging();
-    unload();
+    std::lock_guard lock(mutex_);
+    unloadLocked();
     fs::path staging = fs::temp_directory_path() / ("sillok-load-" + makeUUID());
     fs::create_directories(staging);
     const fs::path model = staging / ggml.filename();
@@ -113,12 +147,18 @@ void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& co
         fs::remove_all(staging, ignored);
         throw std::runtime_error("모델을 불러오지 못했습니다: " + ggml.filename().string());
     }
+    releaseBeforeBackendShutdown();
     context_ = context;
     staging_ = staging;
     threads_ = static_cast<int>(std::clamp(std::thread::hardware_concurrency(), 1u, 4u));
 }
 
 void WhisperEngine::unload() {
+    std::lock_guard lock(mutex_);
+    unloadLocked();
+}
+
+void WhisperEngine::unloadLocked() {
     if (context_) whisper_free(context_);
     context_ = nullptr;
     if (!staging_.empty()) {
@@ -134,6 +174,7 @@ whisper_context* WhisperEngine::require() const {
 }
 
 LanguageDetection WhisperEngine::detectLanguage(const std::vector<float>& samples, const std::optional<std::set<std::string>>& allowed) {
+    std::lock_guard lock(mutex_);
     whisper_context* context = require();
     if (whisper_pcm_to_mel(context, samples.data(), static_cast<int>(samples.size()), threads_) != 0) {
         throw std::runtime_error("멜 스펙트로그램 계산 실패");
@@ -155,12 +196,14 @@ LanguageDetection WhisperEngine::detectLanguage(const std::vector<float>& sample
 }
 
 int WhisperEngine::tokenCount(const std::string& text) {
+    std::lock_guard lock(mutex_);
     std::vector<whisper_token> tokens(1024);
     int count = whisper_tokenize(require(), text.c_str(), tokens.data(), static_cast<int>(tokens.size()));
     return std::abs(count);
 }
 
 std::vector<Segment> WhisperEngine::transcribe(const std::vector<float>& samples, const ChunkTranscribeOptions& options, const CancelToken& cancel) {
+    std::lock_guard lock(mutex_);
     whisper_context* context = require();
     if (cancel.isCancelled()) throw Cancelled();
 
@@ -182,14 +225,14 @@ std::vector<Segment> WhisperEngine::transcribe(const std::vector<float>& samples
     params.beam_search.beam_size = options.beamSize;
     params.language = options.language.c_str();
     params.initial_prompt = options.prompt ? options.prompt->c_str() : nullptr;
-    params.abort_callback = [](void* data) { return static_cast<const CancelToken*>(data)->isCancelled(); };
+    params.abort_callback = [](void* data) { return static_cast<const CancelToken*>(data)->isCancelled() || shuttingDown.load(); };
     params.abort_callback_user_data = const_cast<CancelToken*>(&cancel);
 
     const bool timings = verboseLogging();
     if (timings) whisper_reset_timings(context);
     int status = whisper_full(context, params, samples.data(), static_cast<int>(samples.size()));
     if (timings) whisper_print_timings(context);
-    if (cancel.isCancelled()) throw Cancelled();
+    if (cancel.isCancelled() || shuttingDown.load()) throw Cancelled();
     if (status != 0) throw std::runtime_error("전사 실패 (" + std::to_string(status) + ")");
     return collectSegments(options.language);
 }

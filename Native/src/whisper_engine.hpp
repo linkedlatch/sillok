@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -26,7 +27,7 @@ std::vector<WordTimestamp> assembleWords(const std::vector<TokenPiece>& tokens);
 
 class WhisperEngine final : public Engine {
 public:
-    WhisperEngine() = default;
+    WhisperEngine();
     ~WhisperEngine() override;
     WhisperEngine(const WhisperEngine&) = delete;
     WhisperEngine& operator=(const WhisperEngine&) = delete;
@@ -40,10 +41,12 @@ public:
     std::vector<Segment> transcribe(const std::vector<float>& samples, const ChunkTranscribeOptions& options, const CancelToken& cancel) override;
 
 private:
+    std::mutex mutex_;
     whisper_context* context_ = nullptr;
     std::filesystem::path staging_;
     int threads_ = 4;
 
+    void unloadLocked();
     whisper_context* require() const;
     std::vector<Segment> collectSegments(const std::string& language) const;
 };
