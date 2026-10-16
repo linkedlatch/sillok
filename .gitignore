@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+.swiftpm/
+.tools/
+build/
+xcuserdata/
+DerivedData/
+Vendor/whisper.xcframework/
+models/
+*.m4a
+!Fixtures/**/*.m4a
+docs/
