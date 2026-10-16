@@ -5,13 +5,6 @@ import whisper
 final class WhisperContext: @unchecked Sendable {
     private static let queue = DispatchQueue(label: "sillok.whisper", qos: .userInitiated)
 
-    private static let logFilter: Void = {
-        guard ProcessInfo.processInfo.environment["SILLOK_WHISPER_LOG"] != "1" else { return }
-        whisper_log_set({ level, text, _ in
-            if level == GGML_LOG_LEVEL_ERROR, let text { fputs(String(cString: text), stderr) }
-        }, nil)
-    }()
-
     private let pointer: OpaquePointer
     private let threads: Int32
     private let stagingDirectory: URL
@@ -34,7 +27,7 @@ final class WhisperContext: @unchecked Sendable {
     }
 
     static func load(_ files: ModelFiles, mode: ComputeMode) throws -> WhisperContext {
-        _ = logFilter
+        _ = WhisperLog.configure
         let staging = try stage(files, includeCoreML: mode == .foregroundAccelerated)
         let stagingDirectory = staging.deletingLastPathComponent()
 
@@ -103,15 +96,25 @@ final class WhisperContext: @unchecked Sendable {
     private func segments(language: String) -> [Segment] {
         let eot = whisper_token_eot(pointer)
         return (0..<whisper_full_n_segments(pointer)).map { i in
-            let logprobs = (0..<whisper_full_n_tokens(pointer, i))
-                .map { whisper_full_get_token_data(pointer, i, $0) }
-                .filter { $0.id < eot }
-                .map(\.plog)
+            let tokens = (0..<whisper_full_n_tokens(pointer, i))
+                .map { (index: $0, data: whisper_full_get_token_data(pointer, i, $0)) }
+                .filter { $0.data.id < eot }
+            let logprobs = tokens.map(\.data.plog)
+            let words = TokenWordAssembler.words(from: tokens.map { token in
+                let text = whisper_full_get_token_text(pointer, i, token.index)!
+                return TokenPiece(
+                    bytes: Array(UnsafeBufferPointer(start: UnsafeRawPointer(text).assumingMemoryBound(to: UInt8.self), count: strlen(text))),
+                    start: TimeInterval(token.data.t0) / 100,
+                    end: TimeInterval(token.data.t1) / 100,
+                    probability: token.data.p
+                )
+            })
             return Segment(
                 start: TimeInterval(whisper_full_get_segment_t0(pointer, i)) / 100,
                 end: TimeInterval(whisper_full_get_segment_t1(pointer, i)) / 100,
                 text: String(cString: whisper_full_get_segment_text(pointer, i)).trimmingCharacters(in: .whitespaces),
                 language: language,
+                words: words.isEmpty ? nil : words,
                 avgLogprob: logprobs.isEmpty ? nil : logprobs.reduce(0, +) / Float(logprobs.count),
                 noSpeechProb: whisper_full_get_segment_no_speech_prob(pointer, i)
             )

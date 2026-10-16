@@ -80,6 +80,49 @@ func transcribe(arguments: [String]) async throws {
     print("load \(loadTime)  transcribe \(runTime) for \(String(format: "%.1f", to - from))s audio  peak footprint \(String(format: "%.0f", peakFootprintMB())) MB")
 }
 
+func plan(audio: String, vadModel: String, model: String?, chunkRange: Range<Int>) async throws {
+    let source = try await AssetAudioSource(url: URL(fileURLWithPath: audio))
+    let vad = try WhisperVAD(modelURL: URL(fileURLWithPath: vadModel))
+    let clock = ContinuousClock()
+    var map: SpeechMap?
+    let elapsed = try await clock.measure { map = try await SpeechMap.build(source: source, vad: vad) }
+    guard let map else { return }
+    let chunks = ChunkPlanner().plan(map)
+    let covered = chunks.reduce(0) { $0 + $1.duration }
+    let forced = chunks.filter { $0.cutAfter != nil }.count
+    let lengths = chunks.map(\.duration).sorted()
+    print(String(format: "duration %.1fs  vad %.1fs  frames %d", map.duration, Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18, map.probabilities.count))
+    print(String(format: "chunks %d  forced cuts %d  covered %.1fs (%.0f%%)", chunks.count, forced, covered, covered / map.duration * 100))
+    if !lengths.isEmpty {
+        print(String(format: "chunk length min %.1fs  median %.1fs  max %.1fs", lengths.first!, lengths[lengths.count / 2], lengths.last!))
+    }
+    guard let model else {
+        for chunk in chunks.prefix(12) { printChunk(chunk) }
+        return
+    }
+    let engine = WhisperCppEngine()
+    try await engine.loadModel(ModelFiles(ggml: URL(fileURLWithPath: model)), mode: .foregroundAccelerated)
+    for chunk in chunks[chunkRange.clamped(to: 0..<chunks.count)] {
+        printChunk(chunk)
+        let samples = try await source.read(from: chunk.start, to: chunk.end)
+        let raw = try await engine.transcribe(samples: samples, options: ChunkTranscribeOptions(language: "ko"))
+            .map { $0.offset(by: chunk.start) }
+        let kept = OverlapMerger.trim(raw, to: chunk)
+        for segment in raw where chunk.cutBefore.map({ segment.start < $0 + 1 }) ?? false || chunk.cutAfter.map({ segment.end > $0 - 1 }) ?? false {
+            print("    raw  " + String(format: "[%7.2f → %7.2f] ", segment.start, segment.end) + segment.text)
+        }
+        for segment in kept {
+            print("    kept " + String(format: "[%7.2f → %7.2f] ", segment.start, segment.end) + segment.text)
+        }
+    }
+}
+
+func printChunk(_ chunk: AudioChunk) {
+    print(String(format: "  %8.2f → %8.2f  (%.1fs)%@%@", chunk.start, chunk.end, chunk.duration,
+                 chunk.cutBefore.map { String(format: "  cutBefore %.2f", $0) } ?? "",
+                 chunk.cutAfter.map { String(format: "  cutAfter %.2f", $0) } ?? ""))
+}
+
 enum CLIError: Error {
     case usage
 }
@@ -99,6 +142,16 @@ case "decode" where args.count >= 2:
         print("error: \(error.localizedDescription)")
         exit(1)
     }
+case "plan" where args.count >= 3:
+    do {
+        let model = args.firstIndex(of: "--model").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+        let from = args.firstIndex(of: "--chunks").flatMap { args.indices.contains($0 + 1) ? Int(args[$0 + 1]) : nil } ?? 0
+        let count = args.firstIndex(of: "--count").flatMap { args.indices.contains($0 + 1) ? Int(args[$0 + 1]) : nil } ?? 2
+        try await plan(audio: args[1], vadModel: args[2], model: model, chunkRange: from..<(from + count))
+    } catch {
+        print("error: \(error)")
+        exit(1)
+    }
 case "transcribe":
     do {
         try await transcribe(arguments: Array(args.dropFirst()))
@@ -109,5 +162,5 @@ case "transcribe":
         exit(1)
     }
 default:
-    print("usage: sillok-cli info | decode <file> [windowSeconds] | transcribe ...")
+    print("usage: sillok-cli info | decode <file> [windowSeconds] | plan <audio> <vad.bin> | transcribe ...")
 }

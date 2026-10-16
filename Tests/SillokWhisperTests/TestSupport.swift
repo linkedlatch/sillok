@@ -12,8 +12,14 @@ enum TestSupport {
     static let tinyModel = repoRoot.appendingPathComponent("models/ggml-tiny.bin")
     static let tinyEncoder = repoRoot.appendingPathComponent("models/ggml-tiny-encoder.mlmodelc")
 
+    static let vadModel = repoRoot.appendingPathComponent("models/ggml-silero-v6.2.0.bin")
+
     static var hasTinyModel: Bool {
         FileManager.default.fileExists(atPath: tinyModel.path)
+    }
+
+    static var hasVADModel: Bool {
+        FileManager.default.fileExists(atPath: vadModel.path)
     }
 
     static func speech(_ text: String, voice: String) async throws -> [Float] {
