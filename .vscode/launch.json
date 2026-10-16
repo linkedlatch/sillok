@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:sillok}",
+            "name": "Debug sillok-cli",
+            "target": "sillok-cli",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug sillok-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:sillok}",
+            "name": "Release sillok-cli",
+            "target": "sillok-cli",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release sillok-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:sillok}",
+            "name": "Debug manifest-tool",
+            "target": "manifest-tool",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug manifest-tool"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:sillok}",
+            "name": "Release manifest-tool",
+            "target": "manifest-tool",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release manifest-tool"
+        }
+    ]
+}

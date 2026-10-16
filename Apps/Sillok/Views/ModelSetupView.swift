@@ -13,9 +13,10 @@ struct ModelSetupView: View {
             Section {
                 Text("음성은 기기 밖으로 나가지 않습니다. 처음 한 번 전사 모델을 내려받아야 합니다.")
                     .foregroundStyle(.secondary)
-                Picker("전사 모드", selection: $model.settings.whisperID) {
-                    Text("속도 우선 (large-v3-turbo)").tag(ModelSelection.defaultWhisperID)
-                    Text("정확도 우선 (large-v3)").tag(ModelSelection.accuracyWhisperID)
+                Picker("전사 모델", selection: $model.settings.whisperID) {
+                    ForEach(model.whisperModels) { entry in
+                        Text(entry.id == ModelSelection.defaultWhisperID ? "\(entry.displayName) — 기본" : entry.displayName).tag(entry.id)
+                    }
                 }
                 .disabled(isBusy)
             }

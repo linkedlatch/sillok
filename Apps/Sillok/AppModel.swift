@@ -68,6 +68,8 @@ final class AppModel {
 
     var whisperEntry: ModelEntry? { manifest.entry(settings.whisperID) }
 
+    var whisperModels: [ModelEntry] { manifest.models.filter { $0.kind == .whisper } }
+
     var requiredModels: [ModelEntry] {
         ModelSelection.requiredEntries(whisperID: settings.whisperID, useCoreML: settings.useCoreML, manifest: manifest)
     }
