@@ -24,6 +24,6 @@ let package = Package(
 
         .testTarget(name: "SillokCoreTests", dependencies: ["SillokCore"]),
         .testTarget(name: "SillokAudioTests", dependencies: ["SillokAudio"]),
-        .testTarget(name: "SillokWhisperTests", dependencies: ["SillokWhisper"]),
+        .testTarget(name: "SillokWhisperTests", dependencies: ["SillokWhisper", "SillokAudio"]),
     ]
 )
