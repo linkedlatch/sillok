@@ -23,7 +23,7 @@ let sources = [
         commit: "5359861c739e955e79d9a303bcbc70fb988958b1",
         license: "MIT",
         files: [
-            ("large-v3-turbo-q8_0", .whisper, "Whisper large-v3-turbo (q8_0)", "ggml-large-v3-turbo-q8_0.bin", "large-v3-turbo-encoder"),
+            ("large-v3-turbo-q5_0", .whisper, "Whisper large-v3-turbo (q5_0)", "ggml-large-v3-turbo-q5_0.bin", "large-v3-turbo-encoder"),
             ("large-v3-turbo-encoder", .coreMLEncoder, "large-v3-turbo Core ML 인코더", "ggml-large-v3-turbo-encoder.mlmodelc.zip", nil),
         ]
     ),

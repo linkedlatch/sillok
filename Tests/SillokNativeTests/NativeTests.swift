@@ -5,7 +5,7 @@ import SillokCore
 @testable import SillokNative
 
 private let repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-private let model = repoRoot.appendingPathComponent("models/ggml-large-v3-turbo-q8_0.bin")
+private let model = repoRoot.appendingPathComponent("models/ggml-large-v3-turbo-q5_0.bin")
 private let vad = repoRoot.appendingPathComponent("models/ggml-silero-v6.2.0.bin")
 
 private func fixture(_ name: String) -> URL {

@@ -2,7 +2,7 @@ import Foundation
 import SillokCore
 
 public enum ModelSelection {
-    public static let defaultWhisperID = "large-v3-turbo-q8_0"
+    public static let defaultWhisperID = "large-v3-turbo-q5_0"
     public static let vadID = "silero-v6.2.0"
     public static let runtimeOverhead: Int64 = 1 << 30
 

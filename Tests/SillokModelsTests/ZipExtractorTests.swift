@@ -86,7 +86,7 @@ func installsRealCoreMLEncoderArchive() throws {
 @Test func bundledManifestPairsWhisperModelsWithMatchingEncoders() throws {
     let url = repoRoot.appendingPathComponent("Apps/Sillok/Resources/manifest.json")
     let manifest = try JSONDecoder().decode(ModelManifest.self, from: Data(contentsOf: url))
-    #expect(manifest.entry("large-v3-turbo-q8_0") != nil)
+    #expect(manifest.entry("large-v3-turbo-q5_0") != nil)
     #expect(manifest.entry("silero-v6.2.0")?.kind == .vad)
     for whisper in manifest.models where whisper.coreMLEncoderID != nil {
         let encoder = try #require(manifest.coreMLEncoder(for: whisper))

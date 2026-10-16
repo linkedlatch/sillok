@@ -64,13 +64,17 @@ private func summary(_ segments: [Segment]) -> [String] {
     let url = checkpointURL()
     let partial = try await collect(pipeline(EchoCore(), checkpoint: url).run(source: source), stopAfter: 3)
     #expect(partial.count == 2)
-    let saved = try VersionedStore.load(Checkpoint.self, from: url)
-    #expect(saved.state.nextChunk >= 2)
 
     let resumedCore = EchoCore()
-    let resumed = try await collect(pipeline(resumedCore, checkpoint: url).run(source: source))
+    var resumed: [Segment] = []
+    var alreadyDone: Int?
+    for try await progress in pipeline(resumedCore, checkpoint: url).run(source: source) {
+        if alreadyDone == nil { alreadyDone = progress.newSegments.count }
+        resumed += progress.newSegments
+    }
+    #expect((alreadyDone ?? 0) >= 2)
     #expect(summary(resumed) == summary(reference))
-    #expect(await resumedCore.steps == 4 - saved.state.nextChunk)
+    #expect(await resumedCore.steps == 4 - (alreadyDone ?? 0))
 }
 
 @Test func checkpointWithDifferentOptionsIsIgnored() async throws {

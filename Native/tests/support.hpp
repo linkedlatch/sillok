@@ -13,7 +13,7 @@
 
 namespace sillok::testing {
 
-inline const std::string testModel = "ggml-large-v3-turbo-q8_0.bin";
+inline const std::string testModel = "ggml-large-v3-turbo-q5_0.bin";
 inline const std::string vadModel = "ggml-silero-v6.2.0.bin";
 
 inline std::filesystem::path repoRoot() {
