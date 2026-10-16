@@ -17,6 +17,16 @@ public actor WhisperCppEngine: TranscriptionEngine {
         context = nil
     }
 
+    public func detectLanguage(samples: [Float], allowedLanguages: Set<String>?) async throws -> LanguageDetection {
+        guard let context else { throw WhisperEngineError.modelNotLoaded }
+        return try await WhisperContext.run { try context.detectLanguage(samples, allowed: allowedLanguages) }
+    }
+
+    public func tokenCount(_ text: String) async throws -> Int {
+        guard let context else { throw WhisperEngineError.modelNotLoaded }
+        return try await WhisperContext.run { context.tokenCount(text) }
+    }
+
     public func transcribe(samples: [Float], options: ChunkTranscribeOptions) async throws -> [Segment] {
         guard let context else { throw WhisperEngineError.modelNotLoaded }
         let abort = AbortFlag()

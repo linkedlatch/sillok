@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import SillokAudio
 import SillokCore
+import SillokPlatform
 import SillokWhisper
 
 func peakFootprintMB() -> Double {
@@ -123,51 +124,88 @@ func printChunk(_ chunk: AudioChunk) {
                  chunk.cutAfter.map { String(format: "  cutAfter %.2f", $0) } ?? ""))
 }
 
-func runFile(audio: String, vadModel: String, model: String, coreML: String?, language: String, output: String?) async throws {
+func runFile(audio: String, vadModel: String, model: String, coreML: String?, mode: LanguageMode, terms: [String], output: String?, checkpoint: String?) async throws {
     let clock = ContinuousClock()
     func seconds(_ d: Duration) -> Double { Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18 }
 
     let source = try await AssetAudioSource(url: URL(fileURLWithPath: audio))
-    let vad = try WhisperVAD(modelURL: URL(fileURLWithPath: vadModel))
-    var map: SpeechMap?
-    let vadTime = try await clock.measure { map = try await SpeechMap.build(source: source, vad: vad) }
-    let chunks = ChunkPlanner().plan(map!)
-
     let engine = WhisperCppEngine()
-    let files = ModelFiles(ggml: URL(fileURLWithPath: model), coreMLEncoder: coreML.map { URL(fileURLWithPath: $0) })
-    let loadTime = try await clock.measure { try await engine.loadModel(files, mode: .foregroundAccelerated) }
-    print(String(format: "audio %.1fs  vad %.1fs  chunks %d  load %.1fs", source.duration, seconds(vadTime), chunks.count, seconds(loadTime)))
+    let modelURL = URL(fileURLWithPath: model)
+    let loadTime = try await clock.measure {
+        try await engine.loadModel(ModelFiles(ggml: modelURL, coreMLEncoder: coreML.map { URL(fileURLWithPath: $0) }), mode: .foregroundAccelerated)
+    }
+    print(String(format: "audio %.1fs  load %.1fs", source.duration, seconds(loadTime)))
+
+    let checkpointURL = checkpoint.map { URL(fileURLWithPath: $0) }
+        ?? FileManager.default.temporaryDirectory.appendingPathComponent("sillok-cli-\(UUID().uuidString).json")
+    var pipeline = FileTranscriptionPipeline(
+        engine: engine,
+        vad: try WhisperVAD(modelURL: URL(fileURLWithPath: vadModel)),
+        options: TranscriptionOptions(languageMode: mode, vocabulary: terms),
+        modelID: modelURL.lastPathComponent,
+        checkpointURL: checkpointURL
+    )
+    pipeline.thermal = ThermalMonitor()
+    let activity = ActivityAssertion(reason: "transcribing")
 
     var segments: [Segment] = []
-    var chunkTimes: [(audio: Double, wall: Double)] = []
+    var walls: [Double] = []
+    var last = clock.now
     let started = clock.now
-    for (index, chunk) in chunks.enumerated() {
-        let samples = try await source.read(from: chunk.start, to: chunk.end)
-        var raw: [Segment] = []
-        let wall = try await clock.measure {
-            raw = try await engine.transcribe(samples: samples, options: ChunkTranscribeOptions(language: language))
+    for try await progress in pipeline.run(source: source) {
+        let now = clock.now
+        segments += progress.newSegments
+        if progress.phase == .transcribing, progress.fractionCompleted < 1, !progress.newSegments.isEmpty || walls.count > 0 {
+            walls.append(seconds(now - last))
         }
-        segments += OverlapMerger.trim(raw.map { $0.offset(by: chunk.start) }, to: chunk)
-        chunkTimes.append((chunk.duration, seconds(wall)))
-        let elapsed = seconds(clock.now - started)
-        print(String(format: "chunk %3d/%d  %5.1fs audio  %5.2fs wall  (x%.1f)  elapsed %6.1fs  done %6.1fs", index + 1, chunks.count, chunk.duration, seconds(wall), chunk.duration / seconds(wall), elapsed, chunk.end))
+        last = now
+        print(String(format: "%@ %5.1f%%  at %7.1fs  +%d segs  elapsed %6.1fs",
+                     progress.phase == .analyzing ? "analyzing  " : "transcribing", progress.fractionCompleted * 100,
+                     progress.lastProcessedTimestamp, progress.newSegments.count, seconds(now - started)))
         fflush(stdout)
     }
+    withExtendedLifetime(activity) {}
+    try? FileManager.default.removeItem(at: checkpointURL)
+
     let total = seconds(clock.now - started)
-    let walls = chunkTimes.map(\.wall).sorted()
-    let ratios = chunkTimes.map { $0.wall / $0.audio }.sorted()
-    print(String(format: "TOTAL transcribe %.1fs for %.1fs audio → %.1fx realtime (incl. vad+load %.1fs → %.1fx)",
-                 total, source.duration, source.duration / total,
-                 total + seconds(vadTime) + seconds(loadTime), source.duration / (total + seconds(vadTime) + seconds(loadTime))))
-    print(String(format: "chunk wall p50 %.2fs  p95 %.2fs  max %.2fs   wall/audio p50 %.3f  p95 %.3f  max %.3f",
-                 walls[walls.count / 2], walls[walls.count * 95 / 100], walls.last!,
-                 ratios[ratios.count / 2], ratios[ratios.count * 95 / 100], ratios.last!))
-    print(String(format: "peak footprint %.0f MB  segments %d", peakFootprintMB(), segments.count))
+    let languages = Dictionary(grouping: segments, by: \.language).mapValues(\.count)
+    print(String(format: "TOTAL %.1fs for %.1fs audio → %.1fx realtime", total, source.duration, source.duration / total))
+    print(String(format: "peak footprint %.0f MB  segments %d  low-confidence %d  languages %@",
+                 peakFootprintMB(), segments.count, segments.filter(\.isLowConfidence).count, languages.description))
 
     if let output {
-        let text = segments.map { String(format: "[%7.2f → %7.2f] ", $0.start, $0.end) + $0.text }.joined(separator: "\n")
+        let text = segments.map {
+            String(format: "[%7.2f → %7.2f] %@%@ ", $0.start, $0.end, $0.language, $0.isLowConfidence ? " ?" : "") + $0.text
+        }.joined(separator: "\n")
         try text.write(toFile: output, atomically: true, encoding: .utf8)
         print("wrote \(output)")
+    }
+}
+
+func detectLanguages(audio: String, vadModel: String, model: String, coreML: String?) async throws {
+    let source = try await AssetAudioSource(url: URL(fileURLWithPath: audio))
+    let map = try await SpeechMap.build(source: source, vad: try WhisperVAD(modelURL: URL(fileURLWithPath: vadModel)))
+    let chunks = ChunkPlanner().plan(map)
+    let engine = WhisperCppEngine()
+    try await engine.loadModel(
+        ModelFiles(ggml: URL(fileURLWithPath: model), coreMLEncoder: coreML.map { URL(fileURLWithPath: $0) }),
+        mode: .foregroundAccelerated
+    )
+    for (index, chunk) in chunks.enumerated() {
+        let samples = try await source.read(from: chunk.start, to: chunk.end)
+        let any = try await engine.detectLanguage(samples: samples, allowedLanguages: nil)
+        let koen = try await engine.detectLanguage(samples: samples, allowedLanguages: ["ko", "en"])
+        print(String(format: "chunk %3d  %7.1f-%7.1f  auto %@ %.2f  koen %@ %.2f", index + 1, chunk.start, chunk.end,
+                     any.language, any.confidence, koen.language, koen.confidence))
+        fflush(stdout)
+    }
+}
+
+func languageMode(_ value: String?) -> LanguageMode {
+    switch value {
+    case nil, "auto": .auto
+    case "koen": .koreanEnglish
+    case let code?: .fixed(code)
     }
 }
 
@@ -206,7 +244,17 @@ case "run" where args.count >= 4:
     }
     do {
         try await runFile(audio: args[1], vadModel: args[2], model: args[3], coreML: value("--coreml"),
-                          language: value("--lang") ?? "ko", output: value("--out"))
+                          mode: languageMode(value("--lang")),
+                          terms: value("--terms")?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? [],
+                          output: value("--out"), checkpoint: value("--checkpoint"))
+    } catch {
+        print("error: \(error)")
+        exit(1)
+    }
+case "langs" where args.count >= 4:
+    do {
+        let coreML = args.firstIndex(of: "--coreml").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+        try await detectLanguages(audio: args[1], vadModel: args[2], model: args[3], coreML: coreML)
     } catch {
         print("error: \(error)")
         exit(1)
@@ -221,5 +269,5 @@ case "transcribe":
         exit(1)
     }
 default:
-    print("usage: sillok-cli info | decode <file> [windowSeconds] | plan <audio> <vad.bin> | run <audio> <vad.bin> <model.bin> [--coreml enc] [--lang ko] [--out file] | transcribe ...")
+    print("usage: sillok-cli info | decode <file> [windowSeconds] | plan <audio> <vad.bin> | run <audio> <vad.bin> <model.bin> [--coreml enc] [--lang auto|koen|<code>] [--terms a,b] [--out file] [--checkpoint file] | transcribe ...")
 }

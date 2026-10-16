@@ -56,6 +56,35 @@ final class WhisperContext: @unchecked Sendable {
         return ggml
     }
 
+    func detectLanguage(_ samples: [Float], allowed: Set<String>?) throws -> LanguageDetection {
+        let melStatus = samples.withUnsafeBufferPointer {
+            whisper_pcm_to_mel(pointer, $0.baseAddress, Int32($0.count), threads)
+        }
+        guard melStatus == 0 else { throw WhisperEngineError.inferenceFailed(melStatus) }
+
+        var probabilities = [Float](repeating: 0, count: Int(whisper_lang_max_id()) + 1)
+        let detected = whisper_lang_auto_detect(pointer, 0, threads, &probabilities)
+        guard detected >= 0 else { throw WhisperEngineError.inferenceFailed(detected) }
+
+        let candidates = probabilities.indices.compactMap { id -> (code: String, probability: Float)? in
+            guard let name = whisper_lang_str(Int32(id)) else { return nil }
+            let code = String(cString: name)
+            if let allowed, !allowed.contains(code) { return nil }
+            return (code, probabilities[id])
+        }
+        guard let best = candidates.max(by: { $0.probability < $1.probability }) else {
+            throw WhisperEngineError.inferenceFailed(-3)
+        }
+        let total = candidates.reduce(0) { $0 + $1.probability }
+        return LanguageDetection(language: best.code, confidence: total > 0 ? Double(best.probability / total) : 0)
+    }
+
+    func tokenCount(_ text: String) -> Int {
+        var tokens = [whisper_token](repeating: 0, count: 1024)
+        let count = text.withCString { whisper_tokenize(pointer, $0, &tokens, Int32(tokens.count)) }
+        return Int(abs(count))
+    }
+
     func transcribe(_ samples: [Float], options: ChunkTranscribeOptions, abort: AbortFlag) throws -> [Segment] {
         if abort.isSet { throw CancellationError() }
         var params = whisper_full_default_params(options.beamSize > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY)
@@ -109,14 +138,16 @@ final class WhisperContext: @unchecked Sendable {
                     probability: token.data.p
                 )
             })
+            let text = String(cString: whisper_full_get_segment_text(pointer, i)).trimmingCharacters(in: .whitespaces)
             return Segment(
                 start: TimeInterval(whisper_full_get_segment_t0(pointer, i)) / 100,
                 end: TimeInterval(whisper_full_get_segment_t1(pointer, i)) / 100,
-                text: String(cString: whisper_full_get_segment_text(pointer, i)).trimmingCharacters(in: .whitespaces),
+                text: text,
                 language: language,
                 words: words.isEmpty ? nil : words,
                 avgLogprob: logprobs.isEmpty ? nil : logprobs.reduce(0, +) / Float(logprobs.count),
-                noSpeechProb: whisper_full_get_segment_no_speech_prob(pointer, i)
+                noSpeechProb: whisper_full_get_segment_no_speech_prob(pointer, i),
+                compressionRatio: CompressionRatio.of(text)
             )
         }
     }

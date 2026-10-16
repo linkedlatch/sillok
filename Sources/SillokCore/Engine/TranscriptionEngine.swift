@@ -39,8 +39,20 @@ public struct ChunkTranscribeOptions: Sendable, Hashable {
     }
 }
 
+public struct LanguageDetection: Hashable, Sendable {
+    public var language: String
+    public var confidence: Double
+
+    public init(language: String, confidence: Double) {
+        self.language = language
+        self.confidence = confidence
+    }
+}
+
 public protocol TranscriptionEngine: Sendable {
     func loadModel(_ files: ModelFiles, mode: ComputeMode) async throws
     func unloadModel() async
+    func detectLanguage(samples: [Float], allowedLanguages: Set<String>?) async throws -> LanguageDetection
+    func tokenCount(_ text: String) async throws -> Int
     func transcribe(samples: [Float], options: ChunkTranscribeOptions) async throws -> [Segment]
 }

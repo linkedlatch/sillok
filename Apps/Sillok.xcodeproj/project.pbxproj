@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000101 /* SillokCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000401 /* SillokCore */; };
 		A10000000000000000000102 /* SillokWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000402 /* SillokWhisper */; };
+		B10000000000000000000101 /* SillokAudio in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000401 /* SillokAudio */; };
+		B10000000000000000000102 /* SillokModels in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000402 /* SillokModels */; };
+		B10000000000000000000103 /* SillokPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000403 /* SillokPlatform */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +34,9 @@
 			files = (
 				A10000000000000000000101 /* SillokCore in Frameworks */,
 				A10000000000000000000102 /* SillokWhisper in Frameworks */,
+				B10000000000000000000101 /* SillokAudio in Frameworks */,
+				B10000000000000000000102 /* SillokModels in Frameworks */,
+				B10000000000000000000103 /* SillokPlatform in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +90,9 @@
 			packageProductDependencies = (
 				A10000000000000000000401 /* SillokCore */,
 				A10000000000000000000402 /* SillokWhisper */,
+				B10000000000000000000401 /* SillokAudio */,
+				B10000000000000000000402 /* SillokModels */,
+				B10000000000000000000403 /* SillokPlatform */,
 			);
 			productName = Sillok;
 			productReference = A10000000000000000000201 /* Sillok.app */;
@@ -289,6 +298,18 @@
 		A10000000000000000000402 /* SillokWhisper */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SillokWhisper;
+		};
+		B10000000000000000000401 /* SillokAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SillokAudio;
+		};
+		B10000000000000000000402 /* SillokModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SillokModels;
+		};
+		B10000000000000000000403 /* SillokPlatform */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SillokPlatform;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
