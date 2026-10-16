@@ -23,10 +23,6 @@ public struct ModelStore: Sendable {
         root.appendingPathComponent(entry.installedName)
     }
 
-    public func partURL(for entry: ModelEntry) -> URL {
-        downloadsDirectory.appendingPathComponent(entry.fileName + ".part")
-    }
-
     public func isInstalled(_ entry: ModelEntry) -> Bool {
         let url = location(of: entry)
         var isDirectory: ObjCBool = false

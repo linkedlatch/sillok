@@ -10,3 +10,4 @@ models/
 *.m4a
 !Fixtures/**/*.m4a
 docs/
+.claude/worktrees/

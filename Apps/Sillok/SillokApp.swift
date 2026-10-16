@@ -1,3 +1,4 @@
+import SillokModels
 import SwiftUI
 
 @main
@@ -10,6 +11,11 @@ struct SillokApp: App {
                 .environment(model)
                 .task { model.start() }
         }
+        #if os(iOS)
+        .backgroundTask(.urlSession(ModelDownloader.backgroundIdentifier)) {
+            await ModelDownloader.shared.handleBackgroundEvents()
+        }
+        #endif
         #if os(macOS)
         Settings {
             SettingsView()

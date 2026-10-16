@@ -3,22 +3,20 @@ import SillokCore
 
 public struct ModelInstaller: Sendable {
     public let store: ModelStore
-    public let downloader: ResumableDownloader
+    public let downloader: ModelDownloader
 
-    public init(store: ModelStore, downloader: ResumableDownloader = ResumableDownloader()) {
+    public init(store: ModelStore, downloader: ModelDownloader = .shared) {
         self.store = store
         self.downloader = downloader
     }
 
-    public func download(_ entry: ModelEntry, progress: ResumableDownloader.Progress? = nil) async throws {
-        let part = store.partURL(for: entry)
-        let alreadyReceived = (try? FileManager.default.attributesOfItem(atPath: part.path)[.size] as? NSNumber)?.int64Value ?? 0
-        let required = store.requiredSpace(for: entry) - alreadyReceived
+    public func download(_ entry: ModelEntry, progress: ModelDownloader.Progress? = nil) async throws {
+        let required = store.requiredSpace(for: entry)
         let available = store.availableDiskSpace()
         guard available >= required else { throw ModelError.insufficientDiskSpace(required: required, available: available) }
 
-        try await downloader.download(entry, partURL: part, progress: progress)
-        try store.install(verifiedFile: part, as: entry)
+        let file = try await downloader.download(entry, into: store.downloadsDirectory, progress: progress)
+        try store.install(verifiedFile: file, as: entry)
     }
 
     public func importFile(_ url: URL) throws -> ModelEntry {

@@ -24,74 +24,119 @@ private func entry(_ body: Data, urls: [String], sha: String? = nil) -> ModelEnt
 private func installer(_ entries: [ModelEntry]) -> ModelInstaller {
     ModelInstaller(
         store: ModelStore(root: temporaryDirectory(), manifest: ModelManifest(version: 1, models: entries)),
-        downloader: ResumableDownloader(configuration: StubServer.configuration)
+        downloader: ModelDownloader(configuration: .ephemeral)
     )
+}
+
+private func stagingURL(_ installer: ModelInstaller, _ entry: ModelEntry) -> URL {
+    ModelDownloader.stagingURL(for: entry, in: installer.store.downloadsDirectory)
+}
+
+private func resumeURL(_ installer: ModelInstaller, _ entry: ModelEntry) -> URL {
+    ModelDownloader.resumeDataURL(forStaging: stagingURL(installer, entry))
+}
+
+private func exists(_ url: URL) -> Bool {
+    FileManager.default.fileExists(atPath: url.path)
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Int64 = 0
+    var current: Int64 { lock.withLock { value } }
+    func set(_ newValue: Int64) { lock.withLock { value = newValue } }
 }
 
 @Suite(.serialized)
 struct ModelInstallerTests {
-    init() { StubServer.reset() }
-
     @Test func downloadVerifiesAndInstallsExcludedFromBackup() async throws {
+        let server = try TestHTTPServer()
+        try await server.start()
         let body = payload(300_000)
-        StubServer.routes["https://a.test/m.bin"] = .init(body: body)
-        let model = entry(body, urls: ["https://a.test/m.bin"])
+        server.route("/m.bin", .init(body: body))
+        let model = entry(body, urls: [server.url("/m.bin")])
         let installer = installer([model])
+        let received = Counter()
 
-        try await installer.download(model)
+        try await installer.download(model) { bytes, _ in received.set(bytes) }
 
         let installed = installer.store.location(of: model)
         #expect(try Data(contentsOf: installed) == body)
         #expect(installer.store.isInstalled(model))
-        #expect(!FileManager.default.fileExists(atPath: installer.store.partURL(for: model).path))
+        #expect(received.current == Int64(body.count))
+        #expect(!exists(stagingURL(installer, model)))
+        #expect(!exists(resumeURL(installer, model)))
         #expect(try installed.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
     }
 
     @Test func interruptedDownloadResumesWithRange() async throws {
+        let server = try TestHTTPServer()
+        try await server.start()
         let body = payload(500_000)
-        StubServer.routes["https://a.test/m.bin"] = .init(body: body, failAfter: 120_000)
-        let model = entry(body, urls: ["https://a.test/m.bin"])
+        server.route("/m.bin", .init(body: body, cutAfter: 120_000))
+        let model = entry(body, urls: [server.url("/m.bin")])
         let installer = installer([model])
 
         await #expect(throws: ModelError.allSourcesFailed("ggml-test.bin")) { try await installer.download(model) }
-        let partSize = try FileManager.default.attributesOfItem(atPath: installer.store.partURL(for: model).path)[.size] as? Int
-        #expect(partSize == 120_000)
+        #expect(exists(resumeURL(installer, model)))
+        #expect(server.requests.count == 1)
 
         try await installer.download(model)
-        #expect(StubServer.requests.last?.value(forHTTPHeaderField: "Range") == "bytes=120000-")
+        #expect(server.requests.count == 2)
+        #expect(server.requests.last?.headers["range"] == "bytes=120000-")
         #expect(try Data(contentsOf: installer.store.location(of: model)) == body)
+        #expect(!exists(resumeURL(installer, model)))
     }
 
     @Test func checksumMismatchIsNotInstalled() async throws {
+        let server = try TestHTTPServer()
+        try await server.start()
         let body = payload(10_000)
-        StubServer.routes["https://a.test/m.bin"] = .init(body: body)
-        let model = entry(body, urls: ["https://a.test/m.bin"], sha: String(repeating: "0", count: 64))
+        server.route("/m.bin", .init(body: body))
+        let model = entry(body, urls: [server.url("/m.bin")], sha: String(repeating: "0", count: 64))
         let installer = installer([model])
 
         await #expect(throws: ModelError.checksumMismatch("ggml-test.bin")) { try await installer.download(model) }
         #expect(!installer.store.isInstalled(model))
-        #expect(!FileManager.default.fileExists(atPath: installer.store.partURL(for: model).path))
+        #expect(!exists(stagingURL(installer, model)))
+        #expect(!exists(resumeURL(installer, model)))
     }
 
     @Test func fallsBackToNextSource() async throws {
+        let server = try TestHTTPServer()
+        try await server.start()
         let body = payload(50_000)
-        StubServer.routes["https://mirror.test/m.bin"] = .init(body: body)
-        let model = entry(body, urls: ["https://primary.test/m.bin", "https://mirror.test/m.bin"])
+        server.route("/mirror.bin", .init(body: body))
+        let model = entry(body, urls: [server.url("/missing.bin"), server.url("/mirror.bin")])
         let installer = installer([model])
 
         try await installer.download(model)
-        #expect(StubServer.requests.map { $0.url!.host() } == ["primary.test", "mirror.test"])
+        #expect(server.requests.map(\.path) == ["/missing.bin", "/mirror.bin"])
         #expect(installer.store.isInstalled(model))
     }
 
-    @Test func serverIgnoringRangeRestartsFromZero() async throws {
-        let body = payload(200_000)
-        StubServer.routes["https://a.test/m.bin"] = .init(body: body, failAfter: 80_000, ignoresRange: true)
-        let model = entry(body, urls: ["https://a.test/m.bin"])
+    @Test func cancellationProducesResumeData() async throws {
+        let server = try TestHTTPServer()
+        try await server.start()
+        let body = payload(400_000)
+        server.route("/m.bin", .init(body: body, cutAfter: 100_000, stalls: true))
+        let model = entry(body, urls: [server.url("/m.bin")])
         let installer = installer([model])
+        let received = Counter()
 
-        _ = try? await installer.download(model)
+        let task = Task { try await installer.download(model) { bytes, _ in received.set(bytes) } }
+        let deadline = ContinuousClock.now + .seconds(10)
+        while received.current < 100_000, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(exists(resumeURL(installer, model)))
+        #expect(!installer.store.isInstalled(model))
+
         try await installer.download(model)
+        #expect(server.requests.last?.headers["range"] == "bytes=100000-")
         #expect(try Data(contentsOf: installer.store.location(of: model)) == body)
     }
 
@@ -113,9 +158,11 @@ struct ModelInstallerTests {
     }
 
     @Test func insufficientDiskSpaceIsReportedBeforeDownloading() async throws {
-        var model = entry(payload(1), urls: ["https://a.test/m.bin"])
+        let server = try TestHTTPServer()
+        try await server.start()
+        var model = entry(payload(1), urls: [server.url("/m.bin")])
         model.size = Int64.max / 4
         await #expect(throws: ModelError.self) { try await installer([model]).download(model) }
-        #expect(StubServer.requests.isEmpty)
+        #expect(server.requests.isEmpty)
     }
 }
