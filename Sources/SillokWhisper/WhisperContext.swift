@@ -108,6 +108,9 @@ final class WhisperContext: @unchecked Sendable {
         }
         params.abort_callback_user_data = Unmanaged.passUnretained(abort).toOpaque()
 
+        let printTimings = ProcessInfo.processInfo.environment["SILLOK_WHISPER_LOG"] == "1"
+        if printTimings { whisper_reset_timings(pointer) }
+        defer { if printTimings { whisper_print_timings(pointer) } }
         let status = options.language.withCString { language in
             withOptionalCString(options.prompt) { prompt in
                 params.language = language
