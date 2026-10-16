@@ -1,8 +1,12 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: UUID?
     @State private var importing = false
     @State private var showingSettings = false
@@ -46,6 +50,17 @@ struct ContentView: View {
         } message: {
             Text(model.alert ?? "")
         }
+        .onChange(of: scenePhase) {
+            if scenePhase == .background { model.playback.pause() }
+        }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { _ in
+            model.playback.pause()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didHideNotification)) { _ in
+            model.playback.pause()
+        }
+        #endif
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 SettingsView()
