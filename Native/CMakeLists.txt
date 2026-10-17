@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(SILLOK_BUILD_TESTS "Build sillok native tests" ON)
+option(SILLOK_SHARED "Build the sillok shared library for C# and Kotlin hosts" OFF)
+option(SILLOK_VULKAN "Use the Vulkan backend outside Apple platforms" ON)
+
+if(SILLOK_SHARED)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -15,10 +21,23 @@ if(APPLE)
     set(GGML_METAL_EMBED_LIBRARY ON CACHE BOOL "" FORCE)
     set(WHISPER_COREML ON CACHE BOOL "" FORCE)
     set(WHISPER_COREML_ALLOW_FALLBACK ON CACHE BOOL "" FORCE)
+else()
+    set(GGML_VULKAN ${SILLOK_VULKAN} CACHE BOOL "" FORCE)
+    set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/whisper.cpp ${CMAKE_BINARY_DIR}/whisper.cpp EXCLUDE_FROM_ALL)
 
-find_package(ZLIB REQUIRED)
+find_package(ZLIB)
+if(NOT ZLIB_FOUND)
+    include(FetchContent)
+    set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(zlib
+        URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+        URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23)
+    FetchContent_MakeAvailable(zlib)
+    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+    target_include_directories(zlibstatic INTERFACE ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+endif()
 
 set(NEMO ${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/NeMo-Speech.cpp/src)
 add_library(nemo_diar STATIC
@@ -45,7 +64,7 @@ target_include_directories(nemo_diar PUBLIC
 )
 target_link_libraries(nemo_diar PUBLIC ggml)
 
-add_library(sillok_native STATIC
+set(SILLOK_SOURCES
     src/types.cpp
     src/chunking.cpp
     src/segments.cpp
@@ -55,11 +74,19 @@ add_library(sillok_native STATIC
     src/diarization.cpp
     src/c_api.cpp
 )
+add_library(sillok_native STATIC ${SILLOK_SOURCES})
 target_include_directories(sillok_native
     PUBLIC include
     PRIVATE src third_party
 )
 target_link_libraries(sillok_native PUBLIC whisper ZLIB::ZLIB PRIVATE nemo_diar)
+
+if(SILLOK_SHARED)
+    add_library(sillok SHARED ${SILLOK_SOURCES})
+    target_include_directories(sillok PUBLIC include PRIVATE src third_party)
+    target_compile_definitions(sillok PRIVATE SILLOK_BUILDING_DLL)
+    target_link_libraries(sillok PRIVATE whisper ZLIB::ZLIB nemo_diar)
+endif()
 
 if(SILLOK_BUILD_TESTS)
     enable_testing()

@@ -136,8 +136,8 @@ void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& co
     fs::path staging = fs::temp_directory_path() / ("sillok-load-" + makeUUID());
     fs::create_directories(staging);
     const fs::path model = staging / ggml.filename();
-    fs::create_symlink(ggml, model);
-    if (coreMLEncoder) fs::create_directory_symlink(*coreMLEncoder, staging / coreMLEncoderName(ggml.filename().string()));
+    fs::create_symlink(fs::absolute(ggml), model);
+    if (coreMLEncoder) fs::create_directory_symlink(fs::absolute(*coreMLEncoder), staging / coreMLEncoderName(ggml.filename().string()));
 
     whisper_context_params params = whisper_context_default_params();
     params.use_gpu = useGPU;

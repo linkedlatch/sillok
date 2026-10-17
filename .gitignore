@@ -6,8 +6,13 @@ build/
 xcuserdata/
 DerivedData/
 Vendor/whisper.xcframework/
-models/
+/models/
 *.m4a
 !Fixtures/**/*.m4a
 docs/
 .claude/worktrees/
+dotnet/**/bin/
+dotnet/**/obj/
+*.user
+.vs/
+dotnet/**/TestResults/

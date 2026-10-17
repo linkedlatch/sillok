@@ -63,6 +63,15 @@ TEST_CASE("korean character split across tokens is decoded whole") {
 
 TEST_SUITE("model") {
 
+TEST_CASE("engine loads a model given a relative path" * doctest::skip(missing({modelPath(testModel)}))) {
+    const auto previous = std::filesystem::current_path();
+    std::filesystem::current_path(repoRoot());
+    WhisperEngine engine;
+    CHECK_NOTHROW(engine.load(std::filesystem::path("models") / testModel, std::nullopt, false));
+    std::filesystem::current_path(previous);
+    CHECK(engine.isLoaded());
+}
+
 TEST_CASE("turbo transcribes english speech with ordered words" * doctest::skip(missing({modelPath(testModel), fixturePath("en.wav")}))) {
     auto samples = readWav(fixturePath("en.wav"));
     WhisperEngine engine;

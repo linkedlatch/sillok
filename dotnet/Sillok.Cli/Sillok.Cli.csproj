@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>sillok</AssemblyName>
+    <RootNamespace>Sillok.Cli</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sillok.Core/Sillok.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../shared/manifest.json" Link="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../build/native/libsillok.dylib" Link="libsillok.dylib" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/libsillok.dylib')" />
+    <None Include="../../build/native/libsillok.so" Link="libsillok.so" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/libsillok.so')" />
+    <None Include="../../build/native/Release/sillok.dll" Link="sillok.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/Release/sillok.dll')" />
+  </ItemGroup>
+
+</Project>

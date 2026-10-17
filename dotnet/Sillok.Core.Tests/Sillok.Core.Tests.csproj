@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sillok.Core/Sillok.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../build/native/libsillok.dylib" Link="libsillok.dylib" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/libsillok.dylib')" />
+    <None Include="../../build/native/libsillok.so" Link="libsillok.so" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/libsillok.so')" />
+    <None Include="../../build/native/Release/sillok.dll" Link="sillok.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../build/native/Release/sillok.dll')" />
+  </ItemGroup>
+
+</Project>

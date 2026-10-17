@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Sillok.Cli/Sillok.Cli.csproj" />
+  <Project Path="Sillok.Core.Tests/Sillok.Core.Tests.csproj" />
+  <Project Path="Sillok.Core/Sillok.Core.csproj" />
+</Solution>
