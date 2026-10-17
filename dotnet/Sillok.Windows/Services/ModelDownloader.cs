@@ -1,45 +1,62 @@
+using System.Net;
+using System.Net.Http.Headers;
 using Sillok.Core;
-using Windows.Networking.BackgroundTransfer;
-using Windows.Storage;
 
 namespace Sillok.Windows.Services;
 
 public sealed class ModelDownloader(ModelStore store)
 {
+    private static readonly HttpClient Client = new() { Timeout = Timeout.InfiniteTimeSpan };
+
     public async Task DownloadAsync(ModelEntry entry, IProgress<long> progress, CancellationToken cancellation)
     {
-        if (store.AvailableDiskSpace() < entry.Size) throw new InsufficientDiskSpaceException(entry.Size);
         Directory.CreateDirectory(store.DownloadsDirectory);
-        var folder = await StorageFolder.GetFolderFromPathAsync(store.DownloadsDirectory);
-        var partPath = Path.Combine(store.DownloadsDirectory, entry.FileName + ".part");
-        var report = new Progress<DownloadOperation>(operation => progress.Report((long)operation.Progress.BytesReceived));
-
-        var existing = (await BackgroundDownloader.GetCurrentDownloadsAsync())
-            .FirstOrDefault(operation => string.Equals(operation.ResultFile?.Path, partPath, StringComparison.OrdinalIgnoreCase));
-        if (existing is not null)
+        var part = Path.Combine(store.DownloadsDirectory, entry.FileName + ".part");
+        Exception? failure = null;
+        foreach (var url in entry.Urls)
         {
-            await existing.AttachAsync().AsTask(cancellation, report);
-        }
-        else
-        {
-            Exception? failure = null;
-            foreach (var url in entry.Urls)
+            try
             {
-                try
-                {
-                    var file = await folder.CreateFileAsync(Path.GetFileName(partPath), CreationCollisionOption.ReplaceExisting);
-                    var operation = new BackgroundDownloader().CreateDownload(new Uri(url), file);
-                    await operation.StartAsync().AsTask(cancellation, report);
-                    failure = null;
-                    break;
-                }
-                catch (Exception error) when (error is not OperationCanceledException)
-                {
-                    failure = error;
-                }
+                await DownloadFromAsync(url, part, entry, progress, cancellation);
+                store.InstallVerified(part, entry);
+                return;
             }
-            if (failure is not null) throw failure;
+            catch (HttpRequestException error)
+            {
+                failure = error;
+            }
+            catch (IOException error)
+            {
+                failure = error;
+            }
         }
-        store.InstallVerified(partPath, entry);
+        throw failure ?? new InvalidOperationException($"no download source for {entry.FileName}");
+    }
+
+    private async Task DownloadFromAsync(string url, string part, ModelEntry entry, IProgress<long> progress, CancellationToken cancellation)
+    {
+        var existing = File.Exists(part) ? new FileInfo(part).Length : 0;
+        if (existing > entry.Size) existing = 0;
+        if (existing == entry.Size) return;
+        if (store.AvailableDiskSpace() < entry.Size - existing) throw new InsufficientDiskSpaceException(entry.Size - existing);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (existing > 0) request.Headers.Range = new RangeHeaderValue(existing, null);
+        using var response = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
+        response.EnsureSuccessStatusCode();
+        if (response.StatusCode != HttpStatusCode.PartialContent) existing = 0;
+
+        await using var input = await response.Content.ReadAsStreamAsync(cancellation);
+        await using var output = new FileStream(part, existing > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None);
+        var buffer = new byte[1 << 20];
+        var received = existing;
+        progress.Report(received);
+        int read;
+        while ((read = await input.ReadAsync(buffer, cancellation)) > 0)
+        {
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellation);
+            received += read;
+            progress.Report(received);
+        }
     }
 }
