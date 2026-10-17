@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Controls;
 using Sillok.Core;
 using Sillok.Core.Native;
 using Sillok.Windows.Services;
-using Windows.Storage;
 
 namespace Sillok.Windows;
 
@@ -29,7 +28,7 @@ public sealed record ModelRow(ModelEntry Entry, bool Installed)
 
 public sealed class AppModel : INotifyPropertyChanged
 {
-    private static readonly string Root = ApplicationData.Current.LocalFolder.Path;
+    private static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sillok");
 
     private readonly DispatcherQueue dispatcher = DispatcherQueue.GetForCurrentThread();
     private readonly JobQueue queue = new();

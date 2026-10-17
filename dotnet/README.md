@@ -8,17 +8,21 @@ The `sillok` command line tool lives with the C++ core in `Native/cli`.
 
 ## Building on Windows
 
-Requirements: Visual Studio 2026 with the ".NET desktop development" and "Desktop development with C++" workloads, the .NET 10 SDK, and the Vulkan SDK.
+Requirements: Visual Studio 2026 (or Build Tools) with the ".NET desktop development", "Desktop development with C++" and "WinUI application development" workloads, the .NET 10 SDK, and the Vulkan SDK.
 
 ```powershell
 git submodule update --init Vendor/whisper.cpp Vendor/NeMo-Speech.cpp
-scripts/windows/build-native.ps1 -Arch x64
-dotnet build dotnet/Sillok.Windows -p:Platform=x64
+powershell -ExecutionPolicy Bypass -File scripts\windows\build.ps1 -Arch x64
 ```
 
-To run the app, open `dotnet/Sillok.Windows.slnx` in Visual Studio (not the `.csproj` alone, so that `Sillok.Core` is part of the solution), pick the x64 or ARM64 platform, and press F5.
+The script builds the native core, the `sillok` command line tool, and the app:
 
-`build-native.ps1` builds both `sillok_core.dll` for the app and the `sillok.exe` command line tool. For ARM64 use `-Arch ARM64` and `-p:Platform=ARM64`; building on an ARM64 machine is the simplest option.
+- `build/windows-x64/app/Sillok.exe`: the app. The folder is self-contained (it includes the .NET and Windows App SDK runtimes), so it can be zipped and run on another PC without installing anything.
+- `build/windows-x64/cli/Release/sillok.exe`: the command line tool.
+
+The app and the command line tool share models and data under `%LOCALAPPDATA%\Sillok`. For ARM64 use `-Arch ARM64`; building on an ARM64 machine is the simplest option.
+
+For debugging, run `scripts\windows\build-native.ps1 -Arch x64` once, then open `dotnet/Sillok.Windows.slnx` in Visual Studio, pick the x64 or ARM64 platform, and press F5.
 
 ## Tests (macOS and Windows)
 

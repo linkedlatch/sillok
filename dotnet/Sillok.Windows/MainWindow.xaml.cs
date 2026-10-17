@@ -15,7 +15,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        AppWindow.SetIcon("Assets/Square44x44Logo.png");
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Sillok.ico"));
         AppWindow.Changed += OnAppWindowChanged;
         Model.AlertRaised += ShowAlert;
     }

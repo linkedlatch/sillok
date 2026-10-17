@@ -1,7 +1,7 @@
 {
   "profiles": {
-    "Sillok (Package)": {
-      "commandName": "MsixPackage"
+    "Sillok": {
+      "commandName": "Project"
     }
   }
 }
