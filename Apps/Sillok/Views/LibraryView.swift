@@ -31,6 +31,16 @@ struct LibraryView: View {
     }
 }
 
+extension TranscribeProgress {
+    var statusText: String {
+        switch phase {
+        case .analyzing: "음성 구간 분석 중"
+        case .transcribing: "전사 중 \(Int(fractionCompleted * 100))%"
+        case .diarizing: "화자 구분 중"
+        }
+    }
+}
+
 private struct ProjectRow: View {
     let project: TranscriptProject
     let progress: TranscribeProgress?
@@ -41,7 +51,7 @@ private struct ProjectRow: View {
                 .lineLimit(1)
             if let progress {
                 ProgressView(value: progress.fractionCompleted)
-                Text(progress.phase == .analyzing ? "음성 구간 분석 중" : "전사 중 \(Int(progress.fractionCompleted * 100))%")
+                Text(progress.statusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {

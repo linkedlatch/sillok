@@ -71,7 +71,7 @@ final class AppModel {
     var whisperModels: [ModelEntry] { manifest.models.filter { $0.kind == .whisper } }
 
     var requiredModels: [ModelEntry] {
-        ModelSelection.requiredEntries(whisperID: settings.whisperID, useCoreML: settings.useCoreML, manifest: manifest)
+        ModelSelection.requiredEntries(whisperID: settings.whisperID, useCoreML: settings.useCoreML, diarization: settings.speakerDiarization, manifest: manifest)
     }
 
     var missingModels: [ModelEntry] {
@@ -177,6 +177,7 @@ final class AppModel {
 
     private func prepareEngine() async throws {
         guard let whisper = whisperEntry else { throw ModelError.unknownModelFile }
+        if engine.loadedFiles == nil { loadedFiles = nil }
         let encoder = manifest.coreMLEncoder(for: whisper).flatMap { modelStore.isInstalled($0) ? $0 : nil }
         if loadedFiles == modelStore.modelFiles(for: whisper, useCoreML: settings.useCoreML && encoder != nil) { return }
         #if os(iOS)
@@ -324,6 +325,7 @@ final class AppModel {
             if deletionRequested.remove(id) != nil { try? projectStore.delete(id) }
         }
 
+        let diarizationModel = manifest.entry(ModelSelection.diarizationID).flatMap { modelStore.isInstalled($0) ? modelStore.location(of: $0) : nil }
         do {
             let source = try await AssetAudioSource(url: url)
             try await prepareEngine()
@@ -334,7 +336,7 @@ final class AppModel {
                 $0.segments = []
             }
             var pipeline = FileTranscriptionPipeline(
-                core: NativeCore(engine: engine, vadModel: modelStore.location(of: vadEntry)),
+                core: NativeCore(engine: engine, vadModel: modelStore.location(of: vadEntry), diarizationModel: diarizationModel),
                 options: project.options,
                 modelID: whisper.id,
                 checkpointURL: projectStore.checkpointURL(for: id)
@@ -342,7 +344,9 @@ final class AppModel {
             pipeline.thermal = ThermalMonitor()
             for try await step in pipeline.run(source: source) {
                 progress[id] = step
-                if !step.newSegments.isEmpty {
+                if step.replacesSegments {
+                    update(id) { $0.segments = step.newSegments }
+                } else if !step.newSegments.isEmpty {
                     update(id, save: false) { $0.segments += step.newSegments }
                 }
             }

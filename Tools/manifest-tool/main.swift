@@ -33,6 +33,12 @@ let sources = [
         license: "MIT",
         files: [("silero-v6.2.0", .vad, "Silero VAD v6.2.0", "ggml-silero-v6.2.0.bin", nil)]
     ),
+    Source(
+        repo: "nvidia/Nemotron-3-Diarization",
+        commit: "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+        license: "OpenMDW-1.1",
+        files: [("nemotron-3-diarization-q8_0", .diarization, "Nemotron 3 Diarization (q8_0)", "Nemotron-3-Diarization.q8_0.gguf", nil)]
+    ),
 ]
 
 guard CommandLine.arguments.count == 2 else {

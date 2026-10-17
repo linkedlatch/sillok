@@ -5,10 +5,12 @@ import SillokCore
 public struct NativeCore: TranscriptionCore {
     public let engine: NativeEngine
     public let vadModel: URL
+    public let diarizationModel: URL?
 
-    public init(engine: NativeEngine, vadModel: URL) {
+    public init(engine: NativeEngine, vadModel: URL, diarizationModel: URL? = nil) {
         self.engine = engine
         self.vadModel = vadModel
+        self.diarizationModel = diarizationModel
     }
 
     public func plan(source: AudioStreamSource) async throws -> [AudioChunk] {
@@ -57,6 +59,28 @@ public struct NativeCore: TranscriptionCore {
         next.previousText = result.state.previousText
         next.segments += result.segments
         return next
+    }
+
+    public func diarize(_ segments: [Segment], source: AudioStreamSource) async throws -> [Segment] {
+        guard let diarizationModel, !segments.isEmpty else { return segments }
+        await engine.unload()
+        let path = diarizationModel.path
+        let segmentsJSON = try NativeCall.json(segments)
+        let duration = source.duration
+        let box = SourceBox(source)
+        return try await withNativeCancellation { cancel in
+            var error: UnsafeMutablePointer<CChar>?
+            guard let diarizer = sillok_diarizer_new(path, 1, &error) else {
+                defer { sillok_free(error) }
+                throw NativeError.failed(error.map { String(cString: $0) } ?? "화자 구분 모델을 불러오지 못했습니다")
+            }
+            defer { sillok_diarizer_free(diarizer) }
+            return try withExtendedLifetime(box) {
+                try NativeCall.decode([Segment].self, sillok_diarize(
+                    diarizer, segmentsJSON, duration, readAudio, Unmanaged.passUnretained(box).toOpaque(), cancel
+                ))
+            }
+        }
     }
 }
 

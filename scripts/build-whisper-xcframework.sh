@@ -54,6 +54,8 @@ cp "$SRC/include/whisper.h" \
    "$SRC/ggml/include/ggml-cpu.h" \
    "$SRC/ggml/include/ggml-metal.h" \
    "$SRC/ggml/include/ggml-opt.h" \
+   "$SRC/ggml/include/ggml-cpp.h" \
+   "$SRC/ggml/include/gguf.h" \
    "$HEADERS/"
 cat > "$HEADERS/module.modulemap" <<'MAP'
 module whisper {

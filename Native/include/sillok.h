@@ -12,6 +12,7 @@ typedef struct sillok_vad sillok_vad;
 typedef struct sillok_speech_map sillok_speech_map;
 typedef struct sillok_cancel sillok_cancel;
 typedef struct sillok_buffer sillok_buffer;
+typedef struct sillok_diarizer sillok_diarizer;
 
 typedef void (*sillok_read_audio)(void *context, double start, double end, sillok_buffer *output);
 
@@ -42,6 +43,11 @@ char *sillok_speech_map_plan(sillok_speech_map *map, double duration, const char
 
 char *sillok_transcribe_step(sillok_engine *engine, const char *state_json, const char *chunks_json, const char *options_json,
                              sillok_read_audio read, void *read_context, sillok_cancel *cancel);
+
+sillok_diarizer *sillok_diarizer_new(const char *model_path, int use_gpu, char **error);
+void sillok_diarizer_free(sillok_diarizer *diarizer);
+char *sillok_diarize(sillok_diarizer *diarizer, const char *segments_json, double duration,
+                     sillok_read_audio read, void *read_context, sillok_cancel *cancel);
 
 char *sillok_export(const char *segments_json, const char *format);
 

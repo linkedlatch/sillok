@@ -117,3 +117,41 @@ struct TurboTests {
         #expect(saved.state.isComplete(chunkCount: saved.chunks.count))
     }
 }
+
+private let diarizationModel = repoRoot.appendingPathComponent("models/Nemotron-3-Diarization.q8_0.gguf")
+private let dialogParts = (1...7).map { fixture("dialog-\($0).wav") }
+
+@Test(.enabled(if: exists(model, vad, diarizationModel) && dialogParts.allSatisfy { exists($0) }))
+func pipelineLabelsSpeakersInDialog() async throws {
+    var dialog: [Float] = []
+    var middles: [TimeInterval] = []
+    for part in dialogParts {
+        let source = try await AssetAudioSource(url: part)
+        let start = Double(dialog.count) / Double(PCMFormat.sampleRate)
+        dialog += try await source.readAsync(from: 0, to: source.duration)
+        middles.append(start + source.duration / 2)
+        dialog += [Float](repeating: 0, count: PCMFormat.sampleRate / 2)
+    }
+    let engine = NativeEngine()
+    try await engine.load(ModelFiles(ggml: model), mode: .foregroundAccelerated)
+    let checkpoint = FileManager.default.temporaryDirectory.appendingPathComponent("sillok-diar-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: checkpoint) }
+    let pipeline = FileTranscriptionPipeline(
+        core: NativeCore(engine: engine, vadModel: vad, diarizationModel: diarizationModel),
+        options: TranscriptionOptions(languageMode: .fixed("ko"), speakerDiarization: true),
+        modelID: "turbo",
+        checkpointURL: checkpoint
+    )
+    var segments: [Segment] = []
+    for try await progress in pipeline.run(source: ArraySource(samples: dialog)) {
+        segments = progress.replacesSegments ? progress.newSegments : segments + progress.newSegments
+    }
+    #expect(engine.loadedFiles == nil)
+    let distance = { (segment: Segment, time: TimeInterval) in max(segment.start - time, time - segment.end, 0) }
+    let speakers = middles.map { time in segments.min { distance($0, time) < distance($1, time) }?.speaker }
+    #expect(speakers.allSatisfy { $0 != nil })
+    #expect(Set(speakers.compactMap { $0 }).count == 3)
+    #expect(speakers[0] == speakers[2] && speakers[2] == speakers[6])
+    #expect(speakers[1] == speakers[4])
+    #expect(speakers[3] == speakers[5])
+}

@@ -141,7 +141,7 @@ func languages(_ args: Arguments) async throws {
 
 func run(_ args: Arguments) async throws {
     guard args.positional.count == 3 else {
-        throw CLIError.usage("run <audio> <vad.bin> <model.bin> [--coreml enc] [--lang auto|koen|<code>] [--terms a,b] [--out file] [--checkpoint file]")
+        throw CLIError.usage("run <audio> <vad.bin> <model.bin> [--coreml enc] [--lang auto|koen|<code>] [--terms a,b] [--diarize model.gguf] [--out file] [--checkpoint file]")
     }
     let clock = ContinuousClock()
     let source = try await AssetAudioSource(url: URL(fileURLWithPath: args.positional[0]))
@@ -151,10 +151,15 @@ func run(_ args: Arguments) async throws {
     let checkpointURL = args.options["--checkpoint"].map { URL(fileURLWithPath: $0) }
         ?? FileManager.default.temporaryDirectory.appendingPathComponent("sillok-cli-\(UUID().uuidString).json")
     var pipeline = FileTranscriptionPipeline(
-        core: NativeCore(engine: engine, vadModel: URL(fileURLWithPath: args.positional[1])),
+        core: NativeCore(
+            engine: engine,
+            vadModel: URL(fileURLWithPath: args.positional[1]),
+            diarizationModel: args.options["--diarize"].map { URL(fileURLWithPath: $0) }
+        ),
         options: TranscriptionOptions(
             languageMode: languageMode(args.options["--lang"]),
-            vocabulary: args.options["--terms"]?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? []
+            vocabulary: args.options["--terms"]?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? [],
+            speakerDiarization: args.options["--diarize"] != nil
         ),
         modelID: URL(fileURLWithPath: args.positional[2]).lastPathComponent,
         checkpointURL: checkpointURL
@@ -165,9 +170,18 @@ func run(_ args: Arguments) async throws {
     var segments: [Segment] = []
     let started = clock.now
     for try await progress in pipeline.run(source: source) {
-        segments += progress.newSegments
+        if progress.replacesSegments {
+            segments = progress.newSegments
+        } else {
+            segments += progress.newSegments
+        }
+        let phase = switch progress.phase {
+        case .analyzing: "analyzing   "
+        case .transcribing: "transcribing"
+        case .diarizing: "diarizing   "
+        }
         print(String(format: "%@ %5.1f%%  at %7.1fs  +%d segs  elapsed %6.1fs",
-                     progress.phase == .analyzing ? "analyzing  " : "transcribing", progress.fractionCompleted * 100,
+                     phase, progress.fractionCompleted * 100,
                      progress.lastProcessedTimestamp, progress.newSegments.count, seconds(clock.now - started)))
         fflush(stdout)
     }
@@ -182,7 +196,7 @@ func run(_ args: Arguments) async throws {
 
     if let output = args.options["--out"] {
         let text = segments.map {
-            String(format: "[%7.2f → %7.2f] %@%@ ", $0.start, $0.end, $0.language, $0.isLowConfidence ? " ?" : "") + $0.text
+            String(format: "[%7.2f → %7.2f] %@%@%@ ", $0.start, $0.end, $0.language, $0.speaker.map { " S" + $0 } ?? "", $0.isLowConfidence ? " ?" : "") + $0.text
         }.joined(separator: "\n")
         try text.write(toFile: output, atomically: true, encoding: .utf8)
         print("wrote \(output)")

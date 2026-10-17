@@ -27,6 +27,17 @@ private actor EchoCore: TranscriptionCore {
         next.segments.append(Segment(start: chunk.start, end: chunk.end, text: next.previousText!, language: "ko"))
         return next
     }
+
+    var diarizations = 0
+
+    func diarize(_ segments: [Segment], source: AudioStreamSource) async throws -> [Segment] {
+        diarizations += 1
+        return segments.enumerated().map { index, segment in
+            var labeled = segment
+            labeled.speaker = String(index % 2 + 1)
+            return labeled
+        }
+    }
 }
 
 private struct HotDevice: ThermalStateProvider {
@@ -107,4 +118,65 @@ private func summary(_ segments: [Segment]) -> [String] {
     let clock = ContinuousClock()
     let elapsed = try await clock.measure { _ = try await collect(hot.run(source: SilentSource(duration: 100))) }
     #expect(elapsed >= .milliseconds(300))
+}
+
+@Test func diarizationReplacesSegmentsAfterTranscription() async throws {
+    let core = EchoCore()
+    let url = checkpointURL()
+    var diarizing = pipeline(core, checkpoint: url)
+    diarizing.options.speakerDiarization = true
+    var segments: [Segment] = []
+    var phases: [TranscribeProgress.Phase] = []
+    for try await progress in diarizing.run(source: SilentSource(duration: 100)) {
+        phases.append(progress.phase)
+        if progress.replacesSegments {
+            segments = progress.newSegments
+        } else {
+            segments += progress.newSegments
+        }
+    }
+    #expect(segments.count == 4)
+    #expect(segments.map(\.speaker) == ["1", "2", "1", "2"])
+    #expect(phases.contains(.diarizing))
+    #expect(await core.diarizations == 1)
+    let saved = try VersionedStore.load(Checkpoint.self, from: url)
+    #expect(saved.state.diarized)
+}
+
+@Test func diarizationIsSkippedWhenDisabled() async throws {
+    let core = EchoCore()
+    let segments = try await collect(pipeline(core, checkpoint: checkpointURL()).run(source: SilentSource(duration: 100)))
+    #expect(segments.allSatisfy { $0.speaker == nil })
+    #expect(await core.diarizations == 0)
+}
+
+@Test func finishedTranscriptionResumesAtDiarization() async throws {
+    let source = SilentSource(duration: 100)
+    let url = checkpointURL()
+    var options = TranscriptionOptions(languageMode: .fixed("ko"), vocabulary: ["GOT"])
+    _ = try await collect(pipeline(EchoCore(), checkpoint: url).run(source: source))
+    var checkpoint = try VersionedStore.load(Checkpoint.self, from: url)
+    options.speakerDiarization = true
+    checkpoint.options = options
+    try VersionedStore.save(checkpoint, to: url)
+
+    let core = EchoCore()
+    var resumed = pipeline(core, checkpoint: url)
+    resumed.options = options
+    var segments: [Segment] = []
+    for try await progress in resumed.run(source: source) {
+        segments = progress.replacesSegments ? progress.newSegments : segments + progress.newSegments
+    }
+    #expect(await core.steps == 0)
+    #expect(await core.diarizations == 1)
+    #expect(segments.count == 4)
+    #expect(segments.allSatisfy { $0.speaker != nil })
+}
+
+@Test func optionsAndStateWithoutDiarizationKeysStillDecode() throws {
+    let options = try JSONDecoder().decode(TranscriptionOptions.self, from: Data(#"{"languageMode":{"auto":{}},"vocabulary":[],"beamSize":5,"maxPromptTokens":150}"#.utf8))
+    #expect(!options.speakerDiarization)
+    let state = try JSONDecoder().decode(TranscriptionState.self, from: Data(#"{"nextChunk":3,"segments":[]}"#.utf8))
+    #expect(state.nextChunk == 3)
+    #expect(!state.diarized)
 }

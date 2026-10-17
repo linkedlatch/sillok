@@ -18,6 +18,8 @@ struct SettingsView: View {
                 }
                 Toggle("Neural Engine 가속 (Core ML)", isOn: $model.settings.useCoreML)
                     .disabled(model.isBusy)
+                Toggle("화자 구분", isOn: $model.settings.speakerDiarization)
+                    .disabled(model.isBusy)
                 Picker("언어", selection: languageBinding) {
                     Text("자동 감지").tag("auto")
                     Text("한국어 + 영어 혼합").tag("koen")
@@ -32,7 +34,7 @@ struct SettingsView: View {
             } header: {
                 Text("전사")
             } footer: {
-                Text("용어 목록은 전사할 때 참고 문맥으로 쓰입니다. 새로 추가하는 파일부터 적용됩니다.")
+                Text("화자 구분과 용어 목록은 새로 추가하는 파일부터 적용됩니다. 용어 목록은 전사할 때 참고 문맥으로 쓰입니다.")
             }
 
             Section("가져오기") {
@@ -87,6 +89,8 @@ struct LicensesView: View {
         ("whisper.cpp", "whisper.cpp"),
         ("OpenAI Whisper (모델 가중치)", "openai-whisper"),
         ("Silero VAD", "silero-vad"),
+        ("NeMo-Speech.cpp", "nemo-speech-cpp"),
+        ("NVIDIA Nemotron 3 Diarization (모델 가중치)", "nemotron-3-diarization"),
     ]
 
     var body: some View {

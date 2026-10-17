@@ -11,6 +11,8 @@ private let manifest = try! JSONDecoder().decode(ModelManifest.self, from: Data(
     #expect(ids == ["large-v3-turbo-q5_0", "large-v3-turbo-encoder", "silero-v6.2.0"])
     let withoutCoreML = ModelSelection.requiredEntries(whisperID: ModelSelection.defaultWhisperID, useCoreML: false, manifest: manifest).map(\.id)
     #expect(withoutCoreML == ["large-v3-turbo-q5_0", "silero-v6.2.0"])
+    let withDiarization = ModelSelection.requiredEntries(whisperID: ModelSelection.defaultWhisperID, useCoreML: true, diarization: true, manifest: manifest).map(\.id)
+    #expect(withDiarization == ["large-v3-turbo-q5_0", "large-v3-turbo-encoder", "silero-v6.2.0", "nemotron-3-diarization-q8_0"])
 }
 
 @Test func coreMLNeedsRoomForBothModelsAndOverhead() throws {

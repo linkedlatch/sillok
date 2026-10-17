@@ -4,6 +4,7 @@ public struct TranscribeProgress: Sendable {
     public enum Phase: Sendable, Equatable {
         case analyzing
         case transcribing
+        case diarizing
     }
 
     public var phase: Phase
@@ -11,6 +12,7 @@ public struct TranscribeProgress: Sendable {
     public var lastProcessedTimestamp: TimeInterval
     public var newSegments: [Segment]
     public var processingLag: TimeInterval?
+    public var replacesSegments = false
 }
 
 public struct FileTranscriptionPipeline: Sendable {
@@ -74,7 +76,21 @@ public struct FileTranscriptionPipeline: Sendable {
                 newSegments: Array(checkpoint.state.segments[before...])
             ))
         }
-        emit(TranscribeProgress(phase: .transcribing, fractionCompleted: 1, lastProcessedTimestamp: source.duration, newSegments: []))
+        if options.speakerDiarization, !checkpoint.state.diarized {
+            try Task.checkCancellation()
+            emit(TranscribeProgress(phase: .diarizing, fractionCompleted: 1, lastProcessedTimestamp: source.duration, newSegments: []))
+            checkpoint.state.segments = try await core.diarize(checkpoint.state.segments, source: source)
+            checkpoint.state.diarized = true
+            try VersionedStore.save(checkpoint, to: checkpointURL)
+            emit(TranscribeProgress(
+                phase: .diarizing,
+                fractionCompleted: 1,
+                lastProcessedTimestamp: source.duration,
+                newSegments: checkpoint.state.segments,
+                replacesSegments: true
+            ))
+        }
+        emit(TranscribeProgress(phase: options.speakerDiarization ? .diarizing : .transcribing, fractionCompleted: 1, lastProcessedTimestamp: source.duration, newSegments: []))
     }
 
     private func fraction(_ time: TimeInterval, _ duration: TimeInterval) -> Double {

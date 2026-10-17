@@ -24,12 +24,13 @@ struct TranscriptView: View {
                 }
                 if let progress = model.progress[projectID] {
                     ProgressView(value: progress.fractionCompleted) {
-                        Text(progress.phase == .analyzing ? "음성 구간 분석 중" : "전사 중 \(Int(progress.fractionCompleted * 100))%")
+                        Text(progress.statusText)
                     }
                     .padding()
                 }
+                let showSpeakers = Set(project.segments.compactMap(\.speaker)).count > 1
                 List(project.segments) { segment in
-                    SegmentRow(segment: segment) { model.play(project, at: segment.start) }
+                    SegmentRow(segment: segment, showSpeaker: showSpeakers) { model.play(project, at: segment.start) }
                 }
                 .overlay {
                     if project.segments.isEmpty, model.progress[projectID] == nil {
@@ -68,7 +69,10 @@ struct TranscriptView: View {
 
 private struct SegmentRow: View {
     let segment: Segment
+    let showSpeaker: Bool
     let play: () -> Void
+
+    private static let speakerColors: [Color] = [.blue, .orange, .green, .purple, .pink, .teal, .brown, .indigo]
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -76,6 +80,12 @@ private struct SegmentRow: View {
                 .buttonStyle(.borderless)
                 .font(.callout.monospacedDigit())
                 .help("이 위치부터 재생")
+            if showSpeaker, let speaker = segment.speaker {
+                Text("화자 \(speaker)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Self.speakerColors[max((Int(speaker) ?? 1) - 1, 0) % Self.speakerColors.count])
+                    .fixedSize()
+            }
             Text(segment.text)
                 .textSelection(.enabled)
                 .opacity(segment.isLowConfidence ? 0.45 : 1)

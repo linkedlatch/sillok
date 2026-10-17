@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
 #include <stdexcept>
 
 #include "language.hpp"
@@ -41,10 +42,25 @@ StepResult ChunkTranscriber::step(const TranscriptionState& state, const std::ve
     return result;
 }
 
+static bool hasMultipleSpeakers(const std::vector<Segment>& segments) {
+    std::set<std::string> speakers;
+    for (const auto& segment : segments) {
+        if (segment.speaker) speakers.insert(*segment.speaker);
+    }
+    return speakers.size() > 1;
+}
+
+static std::string speakerLabel(const Segment& segment, bool show) {
+    return show && segment.speaker ? "화자 " + *segment.speaker : "";
+}
+
 std::string exportText(const std::vector<Segment>& segments) {
+    const bool show = hasMultipleSpeakers(segments);
     std::string text;
     for (size_t i = 0; i < segments.size(); ++i) {
         if (i > 0) text += "\n";
+        const auto label = speakerLabel(segments[i], show);
+        if (!label.empty()) text += label + ": ";
         text += segments[i].text;
     }
     return text + "\n";
@@ -59,11 +75,13 @@ std::string subRipTimestamp(double seconds) {
 }
 
 std::string exportSubRip(const std::vector<Segment>& segments) {
+    const bool show = hasMultipleSpeakers(segments);
     std::string text;
     for (size_t i = 0; i < segments.size(); ++i) {
         if (i > 0) text += "\n";
+        const auto label = speakerLabel(segments[i], show);
         text += std::to_string(i + 1) + "\n" + subRipTimestamp(segments[i].start) + " --> " +
-                subRipTimestamp(segments[i].end) + "\n" + segments[i].text + "\n";
+                subRipTimestamp(segments[i].end) + "\n" + (label.empty() ? "" : "[" + label + "] ") + segments[i].text + "\n";
     }
     return text;
 }

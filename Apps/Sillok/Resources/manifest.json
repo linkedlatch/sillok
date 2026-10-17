@@ -36,6 +36,18 @@
       "urls" : [
         "https://huggingface.co/ggml-org/whisper-vad/resolve/9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v6.2.0.bin"
       ]
+    },
+    {
+      "displayName" : "Nemotron 3 Diarization (q8_0)",
+      "fileName" : "Nemotron-3-Diarization.q8_0.gguf",
+      "id" : "nemotron-3-diarization-q8_0",
+      "kind" : "diarization",
+      "license" : "OpenMDW-1.1",
+      "sha256" : "08456d9e22cd9a323c0364d98375f3746d6e68507ebb705cd46438c534c7a3a1",
+      "size" : 107012128,
+      "urls" : [
+        "https://huggingface.co/nvidia/Nemotron-3-Diarization/resolve/f667ed73aee57d40cc39428eb768b4fd87a0a29e/Nemotron-3-Diarization.q8_0.gguf"
+      ]
     }
   ],
   "version" : 1

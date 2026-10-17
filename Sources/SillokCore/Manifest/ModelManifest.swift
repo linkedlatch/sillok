@@ -27,6 +27,7 @@ public struct ModelEntry: Codable, Hashable, Identifiable, Sendable {
         case whisper
         case coreMLEncoder
         case vad
+        case diarization
     }
 
     public var id: String
