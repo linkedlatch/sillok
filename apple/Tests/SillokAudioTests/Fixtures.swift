@@ -6,6 +6,7 @@ enum Fixtures {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
+        .deletingLastPathComponent()
 
     static func localSample(_ name: String) -> URL {
         repoRoot.appendingPathComponent(name)

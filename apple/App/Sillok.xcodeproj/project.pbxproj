@@ -25,6 +25,12 @@
 			path = Sillok;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000302 /* shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = shared;
+			path = ../../shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000301 /* Sillok */,
+				A10000000000000000000302 /* shared */,
 				A10000000000000000000602 /* Config */,
 				A10000000000000000000603 /* Products */,
 			);
@@ -85,6 +92,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000301 /* Sillok */,
+				A10000000000000000000302 /* shared */,
 			);
 			name = Sillok;
 			packageProductDependencies = (
@@ -119,7 +127,7 @@
 			mainGroup = A10000000000000000000601;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A10000000000000000000403 /* XCLocalSwiftPackageReference ".." */,
+				A10000000000000000000403 /* XCLocalSwiftPackageReference "../.." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A10000000000000000000603 /* Products */;
@@ -161,9 +169,9 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -189,8 +197,8 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				SDKROOT = auto;
@@ -284,9 +292,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A10000000000000000000403 /* XCLocalSwiftPackageReference ".." */ = {
+		A10000000000000000000403 /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ..;
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 

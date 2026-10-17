@@ -3,8 +3,8 @@ import Testing
 import SillokCore
 @testable import SillokModels
 
-private let repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-private let manifest = try! JSONDecoder().decode(ModelManifest.self, from: Data(contentsOf: repoRoot.appendingPathComponent("Apps/Sillok/Resources/manifest.json")))
+private let repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+private let manifest = try! JSONDecoder().decode(ModelManifest.self, from: Data(contentsOf: repoRoot.appendingPathComponent("shared/manifest.json")))
 
 @Test func defaultSelectionNeedsTurboEncoderAndVAD() {
     let ids = ModelSelection.requiredEntries(whisperID: ModelSelection.defaultWhisperID, useCoreML: true, manifest: manifest).map(\.id)

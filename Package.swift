@@ -14,10 +14,10 @@ let package = Package(
         .library(name: "SillokModels", targets: ["SillokModels"]),
     ],
     targets: [
-        .target(name: "SillokCore"),
-        .target(name: "SillokAudio", dependencies: ["SillokCore"]),
-        .target(name: "SillokPlatform", dependencies: ["SillokCore"]),
-        .target(name: "SillokModels", dependencies: ["SillokCore"]),
+        .target(name: "SillokCore", path: "apple/Sources/SillokCore"),
+        .target(name: "SillokAudio", dependencies: ["SillokCore"], path: "apple/Sources/SillokAudio"),
+        .target(name: "SillokPlatform", dependencies: ["SillokCore"], path: "apple/Sources/SillokPlatform"),
+        .target(name: "SillokModels", dependencies: ["SillokCore"], path: "apple/Sources/SillokModels"),
 
         .binaryTarget(name: "whisper", path: "Vendor/whisper.xcframework"),
         .target(
@@ -61,23 +61,23 @@ let package = Package(
                 .linkedFramework("Metal"),
             ]
         ),
-        .target(name: "SillokNative", dependencies: ["SillokCore", "CSillok"]),
+        .target(name: "SillokNative", dependencies: ["SillokCore", "CSillok"], path: "apple/Sources/SillokNative"),
 
         .executableTarget(
             name: "sillok-cli",
             dependencies: ["SillokCore", "SillokAudio", "SillokNative", "SillokPlatform"],
-            path: "Tools/sillok-cli"
+            path: "apple/Tools/sillok-cli"
         ),
         .executableTarget(
             name: "manifest-tool",
             dependencies: ["SillokCore"],
-            path: "Tools/manifest-tool"
+            path: "apple/Tools/manifest-tool"
         ),
 
-        .testTarget(name: "SillokCoreTests", dependencies: ["SillokCore"]),
-        .testTarget(name: "SillokModelsTests", dependencies: ["SillokModels"]),
-        .testTarget(name: "SillokAudioTests", dependencies: ["SillokAudio"]),
-        .testTarget(name: "SillokNativeTests", dependencies: ["SillokNative", "SillokAudio"]),
+        .testTarget(name: "SillokCoreTests", dependencies: ["SillokCore"], path: "apple/Tests/SillokCoreTests"),
+        .testTarget(name: "SillokModelsTests", dependencies: ["SillokModels"], path: "apple/Tests/SillokModelsTests"),
+        .testTarget(name: "SillokAudioTests", dependencies: ["SillokAudio"], path: "apple/Tests/SillokAudioTests"),
+        .testTarget(name: "SillokNativeTests", dependencies: ["SillokNative", "SillokAudio"], path: "apple/Tests/SillokNativeTests"),
     ],
     cxxLanguageStandard: .cxx20
 )

@@ -3,7 +3,7 @@ import Testing
 import SillokCore
 @testable import SillokModels
 
-private let repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+private let repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
 private func temporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory.appendingPathComponent("sillok-zip-\(UUID().uuidString)", isDirectory: true)
@@ -84,7 +84,7 @@ func installsRealCoreMLEncoderArchive() throws {
 }
 
 @Test func bundledManifestPairsWhisperModelsWithMatchingEncoders() throws {
-    let url = repoRoot.appendingPathComponent("Apps/Sillok/Resources/manifest.json")
+    let url = repoRoot.appendingPathComponent("shared/manifest.json")
     let manifest = try JSONDecoder().decode(ModelManifest.self, from: Data(contentsOf: url))
     #expect(manifest.entry("large-v3-turbo-q5_0") != nil)
     #expect(manifest.entry("silero-v6.2.0")?.kind == .vad)

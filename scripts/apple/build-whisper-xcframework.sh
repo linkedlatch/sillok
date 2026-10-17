@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SRC="$ROOT/Vendor/whisper.cpp"
 OUT="$ROOT/Vendor/whisper.xcframework"
 BUILD="$ROOT/build/whisper"
-CMAKE="$("$ROOT/scripts/bootstrap-tools.sh" | tail -n1)"
+CMAKE="$("$ROOT/scripts/apple/bootstrap-tools.sh" | tail -n1)"
 
 MACOS_MIN=14.0
 IOS_MIN=17.0
