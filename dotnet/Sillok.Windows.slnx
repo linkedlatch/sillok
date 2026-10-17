@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="ARM64" />
+  </Configurations>
+  <Project Path="Sillok.Core/Sillok.Core.csproj" />
+  <Project Path="Sillok.Core.Tests/Sillok.Core.Tests.csproj" />
+  <Project Path="Sillok.Windows/Sillok.Windows.csproj">
+    <Deploy />
+  </Project>
+</Solution>
