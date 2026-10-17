@@ -10,6 +10,7 @@
 
 #include "job.hpp"
 #include "manifest_data.hpp"
+#include "memory.hpp"
 #include "models.hpp"
 #include "process.hpp"
 #include "segments.hpp"
@@ -31,7 +32,7 @@ namespace {
 
 constexpr const char* kUsage = R"(usage:
   sillok transcribe <audio> [--lang auto|koen|<code>] [--terms term1,term2] [--diarize]
-                    [--format txt|srt|json] [--out file] [--checkpoint file] [--cpu] [--quiet]
+                    [--format txt|srt|json] [--out file] [--checkpoint file] [--cpu] [--quiet] [--stats]
   sillok models [download] [--diarize]
   sillok info
 
@@ -57,7 +58,7 @@ struct Arguments {
     std::set<std::string> flags;
 
     static Arguments parse(const std::vector<std::string>& arguments) {
-        static const std::set<std::string> known = {"--diarize", "--cpu", "--quiet"};
+        static const std::set<std::string> known = {"--diarize", "--cpu", "--quiet", "--stats"};
         Arguments result;
         for (size_t i = 0; i < arguments.size(); ++i) {
             if (known.count(arguments[i])) {
@@ -183,6 +184,11 @@ std::vector<std::string> vocabulary(const std::optional<std::string>& value) {
     return terms;
 }
 
+void reportMemory(const char* stage) {
+    const auto usage = cli::processMemory();
+    std::fprintf(stderr, "\n[memory] %-28s %7.0f MB (peak %7.0f MB)\n", stage, usage.currentMB, usage.peakMB);
+}
+
 const char* phaseText(JobPhase phase) {
     switch (phase) {
     case JobPhase::analyzing: return "analyzing";
@@ -201,6 +207,7 @@ int transcribe(const Arguments& arguments) {
     if (!fs::is_regular_file(input)) throw Failure("file not found: " + arguments.positional[1]);
     const bool diarize = arguments.has("--diarize");
     const bool quiet = arguments.has("--quiet");
+    const bool stats = arguments.has("--stats");
     const bool useGPU = !arguments.has("--cpu");
     const fs::path root = modelsDirectory(arguments);
     const auto models = manifest();
@@ -224,7 +231,9 @@ int transcribe(const Arguments& arguments) {
     const auto started = std::chrono::steady_clock::now();
     auto elapsed = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(); };
     WhisperEngine engine;
+    if (stats) reportMemory("before model load");
     engine.load(root / utf8Path(whisper.fileName), encoder, useGPU);
+    if (stats) reportMemory("transcription model loaded");
     if (!quiet) std::fprintf(stderr, "audio %.1fs, model load %.1fs\n", audio->duration(), elapsed());
 
     JobRequest request;
@@ -248,8 +257,21 @@ int transcribe(const Arguments& arguments) {
             return 0;
         };
     }
+    auto services = engineServices(engine, request);
+    if (stats) {
+        services.diarize = [&engine, diarize = services.diarize](const std::vector<Segment>& segments, const AudioReader& read,
+                                                                  double duration, const CancelToken& cancel) {
+            reportMemory("transcription finished");
+            engine.unload();
+            reportMemory("transcription model unloaded");
+            auto labeled = diarize(segments, read, duration, cancel);
+            reportMemory("diarization finished");
+            return labeled;
+        };
+    }
     const auto segments = runJob(request, [&](double start, double end) { return audio->read(start, end); },
-                                 engineServices(engine, request), progress, interrupt);
+                                 services, progress, interrupt);
+    if (stats) reportMemory("job finished");
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - transcribing).count();
     if (!quiet) {
         std::fprintf(stderr, "\nprocessed %.1fs of audio in %.1fs (%.1fx realtime), %zu segments\n", audio->duration(), seconds,
