@@ -45,56 +45,64 @@
         </StackPanel>
 
         <ListView
+            x:Name="SegmentList"
             Grid.Row="2"
             ItemsSource="{x:Bind Item.Rows, Mode=OneWay}"
             SelectionMode="None">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="local:SegmentRow">
-                    <Grid Padding="0,6" ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <HyperlinkButton
-                            Padding="4,0"
-                            VerticalAlignment="Top"
-                            Click="OnPlay"
-                            Content="{x:Bind TimeText}"
-                            FontFamily="Consolas"
-                            Tag="{x:Bind Segment.Start}"
-                            ToolTipService.ToolTip="이 위치부터 재생" />
-                        <TextBlock
-                            Grid.Column="1"
-                            Margin="0,4,0,0"
-                            FontWeight="SemiBold"
-                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="{x:Bind SpeakerText}"
-                            Visibility="{x:Bind SpeakerVisibility}" />
-                        <TextBlock
-                            Grid.Column="2"
-                            Margin="0,2,0,0"
-                            IsTextSelectionEnabled="True"
-                            Opacity="{x:Bind TextOpacity}"
-                            Text="{x:Bind Text}"
-                            TextWrapping="Wrap" />
-                        <FontIcon
-                            Grid.Column="3"
-                            FontSize="14"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Glyph="&#xE9CE;"
-                            ToolTipService.ToolTip="인식 신뢰도가 낮은 구간입니다. 원본을 들어 확인해 주세요"
-                            Visibility="{x:Bind LowConfidenceVisibility}" />
-                        <TextBlock
-                            Grid.Column="4"
-                            Margin="0,4,0,0"
-                            FontFamily="Consolas"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="{x:Bind Language}" />
+                    <Grid>
+                        <Border
+                            Margin="-8,0"
+                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Opacity="{x:Bind HighlightOpacity, Mode=OneWay}" />
+                        <Grid Padding="0,6" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <HyperlinkButton
+                                Padding="4,0"
+                                VerticalAlignment="Top"
+                                Click="OnPlay"
+                                Content="{x:Bind TimeText}"
+                                FontFamily="Consolas"
+                                Tag="{x:Bind Segment.Start}"
+                                ToolTipService.ToolTip="이 위치부터 재생" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Margin="0,4,0,0"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="{x:Bind SpeakerText}"
+                                Visibility="{x:Bind SpeakerVisibility}" />
+                            <TextBlock
+                                Grid.Column="2"
+                                Margin="0,2,0,0"
+                                IsTextSelectionEnabled="True"
+                                Opacity="{x:Bind TextOpacity}"
+                                Text="{x:Bind Text}"
+                                TextWrapping="Wrap" />
+                            <FontIcon
+                                Grid.Column="3"
+                                FontSize="14"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Glyph="&#xE9CE;"
+                                ToolTipService.ToolTip="인식 신뢰도가 낮은 구간입니다. 원본을 들어 확인해 주세요"
+                                Visibility="{x:Bind LowConfidenceVisibility}" />
+                            <TextBlock
+                                Grid.Column="4"
+                                Margin="0,4,0,0"
+                                FontFamily="Consolas"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="{x:Bind Language}" />
+                        </Grid>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>

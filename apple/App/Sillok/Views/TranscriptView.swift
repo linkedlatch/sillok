@@ -29,8 +29,16 @@ struct TranscriptView: View {
                     .padding()
                 }
                 let showSpeakers = Set(project.segments.compactMap(\.speaker)).count > 1
-                List(project.segments) { segment in
-                    SegmentRow(segment: segment, showSpeaker: showSpeakers) { model.play(project, at: segment.start) }
+                let playing = playingSegmentID(project.segments)
+                ScrollViewReader { proxy in
+                    List(project.segments) { segment in
+                        SegmentRow(segment: segment, showSpeaker: showSpeakers) { model.play(project, at: segment.start) }
+                            .listRowBackground(segment.id == playing ? Color.accentColor.opacity(0.18) : nil)
+                    }
+                    .onChange(of: playing) { _, id in
+                        guard let id, model.playback.isPlaying else { return }
+                        withAnimation { proxy.scrollTo(id, anchor: .center) }
+                    }
                 }
                 .overlay {
                     if project.segments.isEmpty, model.progress[projectID] == nil {
@@ -64,6 +72,24 @@ struct TranscriptView: View {
                 if case .success(let url) = result { model.relink(projectID, to: url) }
             }
         }
+    }
+}
+
+extension TranscriptView {
+    fileprivate func playingSegmentID(_ segments: [Segment]) -> UUID? {
+        guard model.playingProjectID == projectID, model.playback.currentURL != nil else { return nil }
+        let time = model.playback.currentTime
+        var low = 0
+        var high = segments.count
+        while low < high {
+            let middle = (low + high) / 2
+            if segments[middle].start <= time {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return low > 0 ? segments[low - 1].id : nil
     }
 }
 

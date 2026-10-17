@@ -33,6 +33,7 @@ final class AppModel {
     }
 
     private(set) var runningJob: UUID?
+    private(set) var playingProjectID: UUID?
     private let engine = NativeEngine()
     private let queue = JobQueue()
     private var loadedFiles: ModelFiles?
@@ -266,6 +267,7 @@ final class AppModel {
             return
         }
         playback.play(url, at: time)
+        playingProjectID = project.id
     }
 
     func retry(_ id: UUID) {
@@ -281,7 +283,10 @@ final class AppModel {
     }
 
     func delete(_ id: UUID) {
-        if let project = project(id), let current = playback.currentURL, current == sourceURL(for: project) { playback.stop() }
+        if playingProjectID == id {
+            playback.stop()
+            playingProjectID = nil
+        }
         projects.removeAll { $0.id == id }
         progress[id] = nil
         if runningJob == id {

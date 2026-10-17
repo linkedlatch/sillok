@@ -10,6 +10,7 @@ public sealed class ProjectItem : INotifyPropertyChanged
 {
     private TranscriptProject project;
     private TranscribeProgress? progress;
+    private SegmentRow? playingRow;
 
     public ProjectItem(TranscriptProject project)
     {
@@ -18,6 +19,7 @@ public sealed class ProjectItem : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<SegmentRow>? PlayingRowChanged;
 
     public Guid Id => project.Id;
     public string Name => project.SourceName;
@@ -72,15 +74,57 @@ public sealed class ProjectItem : INotifyPropertyChanged
     public void ReplaceRows(IReadOnlyList<Segment> segments)
     {
         var showSpeakers = segments.Select(segment => segment.Speaker).Where(speaker => speaker is not null).Distinct().Count() > 1;
+        playingRow = null;
         Rows.Clear();
         foreach (var segment in segments) Rows.Add(new SegmentRow(segment, showSpeakers));
+    }
+
+    public void UpdatePlaying(double? time)
+    {
+        SegmentRow? row = null;
+        if (time is { } seconds)
+        {
+            int low = 0, high = Rows.Count;
+            while (low < high)
+            {
+                var middle = (low + high) / 2;
+                if (Rows[middle].Segment.Start <= seconds) low = middle + 1;
+                else high = middle;
+            }
+            if (low > 0) row = Rows[low - 1];
+        }
+        if (ReferenceEquals(row, playingRow)) return;
+        if (playingRow is not null) playingRow.IsPlaying = false;
+        playingRow = row;
+        if (row is null) return;
+        row.IsPlaying = true;
+        PlayingRowChanged?.Invoke(row);
     }
 
     private void Notify([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
-public sealed record SegmentRow(Segment Segment, bool ShowSpeaker)
+public sealed class SegmentRow(Segment segment, bool showSpeaker) : INotifyPropertyChanged
 {
+    private bool isPlaying;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public Segment Segment => segment;
+    public bool ShowSpeaker => showSpeaker;
+
+    public bool IsPlaying
+    {
+        get => isPlaying;
+        set
+        {
+            if (isPlaying == value) return;
+            isPlaying = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HighlightOpacity)));
+        }
+    }
+
+    public double HighlightOpacity => isPlaying ? 0.2 : 0;
     public string TimeText => TimeFormat.Clock(Segment.Start);
     public string Text => Segment.Text;
     public string Language => Segment.Language.ToUpperInvariant();

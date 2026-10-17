@@ -47,6 +47,8 @@ public sealed class Playback
 
     public string? CurrentPath => currentPath;
 
+    public double Position => player.PlaybackSession.Position.TotalSeconds;
+
     public void Play(string path, double seconds)
     {
         var position = TimeSpan.FromSeconds(seconds);

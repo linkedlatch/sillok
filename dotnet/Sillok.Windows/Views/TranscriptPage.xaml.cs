@@ -21,7 +21,18 @@ public sealed partial class TranscriptPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         Item = e.Parameter as ProjectItem;
+        if (Item is not null) Item.PlayingRowChanged += OnPlayingRowChanged;
         Bindings.Update();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        if (Item is not null) Item.PlayingRowChanged -= OnPlayingRowChanged;
+    }
+
+    private void OnPlayingRowChanged(SegmentRow row)
+    {
+        if (Model.Playback.IsPlaying) SegmentList.ScrollIntoView(row);
     }
 
     private void OnPlay(object sender, RoutedEventArgs e)

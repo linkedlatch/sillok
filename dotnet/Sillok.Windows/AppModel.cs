@@ -43,7 +43,9 @@ public sealed class AppModel : INotifyPropertyChanged
     private long downloadReceived;
     private long downloadTotal;
     private Guid? runningJob;
+    private Guid? playingProjectId;
     private bool started;
+    private readonly DispatcherQueueTimer playbackTimer;
 
     private AppModel()
     {
@@ -52,6 +54,10 @@ public sealed class AppModel : INotifyPropertyChanged
         ModelStore = new ModelStore(Path.Combine(Root, "Models"), ModelManifest.Load(Path.Combine(AppContext.BaseDirectory, "manifest.json")));
         queue.Idle += () => _ = UnloadEngineAsync();
         Playback.StateChanged += () => dispatcher.TryEnqueue(() => Notify(nameof(PauseVisibility)));
+        playbackTimer = dispatcher.CreateTimer();
+        playbackTimer.Interval = TimeSpan.FromMilliseconds(150);
+        playbackTimer.Tick += (_, _) => UpdatePlayingRows();
+        playbackTimer.Start();
     }
 
     public static AppModel Shared { get; } = new();
@@ -239,7 +245,11 @@ public sealed class AppModel : INotifyPropertyChanged
     public void Delete(Guid id)
     {
         if (Find(id) is not { } item) return;
-        if (string.Equals(Playback.CurrentPath, item.Project.SourcePath, StringComparison.OrdinalIgnoreCase)) Playback.Stop();
+        if (playingProjectId == id)
+        {
+            Playback.Stop();
+            playingProjectId = null;
+        }
         Projects.Remove(item);
         if (runningJob == id)
         {
@@ -260,6 +270,13 @@ public sealed class AppModel : INotifyPropertyChanged
             return;
         }
         Playback.Play(item.Project.SourcePath, seconds);
+        playingProjectId = item.Id;
+    }
+
+    private void UpdatePlayingRows()
+    {
+        var position = Playback.CurrentPath is null ? (double?)null : Playback.Position;
+        foreach (var item in Projects) item.UpdatePlaying(item.Id == playingProjectId ? position : null);
     }
 
     private void EnqueueUnfinished()
