@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Sillok.Windows.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Sillok.Windows"
+    xmlns:views="using:Sillok.Windows.Views">
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="860" Padding="36,24" HorizontalAlignment="Left" Spacing="12">
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="설정" />
+
+            <TextBlock Margin="0,12,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="전사" />
+            <ComboBox
+                x:Name="LanguagePicker"
+                MinWidth="240"
+                Header="언어"
+                SelectionChanged="OnLanguageChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="views:LanguageChoice">
+                        <TextBlock Text="{x:Bind Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ToggleSwitch
+                Header="화자 구분"
+                IsEnabled="{x:Bind Model.CanChangeModels, Mode=OneWay}"
+                IsOn="{x:Bind Model.SpeakerDiarization, Mode=TwoWay}" />
+            <ToggleSwitch
+                Header="GPU 가속 (Vulkan)"
+                IsEnabled="{x:Bind Model.CanChangeModels, Mode=OneWay}"
+                IsOn="{x:Bind Model.UseGpu, Mode=TwoWay}" />
+            <TextBox
+                Height="120"
+                AcceptsReturn="True"
+                Header="용어 목록 (한 줄에 하나)"
+                Text="{x:Bind Model.VocabularyText, Mode=TwoWay}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Text="언어, 화자 구분, 용어 목록은 새로 추가하는 파일부터 적용됩니다. 용어 목록은 전사할 때 참고 문맥으로 쓰입니다."
+                TextWrapping="Wrap" />
+
+            <TextBlock Margin="0,12,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="모델" />
+            <ItemsControl ItemsSource="{x:Bind Model.ModelRows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:ModelRow">
+                        <Grid Padding="0,6" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind Name}" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Detail}" />
+                            </StackPanel>
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind StateText}" />
+                            <Button
+                                Grid.Column="2"
+                                Click="OnRemoveModel"
+                                Content="삭제"
+                                Tag="{x:Bind Entry.Id}"
+                                Visibility="{x:Bind RemoveVisibility}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Margin="0,12,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="오픈소스 고지" />
+            <ItemsControl ItemsSource="{x:Bind Notices}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="views:Notice">
+                        <Expander
+                            Margin="0,0,0,4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Header="{x:Bind Title}">
+                            <TextBlock
+                                FontFamily="Consolas"
+                                FontSize="12"
+                                IsTextSelectionEnabled="True"
+                                Text="{x:Bind Text}"
+                                TextWrapping="Wrap" />
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
