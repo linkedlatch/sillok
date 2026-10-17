@@ -47,6 +47,11 @@ constexpr bool kCoreML = false;
 #endif
 
 CancelToken interrupt;
+std::string program = "sillok";
+
+std::string shellQuoted(const std::string& text) {
+    return text.find_first_of(" \t") == std::string::npos ? text : "\"" + text + "\"";
+}
 
 struct Failure : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -217,7 +222,11 @@ int transcribe(const Arguments& arguments) {
         if (entry.kind != ModelKind::coreMLEncoder && !isInstalled(entry, root)) missing += (missing.empty() ? "" : ", ") + entry.displayName;
     }
     if (!missing.empty()) {
-        throw Failure("missing models: " + missing + "\nrun `sillok models download" + (diarize ? " --diarize" : "") + "`");
+        std::string command = shellQuoted(program) + " models download";
+        if (arguments.value("--models")) command += " --models " + shellQuoted(utf8String(root));
+        if (diarize) command += " --diarize";
+        throw Failure("missing models in " + utf8String(root) + ": " + missing + "\n\nDownload them with:\n  " + command +
+                      "\n\nTo use another folder, pass --models <folder> or set SILLOK_MODELS.");
     }
 
     ScratchDirectory scratch;
@@ -349,12 +358,14 @@ int run(const std::vector<std::string>& arguments) {
 #ifdef _WIN32
 int wmain(int argc, wchar_t** argv) {
     SetConsoleOutputCP(CP_UTF8);
+    if (argc > 0) program = utf8String(fs::path(argv[0]));
     std::vector<std::string> arguments;
     for (int i = 1; i < argc; ++i) arguments.push_back(utf8String(fs::path(argv[i])));
     return run(arguments);
 }
 #else
 int main(int argc, char** argv) {
+    if (argc > 0) program = argv[0];
     return run(std::vector<std::string>(argv + 1, argv + argc));
 }
 #endif
