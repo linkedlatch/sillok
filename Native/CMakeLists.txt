@@ -91,10 +91,10 @@ target_include_directories(sillok_native
 target_link_libraries(sillok_native PUBLIC whisper ZLIB::ZLIB PRIVATE nemo_diar)
 
 if(SILLOK_SHARED)
-    add_library(sillok SHARED ${SILLOK_SOURCES})
-    target_include_directories(sillok PUBLIC include PRIVATE src third_party)
-    target_compile_definitions(sillok PRIVATE SILLOK_BUILDING_DLL)
-    target_link_libraries(sillok PRIVATE whisper ZLIB::ZLIB nemo_diar)
+    add_library(sillok_core SHARED ${SILLOK_SOURCES})
+    target_include_directories(sillok_core PUBLIC include PRIVATE src third_party)
+    target_compile_definitions(sillok_core PRIVATE SILLOK_BUILDING_DLL)
+    target_link_libraries(sillok_core PRIVATE whisper ZLIB::ZLIB nemo_diar)
 endif()
 
 if(SILLOK_BUILD_CLI)

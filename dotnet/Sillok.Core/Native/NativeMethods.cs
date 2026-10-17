@@ -4,7 +4,7 @@ namespace Sillok.Core.Native;
 
 internal static unsafe partial class NativeMethods
 {
-    private const string Library = "sillok";
+    private const string Library = "sillok_core";
 
     [LibraryImport(Library)]
     internal static partial void sillok_free(IntPtr text);

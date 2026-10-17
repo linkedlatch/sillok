@@ -39,7 +39,7 @@
   <ItemGroup>
     <Content Include="..\..\shared\manifest.json" Link="manifest.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\shared\licenses\*.txt" Link="Licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\build\windows-$(NativeArchitecture)\Release\sillok.dll" Link="sillok.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\build\windows-$(NativeArchitecture)\Release\sillok_core.dll" Link="sillok_core.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

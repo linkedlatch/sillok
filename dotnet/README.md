@@ -18,7 +18,7 @@ dotnet build dotnet/Sillok.Windows -p:Platform=x64
 
 To run the app, open `dotnet/Sillok.Windows.slnx` in Visual Studio (not the `.csproj` alone, so that `Sillok.Core` is part of the solution), pick the x64 or ARM64 platform, and press F5.
 
-`build-native.ps1` builds both `sillok.dll` for the app and the `sillok.exe` command line tool. For ARM64 use `-Arch ARM64` and `-p:Platform=ARM64`; building on an ARM64 machine is the simplest option.
+`build-native.ps1` builds both `sillok_core.dll` for the app and the `sillok.exe` command line tool. For ARM64 use `-Arch ARM64` and `-p:Platform=ARM64`; building on an ARM64 machine is the simplest option.
 
 ## Tests (macOS and Windows)
 
@@ -29,4 +29,4 @@ scripts/fetch-test-models.sh
 dotnet test --project dotnet/Sillok.Core.Tests
 ```
 
-On Windows the tests use `build/native/Release/sillok.dll` produced by `cmake --build build/native --config Release`.
+On Windows the tests use `build/native/Release/sillok_core.dll` produced by `cmake --build build/native --config Release`.
