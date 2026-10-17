@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(SILLOK_BUILD_TESTS "Build sillok native tests" ON)
 option(SILLOK_SHARED "Build the sillok shared library for C# and Kotlin hosts" OFF)
 option(SILLOK_VULKAN "Use the Vulkan backend outside Apple platforms" ON)
+option(SILLOK_BUILD_CLI "Build the sillok command line tool" ON)
 
 if(SILLOK_SHARED)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -72,6 +73,9 @@ set(SILLOK_SOURCES
     src/transcriber.cpp
     src/whisper_engine.cpp
     src/diarization.cpp
+    src/job.cpp
+    src/models.cpp
+    src/wav.cpp
     src/c_api.cpp
 )
 add_library(sillok_native STATIC ${SILLOK_SOURCES})
@@ -88,6 +92,17 @@ if(SILLOK_SHARED)
     target_link_libraries(sillok PRIVATE whisper ZLIB::ZLIB nemo_diar)
 endif()
 
+if(SILLOK_BUILD_CLI)
+    set(SILLOK_MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/../shared/manifest.json)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${SILLOK_MANIFEST})
+    file(READ ${SILLOK_MANIFEST} SILLOK_MANIFEST_JSON)
+    configure_file(cli/manifest_data.hpp.in ${CMAKE_BINARY_DIR}/generated/manifest_data.hpp @ONLY)
+    add_executable(sillok_cli cli/main.cpp cli/process.cpp)
+    target_include_directories(sillok_cli PRIVATE src third_party ${CMAKE_BINARY_DIR}/generated)
+    target_link_libraries(sillok_cli PRIVATE sillok_native)
+    set_target_properties(sillok_cli PROPERTIES OUTPUT_NAME sillok RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/cli)
+endif()
+
 if(SILLOK_BUILD_TESTS)
     enable_testing()
     add_executable(sillok_native_tests
@@ -99,6 +114,8 @@ if(SILLOK_BUILD_TESTS)
         tests/json_tests.cpp
         tests/engine_tests.cpp
         tests/diarization_tests.cpp
+        tests/job_tests.cpp
+        tests/models_tests.cpp
     )
     target_include_directories(sillok_native_tests PRIVATE src third_party include)
     target_link_libraries(sillok_native_tests PRIVATE sillok_native)

@@ -109,7 +109,8 @@ void from_json(const json& j, LanguageMode& value) {
 
 void to_json(json& j, const TranscriptionOptions& value) {
     j = json{{"languageMode", value.languageMode}, {"vocabulary", value.vocabulary},
-             {"beamSize", value.beamSize}, {"maxPromptTokens", value.maxPromptTokens}};
+             {"beamSize", value.beamSize}, {"maxPromptTokens", value.maxPromptTokens},
+             {"speakerDiarization", value.speakerDiarization}};
 }
 
 void from_json(const json& j, TranscriptionOptions& value) {
@@ -117,6 +118,7 @@ void from_json(const json& j, TranscriptionOptions& value) {
     value.vocabulary = j.value("vocabulary", std::vector<std::string>{});
     value.beamSize = j.value("beamSize", 5);
     value.maxPromptTokens = j.value("maxPromptTokens", 150);
+    value.speakerDiarization = j.value("speakerDiarization", false);
 }
 
 void to_json(json& j, const TranscriptionState& value) {

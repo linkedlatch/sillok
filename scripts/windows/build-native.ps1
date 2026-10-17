@@ -11,5 +11,6 @@ if (-not $env:VULKAN_SDK) {
 }
 
 cmake -S (Join-Path $root "Native") -B $build -A $Arch -DSILLOK_SHARED=ON -DSILLOK_BUILD_TESTS=OFF
-cmake --build $build --config Release --target sillok --parallel
+cmake --build $build --config Release --target sillok sillok_cli --parallel
 Write-Host "==> $(Join-Path $build 'Release/sillok.dll')"
+Write-Host "==> $(Join-Path $build 'cli/Release/sillok.exe')"

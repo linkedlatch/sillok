@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <set>
@@ -63,6 +64,7 @@ struct TranscriptionOptions {
     std::vector<std::string> vocabulary;
     int beamSize = 5;
     int maxPromptTokens = 150;
+    bool speakerDiarization = false;
 };
 
 struct TranscriptionState {
@@ -106,6 +108,15 @@ public:
 };
 
 std::string makeUUID();
+
+inline std::filesystem::path utf8Path(const std::string& text) {
+    return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+
+inline std::string utf8String(const std::filesystem::path& path) {
+    const std::u8string text = path.u8string();
+    return std::string(text.begin(), text.end());
+}
 
 void to_json(nlohmann::json& j, const WordTimestamp& value);
 void from_json(const nlohmann::json& j, WordTimestamp& value);

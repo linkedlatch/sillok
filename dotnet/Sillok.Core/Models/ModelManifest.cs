@@ -48,6 +48,8 @@ public static class ModelSelection
 
 public sealed class ModelChecksumException(string fileName) : Exception($"{fileName} 파일이 손상되었습니다. 다시 받아 주세요");
 
+public sealed class InsufficientDiskSpaceException(long needed) : Exception($"저장 공간이 부족합니다. {needed / 1_048_576}MB가 더 필요합니다");
+
 public sealed class ModelStore(string root, ModelManifest manifest)
 {
     public ModelManifest Manifest => manifest;

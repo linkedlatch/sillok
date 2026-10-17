@@ -1,0 +1,7 @@
+#pragma once
+
+namespace sillok::cli {
+
+inline constexpr const char* kManifestJson = R"SILLOKJSON(@SILLOK_MANIFEST_JSON@)SILLOKJSON";
+
+}

@@ -119,8 +119,8 @@ std::vector<Segment> SpeakerAssigner::assign(const std::vector<Segment>& segment
 
 SpeakerDiarizer::SpeakerDiarizer(const std::filesystem::path& model, bool useGPU) {
     configureLogging();
-    if (!std::filesystem::exists(model)) throw std::runtime_error("화자 구분 모델을 찾을 수 없습니다: " + model.filename().string());
-    diarizer_ = nemo_speech::asr::Diarizer::load(useGPU ? 0 : -1, model.string(), nemo_speech::asr::DiarGeometry::preset("v3-offline"));
+    if (!std::filesystem::exists(model)) throw std::runtime_error("화자 구분 모델을 찾을 수 없습니다: " + utf8String(model.filename()));
+    diarizer_ = nemo_speech::asr::Diarizer::load(useGPU ? 0 : -1, utf8String(model), nemo_speech::asr::DiarGeometry::preset("v3-offline"));
     std::lock_guard lock(liveDiarizersMutex);
     static std::once_flag once;
     std::call_once(once, [] { std::atexit(releaseLiveDiarizers); });

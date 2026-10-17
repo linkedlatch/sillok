@@ -133,19 +133,25 @@ void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& co
     configureLogging();
     std::lock_guard lock(mutex_);
     unloadLocked();
+#ifdef __APPLE__
     fs::path staging = fs::temp_directory_path() / ("sillok-load-" + makeUUID());
     fs::create_directories(staging);
     const fs::path model = staging / ggml.filename();
     fs::create_symlink(fs::absolute(ggml), model);
-    if (coreMLEncoder) fs::create_directory_symlink(fs::absolute(*coreMLEncoder), staging / coreMLEncoderName(ggml.filename().string()));
+    if (coreMLEncoder) fs::create_directory_symlink(fs::absolute(*coreMLEncoder), staging / coreMLEncoderName(utf8String(ggml.filename())));
+#else
+    if (coreMLEncoder) throw std::runtime_error("Core ML 인코더는 Apple 플랫폼에서만 쓸 수 있습니다");
+    const fs::path staging;
+    const fs::path model = ggml;
+#endif
 
     whisper_context_params params = whisper_context_default_params();
     params.use_gpu = useGPU;
-    whisper_context* context = whisper_init_from_file_with_params(model.string().c_str(), params);
+    whisper_context* context = whisper_init_from_file_with_params(utf8String(model).c_str(), params);
     if (!context) {
         std::error_code ignored;
-        fs::remove_all(staging, ignored);
-        throw std::runtime_error("모델을 불러오지 못했습니다: " + ggml.filename().string());
+        if (!staging.empty()) fs::remove_all(staging, ignored);
+        throw std::runtime_error("모델을 불러오지 못했습니다: " + utf8String(ggml.filename()));
     }
     releaseBeforeBackendShutdown();
     context_ = context;
@@ -277,8 +283,8 @@ VoiceActivityDetector::VoiceActivityDetector(const fs::path& model) {
     whisper_vad_context_params params = whisper_vad_default_context_params();
     params.use_gpu = false;
     params.n_threads = 2;
-    context_ = whisper_vad_init_from_file_with_params(model.string().c_str(), params);
-    if (!context_) throw std::runtime_error("VAD 모델을 불러오지 못했습니다: " + model.filename().string());
+    context_ = whisper_vad_init_from_file_with_params(utf8String(model).c_str(), params);
+    if (!context_) throw std::runtime_error("VAD 모델을 불러오지 못했습니다: " + utf8String(model.filename()));
 }
 
 VoiceActivityDetector::~VoiceActivityDetector() {

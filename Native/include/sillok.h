@@ -21,6 +21,7 @@ typedef struct sillok_buffer sillok_buffer;
 typedef struct sillok_diarizer sillok_diarizer;
 
 typedef void (*sillok_read_audio)(void *context, double start, double end, sillok_buffer *output);
+typedef int (*sillok_progress)(void *context, const char *progress_json);
 
 SILLOK_API void sillok_free(char *string);
 SILLOK_API void sillok_buffer_assign(sillok_buffer *buffer, const float *samples, size_t count);
@@ -36,6 +37,7 @@ SILLOK_API sillok_engine *sillok_engine_new(void);
 SILLOK_API void sillok_engine_free(sillok_engine *engine);
 SILLOK_API char *sillok_engine_load(sillok_engine *engine, const char *ggml_path, const char *coreml_encoder_path, int use_gpu);
 SILLOK_API void sillok_engine_unload(sillok_engine *engine);
+SILLOK_API int sillok_engine_is_loaded(sillok_engine *engine);
 SILLOK_API char *sillok_engine_detect_language(sillok_engine *engine, const float *samples, size_t count, const char *allowed_json);
 SILLOK_API char *sillok_engine_transcribe(sillok_engine *engine, const float *samples, size_t count, const char *options_json, sillok_cancel *cancel);
 
@@ -55,7 +57,15 @@ SILLOK_API void sillok_diarizer_free(sillok_diarizer *diarizer);
 SILLOK_API char *sillok_diarize(sillok_diarizer *diarizer, const char *segments_json, double duration,
                                 sillok_read_audio read, void *read_context, sillok_cancel *cancel);
 
+SILLOK_API char *sillok_run(sillok_engine *engine, const char *request_json, sillok_read_audio read, void *read_context,
+                            sillok_progress progress, void *progress_context, sillok_cancel *cancel);
+
 SILLOK_API char *sillok_export(const char *segments_json, const char *format);
+
+SILLOK_API char *sillok_models_required(const char *manifest_json, const char *whisper_id, int use_coreml, int diarization);
+SILLOK_API char *sillok_models_should_use_coreml(const char *manifest_json, const char *whisper_id, long long available_memory,
+                                                 int count_encoder);
+SILLOK_API char *sillok_file_sha256(const char *path);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,8 @@
 
 #include "chunking.hpp"
 #include "diarization.hpp"
+#include "job.hpp"
+#include "models.hpp"
 #include "transcriber.hpp"
 #include "whisper_engine.hpp"
 
@@ -106,14 +108,18 @@ void sillok_engine_free(sillok_engine* engine) {
 char* sillok_engine_load(sillok_engine* engine, const char* ggml_path, const char* coreml_encoder_path, int use_gpu) {
     return guarded([&] {
         std::optional<std::filesystem::path> encoder;
-        if (coreml_encoder_path) encoder = std::filesystem::path(coreml_encoder_path);
-        engine->engine.load(ggml_path, encoder, use_gpu != 0);
+        if (coreml_encoder_path) encoder = utf8Path(coreml_encoder_path);
+        engine->engine.load(utf8Path(ggml_path), encoder, use_gpu != 0);
         return json(true);
     });
 }
 
 void sillok_engine_unload(sillok_engine* engine) {
     engine->engine.unload();
+}
+
+int sillok_engine_is_loaded(sillok_engine* engine) {
+    return engine->engine.isLoaded() ? 1 : 0;
 }
 
 char* sillok_engine_detect_language(sillok_engine* engine, const float* samples, size_t count, const char* allowed_json) {
@@ -134,7 +140,7 @@ char* sillok_engine_transcribe(sillok_engine* engine, const float* samples, size
 
 sillok_vad* sillok_vad_new(const char* model_path, char** error) {
     try {
-        return new sillok_vad{std::make_unique<VoiceActivityDetector>(model_path)};
+        return new sillok_vad{std::make_unique<VoiceActivityDetector>(utf8Path(model_path))};
     } catch (const std::exception& failure) {
         if (error) *error = copy(failure.what());
         return nullptr;
@@ -186,7 +192,7 @@ char* sillok_transcribe_step(sillok_engine* engine, const char* state_json, cons
 
 sillok_diarizer* sillok_diarizer_new(const char* model_path, int use_gpu, char** error) {
     try {
-        return new sillok_diarizer{std::make_unique<SpeakerDiarizer>(model_path, use_gpu != 0)};
+        return new sillok_diarizer{std::make_unique<SpeakerDiarizer>(utf8Path(model_path), use_gpu != 0)};
     } catch (const std::exception& failure) {
         if (error) *error = copy(failure.what());
         return nullptr;
@@ -210,6 +216,44 @@ char* sillok_diarize(sillok_diarizer* diarizer, const char* segments_json, doubl
         auto turns = diarizer->diarizer->diarize(reader, duration, cancel ? cancel->token : none);
         return json(SpeakerAssigner{}.assign(segments, turns));
     });
+}
+
+char* sillok_run(sillok_engine* engine, const char* request_json, sillok_read_audio read, void* read_context,
+                 sillok_progress progress, void* progress_context, sillok_cancel* cancel) {
+    return guarded([&] {
+        CancelToken none;
+        const auto request = json::parse(request_json).get<JobRequest>();
+        AudioReader reader = [&](double start, double end) {
+            sillok_buffer buffer;
+            read(read_context, start, end, &buffer);
+            return buffer.samples;
+        };
+        ProgressHandler handler = [&](const JobProgress& update) {
+            return progress ? progress(progress_context, json(update).dump().c_str()) : 0;
+        };
+        auto segments = runJob(request, reader, engineServices(engine->engine, request), handler, cancel ? cancel->token : none);
+        return json{{"segments", segments}};
+    });
+}
+
+char* sillok_models_required(const char* manifest_json, const char* whisper_id, int use_coreml, int diarization) {
+    return guarded([&] {
+        const auto manifest = json::parse(manifest_json).get<ModelManifest>();
+        return json(ModelSelection::required(manifest, whisper_id, use_coreml != 0, diarization != 0));
+    });
+}
+
+char* sillok_models_should_use_coreml(const char* manifest_json, const char* whisper_id, long long available_memory, int count_encoder) {
+    return guarded([&] {
+        const auto manifest = json::parse(manifest_json).get<ModelManifest>();
+        const ModelEntry* whisper = manifest.entry(whisper_id);
+        if (!whisper) return json(false);
+        return json(ModelSelection::shouldUseCoreML(*whisper, manifest.coreMLEncoder(*whisper), available_memory, count_encoder != 0));
+    });
+}
+
+char* sillok_file_sha256(const char* path) {
+    return guarded([&] { return json(sha256Hex(utf8Path(path))); });
 }
 
 char* sillok_export(const char* segments_json, const char* format) {
