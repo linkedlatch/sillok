@@ -3,9 +3,15 @@
     <Platform Name="x64" />
     <Platform Name="ARM64" />
   </Configurations>
-  <Project Path="Sillok.Core/Sillok.Core.csproj" />
-  <Project Path="Sillok.Core.Tests/Sillok.Core.Tests.csproj" />
+  <Project Path="Sillok.Core/Sillok.Core.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="Sillok.Core.Tests/Sillok.Core.Tests.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
   <Project Path="Sillok.Windows/Sillok.Windows.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
     <Deploy />
   </Project>
 </Solution>
