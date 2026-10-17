@@ -122,8 +122,8 @@ enum ExportFormat {
 
     func render(_ segments: [Segment]) -> String {
         switch self {
-        case .txt: (try? NativeExport.render(segments, as: .txt)) ?? ""
-        case .srt: (try? NativeExport.render(segments, as: .srt)) ?? ""
+        case .txt: (try? NativeExport.render(segments, as: .txt, speakerFormat: UserMessage.speakerFormat)) ?? ""
+        case .srt: (try? NativeExport.render(segments, as: .srt, speakerFormat: UserMessage.speakerFormat)) ?? ""
         }
     }
 

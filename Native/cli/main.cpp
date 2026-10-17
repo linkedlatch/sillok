@@ -28,14 +28,14 @@ using namespace sillok;
 
 namespace {
 
-constexpr const char* kUsage = R"(사용법:
-  sillok transcribe <오디오> [--lang auto|koen|<코드>] [--terms 용어1,용어2] [--diarize]
-                    [--format txt|srt|json] [--out 파일] [--checkpoint 파일] [--cpu] [--quiet]
+constexpr const char* kUsage = R"(usage:
+  sillok transcribe <audio> [--lang auto|koen|<code>] [--terms term1,term2] [--diarize]
+                    [--format txt|srt|json] [--out file] [--checkpoint file] [--cpu] [--quiet]
   sillok models [download] [--diarize]
   sillok info
 
-모델 위치는 --models <폴더> 또는 SILLOK_MODELS 환경 변수로 바꿀 수 있습니다.
-WAV가 아닌 오디오는 ffmpeg로, 모델은 curl로 받습니다.
+Set the model folder with --models <folder> or the SILLOK_MODELS environment variable.
+Audio other than 16 kHz mono WAV is converted with ffmpeg; models are downloaded with curl.
 )";
 
 #ifdef __APPLE__
@@ -129,18 +129,18 @@ void download(const ModelEntry& entry, const fs::path& root) {
     const bool complete = fs::exists(part, error) && static_cast<int64_t>(fs::file_size(part, error)) == entry.size;
     int status = complete ? 0 : cli::kCommandNotFound;
     for (size_t i = 0; !complete && i < entry.urls.size(); ++i) {
-        std::fprintf(stderr, "%s 받는 중\n", entry.displayName.c_str());
+        std::fprintf(stderr, "downloading %s\n", entry.displayName.c_str());
         status = cli::runProcess({"curl", "-fL", "--retry", "3", "-C", "-", "--progress-bar", "-o", utf8String(part), entry.urls[i]});
-        if (status == cli::kCommandNotFound) throw Failure("curl을 찾을 수 없습니다. curl을 설치해 주세요");
+        if (status == cli::kCommandNotFound) throw Failure("curl was not found; install curl");
         if (interrupt.isCancelled()) throw Cancelled();
         if (status == 0) break;
     }
-    if (status != 0) throw Failure(entry.displayName + "을(를) 받지 못했습니다");
+    if (status != 0) throw Failure("failed to download " + entry.displayName);
     installVerified(part, entry, root);
     if (entry.kind == ModelKind::coreMLEncoder) {
         const fs::path archive = root / utf8Path(entry.fileName);
         if (cli::runProcess({"ditto", "-x", "-k", utf8String(archive), utf8String(root)}) != 0) {
-            throw Failure("Core ML 인코더 압축을 풀지 못했습니다");
+            throw Failure("failed to extract the Core ML encoder");
         }
         fs::remove(archive);
     }
@@ -152,14 +152,14 @@ std::unique_ptr<WavReader> openAudio(const fs::path& input, const fs::path& scra
     } catch (const std::invalid_argument&) {
     }
     const fs::path converted = scratch / "audio.wav";
-    if (!quiet) std::fprintf(stderr, "ffmpeg로 16kHz 모노 WAV로 변환하는 중\n");
+    if (!quiet) std::fprintf(stderr, "converting to 16 kHz mono WAV with ffmpeg\n");
     const int status = cli::runProcess({"ffmpeg", "-nostdin", "-v", "error", "-y", "-i", utf8String(input), "-ac", "1",
                                         "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", utf8String(converted)});
     if (status == cli::kCommandNotFound) {
-        throw Failure("WAV가 아닌 파일을 읽으려면 ffmpeg가 필요합니다. ffmpeg를 설치하거나 16kHz 모노 WAV로 변환해 주세요");
+        throw Failure("ffmpeg is required for audio other than 16 kHz mono WAV; install ffmpeg or convert the file first");
     }
     if (interrupt.isCancelled()) throw Cancelled();
-    if (status != 0) throw Failure("오디오를 변환하지 못했습니다");
+    if (status != 0) throw Failure("failed to convert audio");
     return std::make_unique<WavReader>(converted);
 }
 
@@ -184,9 +184,9 @@ std::vector<std::string> vocabulary(const std::optional<std::string>& value) {
 
 const char* phaseText(JobPhase phase) {
     switch (phase) {
-    case JobPhase::analyzing: return "음성 구간 분석";
-    case JobPhase::transcribing: return "전사";
-    case JobPhase::diarizing: return "화자 구분";
+    case JobPhase::analyzing: return "analyzing";
+    case JobPhase::transcribing: return "transcribing";
+    case JobPhase::diarizing: return "diarizing";
     }
     return "";
 }
@@ -197,7 +197,7 @@ int transcribe(const Arguments& arguments) {
         return 2;
     }
     const fs::path input = utf8Path(arguments.positional[1]);
-    if (!fs::is_regular_file(input)) throw Failure("파일이 없습니다: " + arguments.positional[1]);
+    if (!fs::is_regular_file(input)) throw Failure("file not found: " + arguments.positional[1]);
     const bool diarize = arguments.has("--diarize");
     const bool quiet = arguments.has("--quiet");
     const bool useGPU = !arguments.has("--cpu");
@@ -209,7 +209,7 @@ int transcribe(const Arguments& arguments) {
         if (entry.kind != ModelKind::coreMLEncoder && !isInstalled(entry, root)) missing += (missing.empty() ? "" : ", ") + entry.displayName;
     }
     if (!missing.empty()) {
-        throw Failure("모델이 없습니다: " + missing + "\n`sillok models download" + (diarize ? " --diarize" : "") + "`로 받아 주세요");
+        throw Failure("missing models: " + missing + "\nrun `sillok models download" + (diarize ? " --diarize" : "") + "`");
     }
 
     ScratchDirectory scratch;
@@ -224,7 +224,7 @@ int transcribe(const Arguments& arguments) {
     auto elapsed = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(); };
     WhisperEngine engine;
     engine.load(root / utf8Path(whisper.fileName), encoder, useGPU);
-    if (!quiet) std::fprintf(stderr, "오디오 %.1f초, 모델 로드 %.1f초\n", audio->duration(), elapsed());
+    if (!quiet) std::fprintf(stderr, "audio %.1fs, model load %.1fs\n", audio->duration(), elapsed());
 
     JobRequest request;
     request.modelId = whisper.id;
@@ -242,7 +242,7 @@ int transcribe(const Arguments& arguments) {
     if (!quiet) {
         progress = [&](const JobProgress& update) {
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - transcribing).count();
-            std::fprintf(stderr, "\r%s %5.1f%%  %6.1f초   ", phaseText(update.phase), update.fractionCompleted * 100, seconds);
+            std::fprintf(stderr, "\r%-12s %5.1f%%  %6.1fs   ", phaseText(update.phase), update.fractionCompleted * 100, seconds);
             std::fflush(stderr);
             return 0;
         };
@@ -251,7 +251,7 @@ int transcribe(const Arguments& arguments) {
                                  engineServices(engine, request), progress, interrupt);
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - transcribing).count();
     if (!quiet) {
-        std::fprintf(stderr, "\n%.1f초 동안 %.1f초 처리 (%.1f배 실시간), 세그먼트 %zu개\n", seconds, audio->duration(),
+        std::fprintf(stderr, "\nprocessed %.1fs of audio in %.1fs (%.1fx realtime), %zu segments\n", audio->duration(), seconds,
                      audio->duration() / std::max(seconds, 0.001), segments.size());
     }
     if (arguments.value("--checkpoint")) fs::remove(request.checkpoint);
@@ -265,13 +265,13 @@ int transcribe(const Arguments& arguments) {
     } else if (format == "json") {
         output = json{{"duration", audio->duration()}, {"segments", segments}}.dump(2) + "\n";
     } else {
-        throw Failure("알 수 없는 형식입니다: " + format);
+        throw Failure("unknown format: " + format);
     }
     if (auto path = arguments.value("--out")) {
         std::ofstream file(utf8Path(*path), std::ios::binary);
         file << output;
-        if (!file) throw Failure("저장하지 못했습니다: " + *path);
-        if (!quiet) std::fprintf(stderr, "저장했습니다: %s\n", path->c_str());
+        if (!file) throw Failure("failed to write: " + *path);
+        if (!quiet) std::fprintf(stderr, "wrote %s\n", path->c_str());
     } else {
         std::fwrite(output.data(), 1, output.size(), stdout);
     }
@@ -287,18 +287,18 @@ int listModels(const Arguments& arguments) {
             if (!isInstalled(entry, root)) download(entry, root);
         }
     }
-    std::printf("모델 폴더: %s\n", utf8String(root).c_str());
+    std::printf("model folder: %s\n", utf8String(root).c_str());
     for (const auto& entry : models.models) {
         if (!kCoreML && entry.kind == ModelKind::coreMLEncoder) continue;
         const bool needed = std::any_of(required.begin(), required.end(), [&](const ModelEntry& item) { return item.id == entry.id; });
-        const char* state = isInstalled(entry, root) ? "설치됨" : needed ? "필요" : "선택";
+        const char* state = isInstalled(entry, root) ? "installed" : needed ? "required" : "optional";
         std::printf("  [%s] %s (%lldMB, %s)\n", state, entry.displayName.c_str(), static_cast<long long>(entry.size / 1048576), entry.license.c_str());
     }
     return 0;
 }
 
 int info(const Arguments& arguments) {
-    std::printf("%s\n모델 폴더: %s\n", systemInfo().c_str(), utf8String(modelsDirectory(arguments)).c_str());
+    std::printf("%s\nmodel folder: %s\n", systemInfo().c_str(), utf8String(modelsDirectory(arguments)).c_str());
     return 0;
 }
 
@@ -313,7 +313,7 @@ int run(const std::vector<std::string>& arguments) {
         std::fputs(kUsage, stderr);
         return 2;
     } catch (const Cancelled&) {
-        std::fputs("\n취소했습니다. 같은 --checkpoint로 다시 실행하면 이어서 전사합니다\n", stderr);
+        std::fputs("\ncancelled; run again with the same --checkpoint to resume\n", stderr);
         return 130;
     } catch (const std::exception& error) {
         std::fprintf(stderr, "\n%s\n", error.what());

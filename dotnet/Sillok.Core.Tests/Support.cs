@@ -22,7 +22,7 @@ internal static class Repo
         {
             directory = directory.Parent;
         }
-        return directory?.FullName ?? throw new InvalidOperationException("저장소 루트를 찾지 못했습니다");
+        return directory?.FullName ?? throw new InvalidOperationException("repository root not found");
     }
 }
 

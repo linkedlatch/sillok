@@ -48,15 +48,15 @@ internal static class NativeCall
 
     internal static T Decode<T>(IntPtr result)
     {
-        var json = TakeString(result) ?? throw new NativeException("응답이 없습니다");
+        var json = TakeString(result) ?? throw new NativeException("no response from the native core");
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         if (root.GetProperty("ok").GetBoolean())
         {
-            return root.GetProperty("value").Deserialize<T>(SillokJson.Options) ?? throw new NativeException("응답이 비어 있습니다");
+            return root.GetProperty("value").Deserialize<T>(SillokJson.Options) ?? throw new NativeException("empty response from the native core");
         }
         if (root.TryGetProperty("cancelled", out var cancelled) && cancelled.GetBoolean()) throw new OperationCanceledException();
-        throw new NativeException(root.TryGetProperty("error", out var error) ? error.GetString() ?? "알 수 없는 오류" : "알 수 없는 오류");
+        throw new NativeException(root.TryGetProperty("error", out var error) ? error.GetString() ?? "unknown native error" : "unknown native error");
     }
 
     internal static void Check(IntPtr result) => Decode<bool>(result);

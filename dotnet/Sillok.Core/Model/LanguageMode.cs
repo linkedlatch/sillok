@@ -27,8 +27,8 @@ public sealed class LanguageModeConverter : JsonConverter<LanguageMode>
         {
             "auto" => LanguageMode.Auto,
             "koreanEnglish" => LanguageMode.KoreanEnglish,
-            "fixed" => LanguageMode.Fixed(property.Value.GetProperty("_0").GetString() ?? throw new JsonException("언어 코드가 없습니다")),
-            _ => throw new JsonException($"알 수 없는 언어 모드: {property.Name}"),
+            "fixed" => LanguageMode.Fixed(property.Value.GetProperty("_0").GetString() ?? throw new JsonException("missing language code")),
+            _ => throw new JsonException($"unknown language mode: {property.Name}"),
         };
     }
 

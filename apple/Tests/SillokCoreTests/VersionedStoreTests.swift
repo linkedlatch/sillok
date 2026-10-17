@@ -21,10 +21,10 @@ private func temporaryURL() -> URL {
 
 @Test func saveWritesCurrentVersionAndLoadsBack() throws {
     let url = temporaryURL()
-    try VersionedStore.save(DocumentV2(schemaVersion: 0, title: "a", speakerNames: ["화자 1"]), to: url)
+    try VersionedStore.save(DocumentV2(schemaVersion: 0, title: "a", speakerNames: ["Speaker 1"]), to: url)
     let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
     #expect(json?["schemaVersion"] as? Int == 2)
-    #expect(try VersionedStore.load(DocumentV2.self, from: url) == DocumentV2(schemaVersion: 2, title: "a", speakerNames: ["화자 1"]))
+    #expect(try VersionedStore.load(DocumentV2.self, from: url) == DocumentV2(schemaVersion: 2, title: "a", speakerNames: ["Speaker 1"]))
 }
 
 @Test func olderVersionIsMigrated() throws {

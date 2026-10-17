@@ -1,14 +1,14 @@
 # Sillok .NET
 
-- `Sillok.Core`: C++ 코어(`Native/`) 연결, 진행 관리, 작업 큐, 모델 관리. Windows 앱이 쓴다.
-- `Sillok.Core.Tests`: xUnit v3 테스트. C++ 코어 공유 라이브러리를 불러 실제 모델로도 검사한다.
-- `Sillok.Windows`: WinUI 3 앱 (x64, ARM64). Windows에서만 빌드된다.
+- `Sillok.Core`: bindings to the C++ core (`Native/`), job orchestration, job queue, and model management. Used by the Windows app.
+- `Sillok.Core.Tests`: xUnit v3 tests. They load the C++ core as a shared library and also run against the real models.
+- `Sillok.Windows`: WinUI 3 app (x64, ARM64). Builds on Windows only.
 
-명령줄 도구 `sillok`은 C++ 코어와 함께 `Native/cli`에 있다.
+The `sillok` command line tool lives with the C++ core in `Native/cli`.
 
-## Windows 빌드
+## Building on Windows
 
-필요한 것: Visual Studio 2026 (.NET 데스크톱 개발, C++를 사용한 데스크톱 개발), .NET 10 SDK, Vulkan SDK.
+Requirements: Visual Studio 2026 with the ".NET desktop development" and "Desktop development with C++" workloads, the .NET 10 SDK, and the Vulkan SDK.
 
 ```powershell
 git submodule update --init Vendor/whisper.cpp Vendor/NeMo-Speech.cpp
@@ -16,9 +16,9 @@ scripts/windows/build-native.ps1 -Arch x64
 dotnet build dotnet/Sillok.Windows -p:Platform=x64
 ```
 
-`build-native.ps1`은 앱이 쓰는 `sillok.dll`과 CLI `sillok.exe`를 함께 만든다. ARM64는 `-Arch ARM64`와 `-p:Platform=ARM64`로 빌드하고, ARM64 기기에서 직접 빌드하는 것이 가장 간단하다.
+`build-native.ps1` builds both `sillok.dll` for the app and the `sillok.exe` command line tool. For ARM64 use `-Arch ARM64` and `-p:Platform=ARM64`; building on an ARM64 machine is the simplest option.
 
-## 테스트 (macOS·Windows)
+## Tests (macOS and Windows)
 
 ```sh
 cmake -S Native -B build/native -DCMAKE_BUILD_TYPE=Release -DSILLOK_SHARED=ON
@@ -27,4 +27,4 @@ scripts/fetch-test-models.sh
 dotnet test --project dotnet/Sillok.Core.Tests
 ```
 
-Windows에서는 `cmake --build build/native --config Release`가 만든 `build/native/Release/sillok.dll`을 쓴다.
+On Windows the tests use `build/native/Release/sillok.dll` produced by `cmake --build build/native --config Release`.

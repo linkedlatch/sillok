@@ -24,7 +24,7 @@ let sources = [
         license: "MIT",
         files: [
             ("large-v3-turbo-q5_0", .whisper, "Whisper large-v3-turbo (q5_0)", "ggml-large-v3-turbo-q5_0.bin", "large-v3-turbo-encoder"),
-            ("large-v3-turbo-encoder", .coreMLEncoder, "large-v3-turbo Core ML 인코더", "ggml-large-v3-turbo-encoder.mlmodelc.zip", nil),
+            ("large-v3-turbo-encoder", .coreMLEncoder, "large-v3-turbo Core ML encoder", "ggml-large-v3-turbo-encoder.mlmodelc.zip", nil),
         ]
     ),
     Source(

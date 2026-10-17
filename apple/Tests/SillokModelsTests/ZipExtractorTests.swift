@@ -25,7 +25,7 @@ private func run(_ tool: String, _ arguments: [String], in directory: URL) throw
 
 private func makeTree(in root: URL) throws -> [String: Data] {
     let files: [String: Data] = [
-        "model.mlmodelc/metadata.json": Data(#"{"name":"테스트"}"#.utf8),
+        "model.mlmodelc/metadata.json": Data(#"{"name":"test"}"#.utf8),
         "model.mlmodelc/weights/weight.bin": Data((0..<3_000_000).map { UInt8(truncatingIfNeeded: $0 % 251) }),
         "model.mlmodelc/empty.bin": Data(),
     ]

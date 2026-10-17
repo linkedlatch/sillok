@@ -140,7 +140,7 @@ void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& co
     fs::create_symlink(fs::absolute(ggml), model);
     if (coreMLEncoder) fs::create_directory_symlink(fs::absolute(*coreMLEncoder), staging / coreMLEncoderName(utf8String(ggml.filename())));
 #else
-    if (coreMLEncoder) throw std::runtime_error("Core ML 인코더는 Apple 플랫폼에서만 쓸 수 있습니다");
+    if (coreMLEncoder) throw std::runtime_error("Core ML encoders are only available on Apple platforms");
     const fs::path staging;
     const fs::path model = ggml;
 #endif
@@ -151,7 +151,7 @@ void WhisperEngine::load(const fs::path& ggml, const std::optional<fs::path>& co
     if (!context) {
         std::error_code ignored;
         if (!staging.empty()) fs::remove_all(staging, ignored);
-        throw std::runtime_error("모델을 불러오지 못했습니다: " + utf8String(ggml.filename()));
+        throw std::runtime_error("failed to load model: " + utf8String(ggml.filename()));
     }
     releaseBeforeBackendShutdown();
     context_ = context;
@@ -175,7 +175,7 @@ void WhisperEngine::unloadLocked() {
 }
 
 whisper_context* WhisperEngine::require() const {
-    if (!context_) throw std::runtime_error("모델이 로드되지 않았습니다");
+    if (!context_) throw std::runtime_error("model is not loaded");
     return context_;
 }
 
@@ -183,11 +183,11 @@ LanguageDetection WhisperEngine::detectLanguage(const std::vector<float>& sample
     std::lock_guard lock(mutex_);
     whisper_context* context = require();
     if (whisper_pcm_to_mel(context, samples.data(), static_cast<int>(samples.size()), threads_) != 0) {
-        throw std::runtime_error("멜 스펙트로그램 계산 실패");
+        throw std::runtime_error("failed to compute mel spectrogram");
     }
     std::vector<float> probabilities(whisper_lang_max_id() + 1, 0.0f);
     if (whisper_lang_auto_detect(context, 0, threads_, probabilities.data()) < 0) {
-        throw std::runtime_error("언어 감지 실패");
+        throw std::runtime_error("language detection failed");
     }
     std::optional<std::pair<std::string, float>> best;
     float total = 0;
@@ -197,7 +197,7 @@ LanguageDetection WhisperEngine::detectLanguage(const std::vector<float>& sample
         total += probabilities[id];
         if (!best || probabilities[id] > best->second) best = std::make_pair(std::string(name), probabilities[id]);
     }
-    if (!best) throw std::runtime_error("허용된 언어가 없습니다");
+    if (!best) throw std::runtime_error("no allowed language");
     return LanguageDetection{best->first, total > 0 ? static_cast<double>(best->second / total) : 0.0};
 }
 
@@ -239,7 +239,7 @@ std::vector<Segment> WhisperEngine::transcribe(const std::vector<float>& samples
     int status = whisper_full(context, params, samples.data(), static_cast<int>(samples.size()));
     if (timings) whisper_print_timings(context);
     if (cancel.isCancelled() || shuttingDown.load()) throw Cancelled();
-    if (status != 0) throw std::runtime_error("전사 실패 (" + std::to_string(status) + ")");
+    if (status != 0) throw std::runtime_error("transcription failed (" + std::to_string(status) + ")");
     return collectSegments(options.language);
 }
 
@@ -284,7 +284,7 @@ VoiceActivityDetector::VoiceActivityDetector(const fs::path& model) {
     params.use_gpu = false;
     params.n_threads = 2;
     context_ = whisper_vad_init_from_file_with_params(utf8String(model).c_str(), params);
-    if (!context_) throw std::runtime_error("VAD 모델을 불러오지 못했습니다: " + utf8String(model.filename()));
+    if (!context_) throw std::runtime_error("failed to load VAD model: " + utf8String(model.filename()));
 }
 
 VoiceActivityDetector::~VoiceActivityDetector() {
@@ -297,10 +297,10 @@ void VoiceActivityDetector::reset() {
 
 std::vector<float> VoiceActivityDetector::probabilities(const std::vector<float>& samples) {
     if (!whisper_vad_detect_speech_no_reset(context_, samples.data(), static_cast<int>(samples.size()))) {
-        throw std::runtime_error("VAD 처리 실패");
+        throw std::runtime_error("VAD failed");
     }
     const int count = whisper_vad_n_probs(context_);
-    if (count != static_cast<int>((samples.size() + frameSize - 1) / frameSize)) throw std::runtime_error("VAD 프레임 수 불일치");
+    if (count != static_cast<int>((samples.size() + frameSize - 1) / frameSize)) throw std::runtime_error("VAD frame count mismatch");
     const float* values = whisper_vad_probs(context_);
     return std::vector<float>(values, values + count);
 }

@@ -72,9 +72,10 @@ TEST_CASE("exports label speakers only when there are several") {
     second.speaker = "1";
     CHECK(exportText({first, second}) == "안녕하세요\n네 반갑습니다\n");
     second.speaker = "2";
-    CHECK(exportText({first, second}) == "화자 1: 안녕하세요\n화자 2: 네 반갑습니다\n");
+    CHECK(exportText({first, second}) == "Speaker 1: 안녕하세요\nSpeaker 2: 네 반갑습니다\n");
     CHECK(exportSubRip({first, second}) ==
-          "1\n00:00:00,000 --> 00:00:01,000\n[화자 1] 안녕하세요\n\n2\n00:00:01,000 --> 00:00:02,000\n[화자 2] 네 반갑습니다\n");
+          "1\n00:00:00,000 --> 00:00:01,000\n[Speaker 1] 안녕하세요\n\n2\n00:00:01,000 --> 00:00:02,000\n[Speaker 2] 네 반갑습니다\n");
+    CHECK(exportText({first, second}, "화자 {speaker}") == "화자 1: 안녕하세요\n화자 2: 네 반갑습니다\n");
 }
 
 namespace {

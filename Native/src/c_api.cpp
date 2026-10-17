@@ -256,11 +256,12 @@ char* sillok_file_sha256(const char* path) {
     return guarded([&] { return json(sha256Hex(utf8Path(path))); });
 }
 
-char* sillok_export(const char* segments_json, const char* format) {
+char* sillok_export(const char* segments_json, const char* format, const char* speaker_format) {
     return guarded([&] {
         auto segments = json::parse(segments_json).get<std::vector<Segment>>();
-        if (std::strcmp(format, "srt") == 0) return json(exportSubRip(segments));
-        if (std::strcmp(format, "txt") == 0) return json(exportText(segments));
+        const std::string speakers = speaker_format ? speaker_format : kDefaultSpeakerFormat;
+        if (std::strcmp(format, "srt") == 0) return json(exportSubRip(segments, speakers));
+        if (std::strcmp(format, "txt") == 0) return json(exportText(segments, speakers));
         throw std::runtime_error(std::string("unknown format ") + format);
     });
 }

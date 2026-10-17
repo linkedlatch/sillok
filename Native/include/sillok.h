@@ -60,7 +60,7 @@ SILLOK_API char *sillok_diarize(sillok_diarizer *diarizer, const char *segments_
 SILLOK_API char *sillok_run(sillok_engine *engine, const char *request_json, sillok_read_audio read, void *read_context,
                             sillok_progress progress, void *progress_context, sillok_cancel *cancel);
 
-SILLOK_API char *sillok_export(const char *segments_json, const char *format);
+SILLOK_API char *sillok_export(const char *segments_json, const char *format, const char *speaker_format);
 
 SILLOK_API char *sillok_models_required(const char *manifest_json, const char *whisper_id, int use_coreml, int diarization);
 SILLOK_API char *sillok_models_should_use_coreml(const char *manifest_json, const char *whisper_id, long long available_memory,

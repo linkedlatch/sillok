@@ -14,7 +14,7 @@
       ]
     },
     {
-      "displayName" : "large-v3-turbo Core ML 인코더",
+      "displayName" : "large-v3-turbo Core ML encoder",
       "fileName" : "ggml-large-v3-turbo-encoder.mlmodelc.zip",
       "id" : "large-v3-turbo-encoder",
       "kind" : "coreMLEncoder",

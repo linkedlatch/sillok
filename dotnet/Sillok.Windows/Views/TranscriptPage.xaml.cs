@@ -43,6 +43,6 @@ public sealed partial class TranscriptPage : Page
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
         var file = await picker.PickSaveFileAsync();
         if (file is null) return;
-        await FileIO.WriteTextAsync(file, NativeExport.Render(Item.Project.Segments, format));
+        await FileIO.WriteTextAsync(file, NativeExport.Render(Item.Project.Segments, format, UserMessage.SpeakerFormat));
     }
 }

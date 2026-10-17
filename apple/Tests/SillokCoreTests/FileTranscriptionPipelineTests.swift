@@ -95,7 +95,7 @@ private func summary(_ segments: [Segment]) -> [String] {
 
     let core = EchoCore()
     var other = pipeline(core, checkpoint: url)
-    other.options.vocabulary = ["다른 용어"]
+    other.options.vocabulary = ["other term"]
     let segments = try await collect(other.run(source: source))
     #expect(segments.count == 4)
     #expect(await core.steps == 4)

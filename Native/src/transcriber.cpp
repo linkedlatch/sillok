@@ -15,7 +15,7 @@ StepResult ChunkTranscriber::step(const TranscriptionState& state, const std::ve
     if (cancel.isCancelled()) throw Cancelled();
     const AudioChunk& chunk = chunks.at(state.nextChunk);
     const std::vector<float> samples = read(chunk.start, chunk.end);
-    if (samples.empty() && chunk.duration() > 0) throw std::runtime_error("오디오를 읽지 못했습니다");
+    if (samples.empty() && chunk.duration() > 0) throw std::runtime_error("failed to read audio");
 
     const std::string language = LanguageResolver{options.languageMode}.resolve(
         state.nextChunk, samples, chunks, state.previousLanguage, read, engine);
@@ -50,16 +50,20 @@ static bool hasMultipleSpeakers(const std::vector<Segment>& segments) {
     return speakers.size() > 1;
 }
 
-static std::string speakerLabel(const Segment& segment, bool show) {
-    return show && segment.speaker ? "화자 " + *segment.speaker : "";
+static std::string speakerLabel(const Segment& segment, bool show, const std::string& format) {
+    if (!show || !segment.speaker) return "";
+    const std::string placeholder = "{speaker}";
+    const auto position = format.find(placeholder);
+    if (position == std::string::npos) return format;
+    return format.substr(0, position) + *segment.speaker + format.substr(position + placeholder.size());
 }
 
-std::string exportText(const std::vector<Segment>& segments) {
+std::string exportText(const std::vector<Segment>& segments, const std::string& speakerFormat) {
     const bool show = hasMultipleSpeakers(segments);
     std::string text;
     for (size_t i = 0; i < segments.size(); ++i) {
         if (i > 0) text += "\n";
-        const auto label = speakerLabel(segments[i], show);
+        const auto label = speakerLabel(segments[i], show, speakerFormat);
         if (!label.empty()) text += label + ": ";
         text += segments[i].text;
     }
@@ -74,12 +78,12 @@ std::string subRipTimestamp(double seconds) {
     return buffer;
 }
 
-std::string exportSubRip(const std::vector<Segment>& segments) {
+std::string exportSubRip(const std::vector<Segment>& segments, const std::string& speakerFormat) {
     const bool show = hasMultipleSpeakers(segments);
     std::string text;
     for (size_t i = 0; i < segments.size(); ++i) {
         if (i > 0) text += "\n";
-        const auto label = speakerLabel(segments[i], show);
+        const auto label = speakerLabel(segments[i], show, speakerFormat);
         text += std::to_string(i + 1) + "\n" + subRipTimestamp(segments[i].start) + " --> " +
                 subRipTimestamp(segments[i].end) + "\n" + (label.empty() ? "" : "[" + label + "] ") + segments[i].text + "\n";
     }

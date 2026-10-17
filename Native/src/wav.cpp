@@ -30,10 +30,10 @@ std::string readTag(std::ifstream& stream) {
 }
 
 WavReader::WavReader(const std::filesystem::path& path) : stream_(path, std::ios::binary) {
-    if (!stream_) throw std::runtime_error("파일을 열 수 없습니다");
-    if (readTag(stream_) != "RIFF") throw std::invalid_argument("WAV 파일이 아닙니다");
+    if (!stream_) throw std::runtime_error("cannot open file");
+    if (readTag(stream_) != "RIFF") throw std::invalid_argument("not a WAV file");
     readValue<uint32_t>(stream_);
-    if (readTag(stream_) != "WAVE") throw std::invalid_argument("WAV 파일이 아닙니다");
+    if (readTag(stream_) != "WAVE") throw std::invalid_argument("not a WAV file");
 
     int format = 0, channels = 0, rate = 0, bits = 0;
     int64_t dataLength = -1;
@@ -65,10 +65,10 @@ WavReader::WavReader(const std::filesystem::path& path) : stream_(path, std::ios
         stream_.seekg(next);
     }
 
-    if (dataLength < 0) throw std::invalid_argument("WAV 데이터가 없습니다");
-    if (rate != kRate || channels != 1) throw std::invalid_argument("16kHz 모노 WAV가 아닙니다");
+    if (dataLength < 0) throw std::invalid_argument("WAV file has no data");
+    if (rate != kRate || channels != 1) throw std::invalid_argument("WAV is not 16 kHz mono");
     isFloat_ = format == kFloat && bits == 32;
-    if (!isFloat_ && !(format == kPcm && bits == 16)) throw std::invalid_argument("지원하지 않는 WAV 형식입니다");
+    if (!isFloat_ && !(format == kPcm && bits == 16)) throw std::invalid_argument("unsupported WAV encoding");
     sampleCount_ = dataLength / (isFloat_ ? 4 : 2);
 }
 

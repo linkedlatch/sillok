@@ -159,9 +159,9 @@ final class AppModel {
         refreshModelStatus()
         guard let error else { return }
         if modelStatus == .ready {
-            alert = error.localizedDescription
+            alert = UserMessage.describe(error)
         } else {
-            modelStatus = .failed(error.localizedDescription)
+            modelStatus = .failed(UserMessage.describe(error))
         }
     }
 
@@ -223,7 +223,7 @@ final class AppModel {
                 projects.insert(project, at: 0)
                 enqueue(id)
             } catch {
-                alert = "\(url.lastPathComponent): \(error.localizedDescription)"
+                alert = "\(url.lastPathComponent): \(UserMessage.describe(error))"
             }
         }
     }
@@ -256,7 +256,7 @@ final class AppModel {
                 $0.sourceName = url.lastPathComponent
             }
         } catch {
-            alert = error.localizedDescription
+            alert = UserMessage.describe(error)
         }
     }
 
@@ -356,7 +356,7 @@ final class AppModel {
         } catch is CancellationError {
             update(id) { $0.status = .cancelled }
         } catch {
-            update(id) { $0.status = .failed(error.localizedDescription) }
+            update(id) { $0.status = .failed(UserMessage.describe(error)) }
         }
 
         if await queue.pendingIDs.isEmpty {

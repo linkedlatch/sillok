@@ -11,7 +11,7 @@ public static class SillokJson
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);
 
     public static T Deserialize<T>(string json) =>
-        JsonSerializer.Deserialize<T>(json, Options) ?? throw new JsonException("빈 JSON입니다");
+        JsonSerializer.Deserialize<T>(json, Options) ?? throw new JsonException("empty JSON document");
 
     private static JsonSerializerOptions Create()
     {

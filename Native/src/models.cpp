@@ -115,7 +115,7 @@ ModelKind kindFromName(const std::string& name) {
     if (name == "vad") return ModelKind::vad;
     if (name == "diarization") return ModelKind::diarization;
     if (name == "whisper") return ModelKind::whisper;
-    throw std::runtime_error("알 수 없는 모델 종류: " + name);
+    throw std::runtime_error("unknown model kind: " + name);
 }
 
 bool equalsIgnoringCase(const std::string& a, const std::string& b) {
@@ -163,11 +163,11 @@ bool ModelSelection::shouldUseCoreML(const ModelEntry& whisper, const ModelEntry
 }
 
 ChecksumMismatch::ChecksumMismatch(const std::string& fileName)
-    : std::runtime_error(fileName + " 파일이 손상되었습니다. 다시 받아 주세요") {}
+    : std::runtime_error(fileName + " is corrupted; download it again") {}
 
 std::string sha256Hex(const fs::path& file) {
     std::ifstream input(file, std::ios::binary);
-    if (!input) throw std::runtime_error("파일을 열 수 없습니다: " + utf8String(file.filename()));
+    if (!input) throw std::runtime_error("cannot open file: " + utf8String(file.filename()));
     Sha256 hasher;
     std::vector<char> buffer(4 << 20);
     while (input) {

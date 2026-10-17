@@ -19,7 +19,7 @@ public static class AudioConverter
         var profile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.Low);
         profile.Audio = AudioEncodingProperties.CreatePcm(PcmFormat.SampleRate, 1, 16);
         var prepared = await new MediaTranscoder().PrepareFileTranscodeAsync(source, target, profile);
-        if (!prepared.CanTranscode) throw new InvalidDataException($"이 파일을 읽을 수 없습니다 ({prepared.FailureReason})");
+        if (!prepared.CanTranscode) throw new InvalidDataException($"cannot transcode this file ({prepared.FailureReason})");
         await prepared.TranscodeAsync().AsTask(cancellation);
         File.Move(Path.Combine(directory, partName), targetPath, overwrite: true);
     }

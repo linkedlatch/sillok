@@ -97,7 +97,7 @@ public class PipelineTests
         var checkpoint = Repo.TemporaryPath("c.json");
         await Collect(Pipeline(new EchoCore(), checkpoint).RunAsync(Silence(100), TestContext.Current.CancellationToken), stopAfter: 3);
         var core = new EchoCore();
-        var segments = await Collect(Pipeline(core, checkpoint, new TranscriptionOptions { Vocabulary = ["다른 용어"] }).RunAsync(Silence(100), TestContext.Current.CancellationToken));
+        var segments = await Collect(Pipeline(core, checkpoint, new TranscriptionOptions { Vocabulary = ["other term"] }).RunAsync(Silence(100), TestContext.Current.CancellationToken));
         Assert.Equal(4, segments.Count);
         Assert.Equal(4, core.Steps);
     }

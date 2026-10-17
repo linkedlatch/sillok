@@ -28,12 +28,12 @@ enum NativeCall {
     }
 
     static func decode<Value: Decodable>(_ type: Value.Type, _ result: UnsafeMutablePointer<CChar>?) throws -> Value {
-        guard let result else { throw NativeError.failed("응답이 없습니다") }
+        guard let result else { throw NativeError.failed("no response from the native core") }
         defer { sillok_free(result) }
         let envelope = try JSONDecoder().decode(Envelope<Value>.self, from: Data(bytes: result, count: strlen(result)))
         if envelope.ok, let value = envelope.value { return value }
         if envelope.cancelled == true { throw CancellationError() }
-        throw NativeError.failed(envelope.error ?? "알 수 없는 오류")
+        throw NativeError.failed(envelope.error ?? "unknown native error")
     }
 
     static func check(_ result: UnsafeMutablePointer<CChar>?) throws {

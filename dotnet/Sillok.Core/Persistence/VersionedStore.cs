@@ -10,7 +10,7 @@ public interface IVersionedDocument<TSelf> where TSelf : IVersionedDocument<TSel
     int SchemaVersion { get; }
 }
 
-public sealed class UnsupportedSchemaVersionException(int version) : Exception($"지원하지 않는 저장 형식 버전입니다: {version}");
+public sealed class UnsupportedSchemaVersionException(int version) : Exception($"unsupported schema version: {version}");
 
 public static class VersionedStore
 {

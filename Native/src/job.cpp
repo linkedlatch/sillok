@@ -57,7 +57,7 @@ void Checkpoint::save(const fs::path& path) const {
     {
         std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
         output << json(*this).dump();
-        if (!output) throw std::runtime_error("체크포인트를 저장하지 못했습니다");
+        if (!output) throw std::runtime_error("failed to save checkpoint");
     }
     fs::rename(temporary, path);
 }

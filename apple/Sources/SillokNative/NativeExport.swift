@@ -8,7 +8,7 @@ public enum NativeExport {
         case srt
     }
 
-    public static func render(_ segments: [Segment], as format: Format) throws -> String {
-        try NativeCall.decode(String.self, sillok_export(try NativeCall.json(segments), format.rawValue))
+    public static func render(_ segments: [Segment], as format: Format, speakerFormat: String? = nil) throws -> String {
+        try NativeCall.decode(String.self, sillok_export(try NativeCall.json(segments), format.rawValue, speakerFormat))
     }
 }

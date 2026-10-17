@@ -42,6 +42,9 @@ private struct ArraySource: AudioStreamSource {
     let segments = [Segment(start: 0.5, end: 2.25, text: "안녕하세요", language: "ko")]
     #expect(try NativeExport.render(segments, as: .srt) == "1\n00:00:00,500 --> 00:00:02,250\n안녕하세요\n")
     #expect(try NativeExport.render(segments, as: .txt) == "안녕하세요\n")
+    let dialog = [Segment(start: 0, end: 1, text: "네", language: "ko", speaker: "1"), Segment(start: 1, end: 2, text: "좋아요", language: "ko", speaker: "2")]
+    #expect(try NativeExport.render(dialog, as: .txt) == "Speaker 1: 네\nSpeaker 2: 좋아요\n")
+    #expect(try NativeExport.render(dialog, as: .txt, speakerFormat: "화자 {speaker}") == "화자 1: 네\n화자 2: 좋아요\n")
 }
 
 @Test func missingModelReportsError() async {

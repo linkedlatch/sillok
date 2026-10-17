@@ -74,5 +74,5 @@ internal static unsafe partial class NativeMethods
         delegate* unmanaged[Cdecl]<IntPtr, double, double, IntPtr, void> read, IntPtr readContext, IntPtr cancel);
 
     [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial IntPtr sillok_export(string segmentsJson, string format);
+    internal static partial IntPtr sillok_export(string segmentsJson, string format, string? speakerFormat);
 }

@@ -8,7 +8,7 @@ public sealed class NativeCore(NativeEngine engine, string vadModel, string? dia
         NativeCall.Run<IReadOnlyList<AudioChunk>>(() =>
         {
             var vad = NativeMethods.sillok_vad_new(vadModel, out var error);
-            if (vad == IntPtr.Zero) throw new NativeException(NativeCall.TakeString(error) ?? "VAD 모델을 불러오지 못했습니다");
+            if (vad == IntPtr.Zero) throw new NativeException(NativeCall.TakeString(error) ?? "failed to load the VAD model");
             try
             {
                 var map = NativeMethods.sillok_speech_map_new(vad);
@@ -73,7 +73,7 @@ public sealed class NativeCore(NativeEngine engine, string vadModel, string? dia
         return await NativeCall.WithCancellation<IReadOnlyList<Segment>>(cancellation, cancel =>
         {
             var diarizer = NativeMethods.sillok_diarizer_new(diarizationModel, 1, out var error);
-            if (diarizer == IntPtr.Zero) throw new NativeException(NativeCall.TakeString(error) ?? "화자 구분 모델을 불러오지 못했습니다");
+            if (diarizer == IntPtr.Zero) throw new NativeException(NativeCall.TakeString(error) ?? "failed to load the diarization model");
             try
             {
                 using var context = new AudioContext(source);
@@ -103,6 +103,6 @@ public enum ExportFormat
 
 public static class NativeExport
 {
-    public static string Render(IReadOnlyList<Segment> segments, ExportFormat format) =>
-        NativeCall.Decode<string>(NativeMethods.sillok_export(SillokJson.Serialize(segments), format == ExportFormat.SubRip ? "srt" : "txt"));
+    public static string Render(IReadOnlyList<Segment> segments, ExportFormat format, string? speakerFormat = null) =>
+        NativeCall.Decode<string>(NativeMethods.sillok_export(SillokJson.Serialize(segments), format == ExportFormat.SubRip ? "srt" : "txt", speakerFormat));
 }

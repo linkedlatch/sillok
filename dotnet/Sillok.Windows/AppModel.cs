@@ -192,7 +192,7 @@ public sealed class AppModel : INotifyPropertyChanged
         RefreshModelStatus();
         if (failure is not null && modelState != ModelState.Ready)
         {
-            modelError = failure.Message;
+            modelError = UserMessage.Describe(failure);
             SetModelState(ModelState.Failed);
         }
     }
@@ -326,7 +326,7 @@ public sealed class AppModel : INotifyPropertyChanged
         }
         catch (Exception error)
         {
-            Update(id, project => project with { Status = TranscriptStatus.Failed, FailureMessage = error.Message });
+            Update(id, project => project with { Status = TranscriptStatus.Failed, FailureMessage = UserMessage.Describe(error) });
         }
         finally
         {

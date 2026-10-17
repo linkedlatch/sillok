@@ -49,13 +49,13 @@ TEST_CASE("state ignores segments and keeps optionals") {
 }
 
 TEST_CASE("c api export wraps results in an envelope") {
-    char* srt = sillok_export(R"([{"start":0.5,"end":2.25,"text":"안녕","language":"ko"}])", "srt");
+    char* srt = sillok_export(R"([{"start":0.5,"end":2.25,"text":"안녕","language":"ko"}])", "srt", nullptr);
     auto result = json::parse(srt);
     sillok_free(srt);
     CHECK(result["ok"] == true);
     CHECK(result["value"] == "1\n00:00:00,500 --> 00:00:02,250\n안녕\n");
 
-    char* bad = sillok_export("[]", "doc");
+    char* bad = sillok_export("[]", "doc", nullptr);
     auto error = json::parse(bad);
     sillok_free(bad);
     CHECK(error["ok"] == false);

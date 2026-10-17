@@ -7,7 +7,7 @@ $root = Resolve-Path "$PSScriptRoot/../.."
 $build = Join-Path $root "build/windows-$($Arch.ToLowerInvariant())"
 
 if (-not $env:VULKAN_SDK) {
-    throw "Vulkan SDK가 필요합니다. https://vulkan.lunarg.com 에서 설치한 뒤 새 터미널에서 다시 실행하세요"
+    throw "The Vulkan SDK is required. Install it from https://vulkan.lunarg.com and open a new terminal."
 }
 
 cmake -S (Join-Path $root "Native") -B $build -A $Arch -DSILLOK_SHARED=ON -DSILLOK_BUILD_TESTS=OFF

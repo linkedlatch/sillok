@@ -113,7 +113,7 @@ TEST_CASE("checkpoint with different options starts over") {
     CHECK_THROWS_AS(runJob(request(checkpoint), silentReader(), first.services(), collector(partial, 3, &cancel), cancel), Cancelled);
 
     auto changed = request(checkpoint);
-    changed.options.vocabulary = {"다른 용어"};
+    changed.options.vocabulary = {"other term"};
     EchoServices second;
     Collected collected;
     CHECK(runJob(changed, silentReader(), second.services(), collector(collected), CancelToken{}).size() == 4);

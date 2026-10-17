@@ -21,8 +21,10 @@ struct ChunkTranscriber {
                     Engine& engine, const CancelToken& cancel) const;
 };
 
-std::string exportText(const std::vector<Segment>& segments);
-std::string exportSubRip(const std::vector<Segment>& segments);
+inline constexpr const char* kDefaultSpeakerFormat = "Speaker {speaker}";
+
+std::string exportText(const std::vector<Segment>& segments, const std::string& speakerFormat = kDefaultSpeakerFormat);
+std::string exportSubRip(const std::vector<Segment>& segments, const std::string& speakerFormat = kDefaultSpeakerFormat);
 std::string subRipTimestamp(double seconds);
 
 }

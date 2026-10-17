@@ -64,11 +64,6 @@ let package = Package(
         .target(name: "SillokNative", dependencies: ["SillokCore", "CSillok"], path: "apple/Sources/SillokNative"),
 
         .executableTarget(
-            name: "sillok-cli",
-            dependencies: ["SillokCore", "SillokAudio", "SillokNative", "SillokPlatform"],
-            path: "apple/Tools/sillok-cli"
-        ),
-        .executableTarget(
             name: "manifest-tool",
             dependencies: ["SillokCore"],
             path: "apple/Tools/manifest-tool"

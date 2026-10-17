@@ -11,7 +11,7 @@ public class NativeTests
     private static readonly string Diarizer = Repo.Model("Nemotron-3-Diarization.q8_0.gguf");
 
     private static void RequireFiles(params string[] paths) =>
-        Assert.SkipUnless(paths.All(File.Exists), "scripts/fetch-test-models.sh, scripts/make-test-audio.sh를 먼저 실행하세요");
+        Assert.SkipUnless(paths.All(File.Exists), "run scripts/fetch-test-models.sh and scripts/make-test-audio.sh first");
 
     [Fact]
     public void SystemInfoListsBackends()
@@ -27,9 +27,9 @@ public class NativeTests
             new() { Start = 0.5, End = 2.25, Text = "안녕하세요", Language = "ko", Speaker = "1" },
             new() { Start = 2.25, End = 3, Text = "네", Language = "ko", Speaker = "2" },
         ];
-        Assert.Equal("1\n00:00:00,500 --> 00:00:02,250\n[화자 1] 안녕하세요\n\n2\n00:00:02,250 --> 00:00:03,000\n[화자 2] 네\n",
+        Assert.Equal("1\n00:00:00,500 --> 00:00:02,250\n[Speaker 1] 안녕하세요\n\n2\n00:00:02,250 --> 00:00:03,000\n[Speaker 2] 네\n",
             NativeExport.Render(segments, ExportFormat.SubRip));
-        Assert.Equal("화자 1: 안녕하세요\n화자 2: 네\n", NativeExport.Render(segments, ExportFormat.Text));
+        Assert.Equal("화자 1: 안녕하세요\n화자 2: 네\n", NativeExport.Render(segments, ExportFormat.Text, "화자 {speaker}"));
     }
 
     [Fact]

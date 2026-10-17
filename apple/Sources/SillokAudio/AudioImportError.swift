@@ -6,8 +6,8 @@ public enum AudioImportError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unsupportedFormat: "지원하지 않는 파일 형식입니다"
-        case .noAudioTrack: "오디오 트랙이 없는 파일입니다"
+        case .unsupportedFormat: "unsupported file format"
+        case .noAudioTrack: "the file has no audio track"
         }
     }
 }

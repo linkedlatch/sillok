@@ -43,9 +43,9 @@ public sealed class WavAudioSource : IAudioSource, IDisposable
         try
         {
             using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true);
-            if (Tag(reader) != "RIFF") throw new InvalidDataException("WAV 파일이 아닙니다");
+            if (Tag(reader) != "RIFF") throw new InvalidDataException("not a WAV file");
             reader.ReadUInt32();
-            if (Tag(reader) != "WAVE") throw new InvalidDataException("WAV 파일이 아닙니다");
+            if (Tag(reader) != "WAVE") throw new InvalidDataException("not a WAV file");
 
             int format = 0, channels = 0, rate = 0, bits = 0;
             long dataLength = -1;
@@ -79,10 +79,10 @@ public sealed class WavAudioSource : IAudioSource, IDisposable
                 stream.Position = next;
             }
 
-            if (dataLength < 0) throw new InvalidDataException("WAV 데이터가 없습니다");
-            if (rate != PcmFormat.SampleRate || channels != 1) throw new InvalidDataException($"16kHz 모노 WAV가 아닙니다 ({rate}Hz, {channels}채널)");
+            if (dataLength < 0) throw new InvalidDataException("WAV file has no data");
+            if (rate != PcmFormat.SampleRate || channels != 1) throw new InvalidDataException($"WAV is not 16 kHz mono ({rate} Hz, {channels} channels)");
             isFloat = format == FloatCode && bits == 32;
-            if (!isFloat && !(format == PcmCode && bits == 16)) throw new InvalidDataException($"지원하지 않는 WAV 형식입니다 (형식 {format}, {bits}비트)");
+            if (!isFloat && !(format == PcmCode && bits == 16)) throw new InvalidDataException($"unsupported WAV encoding (format {format}, {bits} bits)");
             sampleCount = dataLength / BytesPerSample;
             Duration = sampleCount / (double)PcmFormat.SampleRate;
         }

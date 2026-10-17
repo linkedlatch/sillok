@@ -19,7 +19,7 @@ public struct NativeCore: TranscriptionCore {
             var error: UnsafeMutablePointer<CChar>?
             guard let vad = sillok_vad_new(path, &error) else {
                 defer { sillok_free(error) }
-                throw NativeError.failed(error.map { String(cString: $0) } ?? "VAD 모델을 불러오지 못했습니다")
+                throw NativeError.failed(error.map { String(cString: $0) } ?? "failed to load the VAD model")
             }
             defer { sillok_vad_free(vad) }
             let map = sillok_speech_map_new(vad)
@@ -72,7 +72,7 @@ public struct NativeCore: TranscriptionCore {
             var error: UnsafeMutablePointer<CChar>?
             guard let diarizer = sillok_diarizer_new(path, 1, &error) else {
                 defer { sillok_free(error) }
-                throw NativeError.failed(error.map { String(cString: $0) } ?? "화자 구분 모델을 불러오지 못했습니다")
+                throw NativeError.failed(error.map { String(cString: $0) } ?? "failed to load the diarization model")
             }
             defer { sillok_diarizer_free(diarizer) }
             return try withExtendedLifetime(box) {
