@@ -1,0 +1,3 @@
+# Google C++ style for naming and layout (docs/DESIGN.md D17).
+BasedOnStyle: Google
+Standard: c++20

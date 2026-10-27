@@ -1,0 +1,40 @@
+# Fetched third-party sources (scripts/fetch-deps.sh)
+/third_party/
+
+# Local build tools (cmake/ninja venv)
+/.tools/
+
+# Build trees
+/build*/
+/out/
+CMakeUserPresets.json
+compile_commands.json
+
+# Models and test audio are downloaded, never committed
+/models/
+/tests/data/audio/
+/tests/data/cache/
+*.bin
+*.gguf
+*.mlmodelc/
+*.mlmodelc.zip
+
+# Local documents
+/docs/
+
+# Run outputs
+/jobs/
+*.log
+
+# Editors and OS
+.vscode/
+.idea/
+.cache/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
