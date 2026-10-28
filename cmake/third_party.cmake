@@ -71,9 +71,10 @@ set(WHISPER_COREML ${SILLOK_COREML} CACHE INTERNAL "")
 # whisper.cpp then has to fall back to its own encoder (see backends/whisper).
 set(WHISPER_COREML_ALLOW_FALLBACK ON CACHE INTERNAL "")
 set(GGML_VULKAN ${SILLOK_VULKAN} CACHE INTERNAL "")
-# Android has no system OpenMP runtime; ggml's own thread pool saves the app
-# from shipping libomp.so.
-if(ANDROID)
+# Android and Windows have no OpenMP runtime the app could rely on (libomp.so,
+# libomp.dll with clang-cl, vcomp140.dll with MSVC); ggml's own thread pool
+# saves the app from shipping one.
+if(ANDROID OR WIN32)
     set(GGML_OPENMP OFF CACHE INTERNAL "")
 endif()
 add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/third_party/whisper.cpp" EXCLUDE_FROM_ALL SYSTEM)
