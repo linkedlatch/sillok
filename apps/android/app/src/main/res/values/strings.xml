@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sillok</string>
+
+    <!-- Models -->
+    <string name="models_title">Download the models</string>
+    <string name="models_body">Sillok transcribes on this device. It first needs its speech models, about %1$s. Wi-Fi is recommended.</string>
+    <string name="models_download">Download</string>
+    <string name="models_resume">Resume download</string>
+    <string name="models_stop">Pause</string>
+    <string name="models_progress">%1$s of %2$s · %3$s/s</string>
+    <string name="models_verifying">Checking the files…</string>
+    <string name="models_checking">Checking the models…</string>
+    <string name="models_damaged">A model file was damaged and has been removed. Download it again.</string>
+    <string name="models_download_failed">The download stopped: %1$s</string>
+    <string name="models_verified">All model files are intact.</string>
+    <string name="menu_verify_models">Check model files</string>
+    <string name="menu_about">About</string>
+
+    <!-- Home -->
+    <string name="home_open">Open file</string>
+    <string name="home_empty">Open an audio or video file to transcribe it.</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="delete_confirm">Delete “%1$s”?</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="ok">OK</string>
+    <string name="more">More</string>
+    <string name="back">Back</string>
+    <string name="title">Title</string>
+
+    <!-- Setup -->
+    <string name="setup_title">New transcription</string>
+    <string name="setup_language">Language</string>
+    <string name="language_auto">Automatic</string>
+    <string name="language_ko">Korean</string>
+    <string name="language_en">English</string>
+    <string name="setup_diarize">Tell speakers apart</string>
+    <string name="setup_glossary">Terms</string>
+    <string name="setup_glossary_hint">Names and terms that occur in the recording, one per line or separated by commas</string>
+    <string name="setup_device">Run on</string>
+    <string name="device_cpu">CPU</string>
+    <string name="setup_start">Start</string>
+
+    <!-- Running -->
+    <string name="running_title">Transcribing</string>
+    <string name="step_read">Reading the file</string>
+    <string name="step_analyze">Finding speech</string>
+    <string name="step_transcribe">Transcribing</string>
+    <string name="step_diarize">Telling speakers apart</string>
+    <string name="running_remaining">About %1$s left in this step</string>
+    <string name="running_cancelling">Cancelling…</string>
+    <string name="running_keep_open">Keep the app open until it finishes.</string>
+
+    <!-- Result -->
+    <string name="speaker_label">Speaker {n}</string>
+    <string name="speakers">Speakers</string>
+    <string name="export_txt">Share as text (.txt)</string>
+    <string name="export_srt">Share as subtitles (.srt)</string>
+    <string name="export_json">Share as JSON</string>
+    <string name="share">Share</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="result_missing">This transcript cannot be read.</string>
+    <string name="result_empty">No speech was found.</string>
+
+    <!-- Errors -->
+    <string name="error_unsupported_file">Cannot read the audio of this file (%1$s).</string>
+    <string name="error_model">A model could not be used: %1$s</string>
+    <string name="error_engine">Transcription failed: %1$s</string>
+</resources>
