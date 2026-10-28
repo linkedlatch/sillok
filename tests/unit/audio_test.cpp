@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "core/audio_buffer.hpp"
+#include "core/level.hpp"
 #include "core/resampler.hpp"
 
 namespace sillok {
@@ -209,6 +210,34 @@ TEST(AudioBufferTest, RemovesFilesLeftByEarlierRuns) {
 TEST(AudioBufferTest, NeedsAWritableDirectory) {
   EXPECT_THROW(AudioBuffer(std::filesystem::temp_directory_path() / "sillok-no-such-dir"),
                std::runtime_error);
+}
+
+double PeakOf(std::span<const float> pcm) {
+  double peak = 0.0;
+  for (const float x : pcm) peak = std::max(peak, std::abs(static_cast<double>(x)));
+  return peak;
+}
+
+TEST(LevelTest, RaisesQuietSpeechNextToLoudSpeech) {
+  // A loud sentence, a pause, then one 40 dB quieter.
+  auto pcm = Sine(16000, 300.0, 4.0, 0.3);
+  pcm.resize(pcm.size() + 16000 * 2, 0.0f);
+  const auto quiet = Sine(16000, 300.0, 4.0, 0.003);
+  pcm.insert(pcm.end(), quiet.begin(), quiet.end());
+  const std::vector<float> original = pcm;
+  NormalizeLevel(pcm);
+  const std::span<const float> all(pcm);
+  EXPECT_NEAR(PeakOf(all.subspan(0, 16000 * 2)), 0.3, 1e-6);  // never lowered
+  const double raised = PeakOf(all.subspan(16000 * 7, 16000 * 2));
+  EXPECT_GT(raised, 0.003 * 20);  // close to 30 dB more
+  EXPECT_LE(raised, 0.003 * 31.7);
+  EXPECT_LE(PeakOf(all), 0.95 + 1e-6);
+}
+
+TEST(LevelTest, KeepsSilenceQuiet) {
+  std::vector<float> pcm(16000 * 3, 0.0001f);
+  NormalizeLevel(pcm);
+  EXPECT_LE(PeakOf(pcm), 0.0001 * 31.7);
 }
 
 }  // namespace

@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include "core/cancel.hpp"
+#include "core/level.hpp"
 #include "core/prompt.hpp"
 #include "core/stitcher.hpp"
 #include "core/words.hpp"
@@ -17,6 +18,20 @@ namespace {
 
 constexpr int kEnergyFrame = kSampleRate / 100;  // 10 ms
 constexpr SampleIndex kDiarizationChunk = SampleIndex{kSampleRate} * 10;
+
+// Samples of `range` with quiet passages raised (NormalizeLevel), using the
+// audio around the range so that the gain does not jump at its edges.
+std::vector<float> ReadLeveled(const AudioBuffer& audio, SampleRange range) {
+  constexpr SampleIndex kMargin = kSampleRate * 12 / 10;
+  const SampleIndex begin = std::max<SampleIndex>(0, range.begin - kMargin);
+  const SampleIndex end = std::min(audio.size(), range.end + kMargin);
+  std::vector<float> pcm = audio.Read({begin, end});
+  NormalizeLevel(pcm);
+  const auto first = static_cast<std::size_t>(std::clamp(range.begin, begin, end) - begin);
+  const auto last = static_cast<std::size_t>(std::clamp(range.end, begin, end) - begin);
+  return {pcm.begin() + static_cast<std::ptrdiff_t>(first),
+          pcm.begin() + static_cast<std::ptrdiff_t>(last)};
+}
 
 struct Analysis {
   std::vector<float> probabilities;  // one per voice-detection frame
@@ -37,7 +52,7 @@ Analysis Analyze(const AudioBuffer& audio, ModelProvider& models,
   for (SampleIndex begin = 0; begin < audio.size(); begin += chunk) {
     ThrowIfStopped(stop);
     const std::vector<float> probabilities =
-        detector->Detect(audio.Read({begin, begin + chunk}));
+        detector->Detect(ReadLeveled(audio, {begin, begin + chunk}));
     analysis.probabilities.insert(analysis.probabilities.end(),
                                   probabilities.begin(), probabilities.end());
     progress(Stage::kAnalyze,
@@ -159,7 +174,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
   Context context;
   for (const Window& window : windows) {
     ThrowIfStopped(stop);
-    const std::vector<float> pcm = audio.Read(window.audio);
+    const std::vector<float> pcm = ReadLeveled(audio, window.audio);
     LanguageDecision decision{.language = options.language,
                               .alternative = std::nullopt,
                               .overruled = false};

@@ -29,6 +29,21 @@ add_test(NAME core_includes_only_std
     COMMAND "${CMAKE_COMMAND}" -DCORE_DIR=${PROJECT_SOURCE_DIR}/src/core
             -P "${CMAKE_CURRENT_SOURCE_DIR}/check_core_includes.cmake")
 
+# Integration tests with the real models; they skip without model files and
+# test recordings.
+if(TARGET sillok_models)
+    set(SILLOK_TEST_MODELS_DIR "${PROJECT_SOURCE_DIR}/models" CACHE PATH "Models for integration tests")
+    set(SILLOK_TEST_AUDIO_DIR "${PROJECT_SOURCE_DIR}/tests/data/audio" CACHE PATH "Recordings for integration tests")
+    add_executable(sillok_integration_tests integration/models_test.cpp "${PROJECT_SOURCE_DIR}/apps/cli/wav_reader.cpp")
+    target_include_directories(sillok_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/apps/cli")
+    target_compile_definitions(sillok_integration_tests PRIVATE
+        SILLOK_TEST_MODELS_DIR="${SILLOK_TEST_MODELS_DIR}"
+        SILLOK_TEST_AUDIO_DIR="${SILLOK_TEST_AUDIO_DIR}")
+    target_link_libraries(sillok_integration_tests PRIVATE sillok_models GTest::gtest_main)
+    sillok_set_warnings(sillok_integration_tests)
+    gtest_discover_tests(sillok_integration_tests DISCOVERY_TIMEOUT 60 PROPERTIES LABELS integration TIMEOUT 1800)
+endif()
+
 # Measurements with the real models (scripts/eval), on the shared library.
 if(TARGET sillok)
     add_executable(sillok_probe integration/probe.cpp "${PROJECT_SOURCE_DIR}/apps/cli/wav_reader.cpp")

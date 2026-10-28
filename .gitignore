@@ -38,3 +38,6 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Evaluation outputs
+/eval/

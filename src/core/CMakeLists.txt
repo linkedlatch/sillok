@@ -5,6 +5,7 @@ add_library(sillok_core STATIC
     export.cpp
     files.cpp
     language.cpp
+    level.cpp
     pipeline.cpp
     postprocess.cpp
     prompt.cpp

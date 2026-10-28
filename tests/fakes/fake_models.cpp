@@ -8,8 +8,10 @@
 namespace sillok::testing {
 namespace {
 
-constexpr float kBaseAmplitude = 0.1f;
-constexpr float kAmplitudeStep = 0.001f;
+// Loud enough that NormalizeLevel() never raises a burst, even one word
+// alone in two seconds of silence: amplitude carries the word id.
+constexpr float kBaseAmplitude = 0.2f;
+constexpr float kAmplitudeStep = 0.0005f;
 constexpr float kSilence = 0.05f;
 
 struct Burst {

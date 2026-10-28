@@ -22,6 +22,9 @@ class SileroVoiceDetector final : public VoiceDetector {
     const std::string path = PathToUtf8(config.model);
     context_.reset(whisper_vad_init_from_file_with_params(path.c_str(), params));
     if (!context_) throw ModelError("cannot load the VAD model " + path);
+    // The LSTM state is allocated but not initialized; Detect() carries it
+    // over between calls, so it has to start from zero.
+    whisper_vad_reset_state(context_.get());
   }
 
   ModelInfo Info() const override { return info_; }
