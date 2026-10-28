@@ -1,21 +1,47 @@
-# Third-party libraries fetched by scripts/fetch-third-party.sh into SILLOK_THIRD_PARTY_DIR.
-# Only src/backends, src/capi, apps and tests may link the targets defined here
-# (docs/DESIGN.md D1); src/core never sees them.
+# Third-party code in third_party/: git submodules (`git submodule update
+# --init`, not recursive) and the nlohmann/json header. Only src/backends,
+# src/capi, apps and tests may link the targets defined here (docs/DESIGN.md
+# D1); src/core never sees them.
 
-set(SILLOK_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party" CACHE PATH
-    "Third-party sources fetched by scripts/fetch-third-party.sh")
+set(SILLOK_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party")
 
 function(sillok_require_third_party name)
-    if(NOT EXISTS "${SILLOK_THIRD_PARTY_DIR}/${name}")
-        message(FATAL_ERROR "${SILLOK_THIRD_PARTY_DIR}/${name} is missing; run scripts/fetch-third-party.sh")
+    if(NOT EXISTS "${SILLOK_THIRD_PARTY_DIR}/${name}/CMakeLists.txt")
+        message(FATAL_ERROR "${SILLOK_THIRD_PARTY_DIR}/${name} is missing; run git submodule update --init")
     endif()
 endfunction()
 
-# nlohmann/json: used by the C ABI layer and the CLI.
-sillok_require_third_party(json)
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-set(JSON_Install OFF CACHE INTERNAL "")
-add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/json" "${CMAKE_BINARY_DIR}/third_party/json" EXCLUDE_FROM_ALL SYSTEM)
+# Applies patches/<name>/*.patch to a submodule once (.gitmodules ignores the
+# resulting changes).
+function(sillok_apply_patches name)
+    file(GLOB patches "${PROJECT_SOURCE_DIR}/patches/${name}/*.patch")
+    if(NOT patches)
+        return()
+    endif()
+    find_package(Git REQUIRED)
+    foreach(patch IN LISTS patches)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${patch}"
+            WORKING_DIRECTORY "${SILLOK_THIRD_PARTY_DIR}/${name}"
+            RESULT_VARIABLE applied OUTPUT_QUIET ERROR_QUIET)
+        if(NOT applied EQUAL 0)
+            execute_process(
+                COMMAND "${GIT_EXECUTABLE}" apply "${patch}"
+                WORKING_DIRECTORY "${SILLOK_THIRD_PARTY_DIR}/${name}"
+                RESULT_VARIABLE failed)
+            if(failed)
+                message(FATAL_ERROR "cannot apply ${patch}")
+            endif()
+            message(STATUS "Applied ${patch}")
+        endif()
+    endforeach()
+endfunction()
+
+# nlohmann/json v3.12.0 (55f93686), single_include/nlohmann/json.hpp only:
+# used by the C ABI layer and the CLI.
+add_library(nlohmann_json INTERFACE)
+add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+target_include_directories(nlohmann_json SYSTEM INTERFACE "${SILLOK_THIRD_PARTY_DIR}/json/include")
 
 if(SILLOK_BUILD_TESTS)
     sillok_require_third_party(googletest)
@@ -32,6 +58,7 @@ endif()
 # below link the same ggml target (docs/DESIGN.md D2). Everything is static so the
 # sillok library is self-contained.
 sillok_require_third_party(whisper.cpp)
+sillok_apply_patches(whisper.cpp)
 # whisper.cpp declares cmake_minimum_required(3.5), so without CMP0077 its
 # option(BUILD_SHARED_LIBS) would override the value set here.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)

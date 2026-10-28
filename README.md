@@ -20,8 +20,9 @@ src/backends/             one directory per model; models.cpp picks the models
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 tests/                    unit tests with fake models, integration probe
-scripts/                  fetching third-party sources and test audio, evaluation
-patches/                  local patches to third-party sources (fetch-third-party.sh applies them)
+third_party/              whisper.cpp, NeMo-Speech.cpp, googletest (submodules); nlohmann/json header
+scripts/                  fetching test audio, evaluation
+patches/                  local patches to the submodules (CMake applies them)
 ```
 
 `patches/whisper.cpp` lets a cancel stop a Whisper pass midway on the CPU
@@ -30,11 +31,11 @@ integration tests: one of them fails if the patch no longer takes effect.
 
 ## Build
 
-Requirements: CMake 3.28+, a C++20 compiler, git, curl; Vulkan SDK headers
+Requirements: CMake 3.28+, a C++20 compiler, git; Vulkan SDK headers
 and `glslc` for `-DSILLOK_VULKAN=ON`.
 
 ```
-scripts/fetch-third-party.sh         # pinned sources into third_party/
+git submodule update --init          # not --recursive: NeMo-Speech.cpp's own submodules are unused
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build

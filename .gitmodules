@@ -1,0 +1,13 @@
+[submodule "third_party/whisper.cpp"]
+	path = third_party/whisper.cpp
+	url = https://github.com/ggml-org/whisper.cpp.git
+	shallow = true
+	ignore = dirty
+[submodule "third_party/NeMo-Speech.cpp"]
+	path = third_party/NeMo-Speech.cpp
+	url = https://github.com/NVIDIA/NeMo-Speech.cpp.git
+	shallow = true
+[submodule "third_party/googletest"]
+	path = third_party/googletest
+	url = https://github.com/google/googletest.git
+	shallow = true
