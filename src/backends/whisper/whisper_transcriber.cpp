@@ -109,6 +109,8 @@ class WhisperTranscriber final : public Transcriber {
 
   std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
                                        std::stop_token stop) override {
+    // whisper_full checks the abort callback only after its encoder pass.
+    ThrowIfStopped(stop);
     whisper_full_params params =
         whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.n_threads = threads_;
