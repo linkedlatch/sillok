@@ -21,7 +21,12 @@ src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 tests/                    unit tests with fake models, integration probe
 scripts/                  fetching dependencies and test audio, evaluation
+patches/                  local patches to third-party code, applied by fetch-deps.sh
 ```
+
+`patches/whisper.cpp` lets a cancel stop a Whisper pass midway on the CPU
+(upstream checks only between passes). After updating whisper.cpp, run the
+integration tests: one of them fails if the patch no longer takes effect.
 
 ## Build
 
