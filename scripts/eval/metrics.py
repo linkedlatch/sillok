@@ -90,11 +90,14 @@ def speaker_mapping(reference, hypothesis, start, end, step=0.01):
     return best
 
 
-def der(reference, hypothesis, start, end, collar=0.25, step=0.01):
+def der(reference, hypothesis, start, end, collar=0.25, step=0.01, mapping=None):
     """Diarization error rate with overlapping speech scored and `collar`
     seconds around reference boundaries ignored. Turns are (t0, t1, speaker)
-    in seconds. Returns (der, miss, false_alarm, confusion) as fractions."""
-    mapping = speaker_mapping(reference, hypothesis, start, end, step)
+    in seconds. `mapping` (hypothesis -> reference speaker) defaults to the
+    optimal one-to-one mapping. Returns (der, miss, false_alarm, confusion)
+    as fractions."""
+    if mapping is None:
+        mapping = speaker_mapping(reference, hypothesis, start, end, step)
     ref_frames = _frames(reference, start, end, step)
     hyp_frames = _frames(hypothesis, start, end, step)
     ignored = [False] * len(ref_frames)

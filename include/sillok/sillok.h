@@ -125,7 +125,10 @@ SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
  *                           "confidence": 0.93, "speaker": 0}, ...]}, ...],
  *  "models": {"transcription": {"name": "...", "device": "...",
  *                               "fell_back_to_cpu": false}, ...}}
- * "speaker" is absent without diarization. */
+ * "speaker" is absent without diarization.
+ * Times locate sentences well enough to listen back to them; word times are
+ * approximate. To play a segment, start about a second before "start_ms":
+ * a segment occasionally starts later than its first word. */
 SILLOK_API sillok_status sillok_job_run(sillok_job* job,
                                         sillok_progress_fn progress,
                                         void* user_data, char** out_json);

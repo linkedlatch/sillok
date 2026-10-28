@@ -91,10 +91,13 @@ def switch(reference, transcript):
     detected_in_block = sum(
         1 for b in switches
         if any(decided[i] == utterances[i]["language"] for i in b))
+    # A change away from the block's language; catching up late after a real
+    # switch is not one.
     false_switches = 0
     for block in blocks:
+        right = utterances[block[0]]["language"]
         languages = [decided[i] for i in block if decided[i] is not None]
-        false_switches += sum(1 for a, b in zip(languages, languages[1:]) if a != b)
+        false_switches += sum(1 for a, b in zip(languages, languages[1:]) if a == right and b != right)
     pairs = [(tokens(u["text"], u["language"]),
               tokens(" ".join(w["text"] for w in words), u["language"]))
              for u, words in zip(utterances, groups)]
@@ -112,9 +115,37 @@ def turns_of(transcript):
             for s in transcript["segments"] if s.get("speaker") is not None]
 
 
-def speakers(reference, transcript):
+def speech_spans(wav_path, utterances, frame=320):
+    """Span of each utterance from its first to its last 20 ms frame within
+    26 dB of its loudest frame: FLEURS recordings start and end in silence,
+    which must not count as speech in the reference."""
+    import array
+    import math
+    import wave
+    with wave.open(wav_path) as audio:
+        samples = array.array("h", audio.readframes(audio.getnframes()))
+    spans = []
+    for u in utterances:
+        first, last = int(u["start"] * 16000), int(u["end"] * 16000)
+        levels = []
+        for i in range(first, last, frame):
+            chunk = samples[i:min(i + frame, last)]
+            levels.append(math.sqrt(sum(x * x for x in chunk) / max(len(chunk), 1)))
+        top = max(levels, default=0.0)
+        voiced = [k for k, level in enumerate(levels) if top > 0 and level >= 0.05 * top]
+        if voiced:
+            spans.append((u["start"] + voiced[0] * frame / 16000,
+                          u["start"] + (voiced[-1] + 1) * frame / 16000))
+        else:
+            spans.append((u["start"], u["end"]))
+    return spans
+
+
+def speakers(reference, transcript, wav_path=None):
     utterances = reference["utterances"]
-    ref_turns = [(u["start"], u["end"], u["gender"]) for u in utterances]
+    spans = (speech_spans(wav_path, utterances) if wav_path
+             else [(u["start"], u["end"]) for u in utterances])
+    ref_turns = [(t0, t1, u["gender"]) for (t0, t1), u in zip(spans, utterances)]
     hyp_turns = turns_of(transcript)
     der = metrics.der(ref_turns, hyp_turns, 0.0, reference["duration"])
     # Many-to-one: each hypothesis speaker counts as the gender it overlaps
@@ -136,8 +167,11 @@ def speakers(reference, transcript):
             weight[gender] = weight.get(gender, 0) + word["end"] - word["start"]
         if weight and max(weight, key=weight.get) == utterance["gender"]:
             attributed += 1
+    many_to_one = metrics.der(ref_turns, hyp_turns, 0.0, reference["duration"], mapping=label)
     return {"der": round(der[0], 4), "miss": round(der[1], 4), "false_alarm": round(der[2], 4),
             "confusion": round(der[3], 4),
+            "der_many_to_one": round(many_to_one[0], 4),
+            "confusion_many_to_one": round(many_to_one[3], 4),
             "hypothesis_speakers": len({s for _, _, s in hyp_turns}),
             "utterances_attributed_to_right_voice": round(attributed / len(utterances), 4)}
 
@@ -178,6 +212,16 @@ def ami(transcript, download_dir, offset):
     normalize = lambda w: " ".join(metrics.english_words(w["text"]))
     pairs = [(r, h) for r, h in metrics.align_words(reference, hypothesis, normalize) if normalize(r)]
     errors = [abs(h["start"] - r["start"]) for r, h in pairs]
+    # Where playback starts when a sentence is clicked: its first word.
+    firsts, index = set(), 0
+    for segment in transcript["segments"]:
+        firsts.add(index)
+        index += len(segment["words"])
+    first_ids = {id(hypothesis[i]) for i in firsts if i < len(hypothesis)}
+    lateness = [h["start"] - r["start"] for r, h in pairs if id(h) in first_ids]
+    result.update(sentence_starts_matched=len(lateness),
+                  sentence_start_late_over_1s=round(
+                      sum(e > 1.0 for e in lateness) / max(len(lateness), 1), 4))
     result.update(words_matched=len(pairs), reference_words=len(reference),
                   start_error_median=round(metrics.percentile(errors, 0.5), 3),
                   start_error_p90=round(metrics.percentile(errors, 0.9), 3),
@@ -198,7 +242,10 @@ def main(argv):
         result = ami(load(argv[2]), argv[3], offset)
     else:
         reference, transcript = load(argv[2]), load(argv[3])
-        result = {"accuracy": accuracy, "switch": switch, "speakers": speakers}[command](reference, transcript)
+        if command == "speakers":
+            result = speakers(reference, transcript, argv[4] if len(argv) > 4 else None)
+        else:
+            result = {"accuracy": accuracy, "switch": switch}[command](reference, transcript)
     print(json.dumps(result, ensure_ascii=False))
 
 

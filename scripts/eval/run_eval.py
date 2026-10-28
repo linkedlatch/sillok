@@ -3,7 +3,7 @@
 Usage:
   python3 -I run_eval.py --build BUILD_DIR --models DIR --audio DIR \\
       --device cpu|gpu --out OUT_DIR [--only step,step,...]
-Steps: accuracy, switch, korean_speakers, ami, ami_dtw, long, cancel, exit.
+Steps: accuracy, switch, korean_speakers, ami, long, cancel, exit.
 Each step's result is saved as soon as it finishes, so a run can be resumed
 with --only for the missing steps.
 """
@@ -83,16 +83,14 @@ class Evaluation:
     def korean_speakers(self):
         name = "korean_two_speakers"
         transcript, run = self.transcribe(name, self.set_path(name, "wav"), diarize=True)
-        return dict(evaluate.speakers(evaluate.load(self.set_path(name, "json")), transcript), **run)
+        return dict(evaluate.speakers(evaluate.load(self.set_path(name, "json")), transcript,
+                                      self.set_path(name, "wav")), **run)
 
     def ami(self, env=None, name="ami"):
         download = os.path.join(self.args.audio, "download")
         wav = os.path.join(download, "ES2004a.Mix-Headset.wav")
         transcript, run = self.transcribe(name, wav, diarize=True, env=env)
         return dict(evaluate.ami(transcript, download, 0.0), **run)
-
-    def ami_dtw(self):
-        return self.ami(dict(os.environ, SILLOK_WHISPER_DTW="1"), "ami_dtw")
 
     def long(self):
         result = {}
@@ -134,7 +132,7 @@ def main():
     parser = argparse.ArgumentParser()
     for flag in ("--build", "--models", "--audio", "--device", "--out"):
         parser.add_argument(flag, required=True)
-    parser.add_argument("--only", default="accuracy,switch,korean_speakers,ami,ami_dtw,long,cancel,exit")
+    parser.add_argument("--only", default="accuracy,switch,korean_speakers,ami,long,cancel,exit")
     args = parser.parse_args()
     evaluation = Evaluation(args)
     for step in args.only.split(","):
