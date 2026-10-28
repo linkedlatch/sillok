@@ -206,6 +206,10 @@ def ami(transcript, download_dir, offset):
         result.update(der=round(der[0], 4), miss=round(der[1], 4),
                       false_alarm=round(der[2], 4), confusion=round(der[3], 4),
                       hypothesis_speakers=len({s for _, _, s in hyp_turns}))
+        single = metrics.der(ref_turns, hyp_turns, start, end, skip_overlap=True)
+        result.update(der_without_overlap=round(single[0], 4), miss_without_overlap=round(single[1], 4),
+                      false_alarm_without_overlap=round(single[2], 4),
+                      confusion_without_overlap=round(single[3], 4))
 
     reference = [w for w in ami_words(download_dir, offset) if start <= w["start"] < end]
     hypothesis = hypothesis_words(transcript)

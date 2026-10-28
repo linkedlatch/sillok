@@ -90,12 +90,15 @@ def speaker_mapping(reference, hypothesis, start, end, step=0.01):
     return best
 
 
-def der(reference, hypothesis, start, end, collar=0.25, step=0.01, mapping=None):
+def der(reference, hypothesis, start, end, collar=0.25, step=0.01, mapping=None,
+        skip_overlap=False):
     """Diarization error rate with overlapping speech scored and `collar`
     seconds around reference boundaries ignored. Turns are (t0, t1, speaker)
     in seconds. `mapping` (hypothesis -> reference speaker) defaults to the
-    optimal one-to-one mapping. Returns (der, miss, false_alarm, confusion)
-    as fractions."""
+    optimal one-to-one mapping. `skip_overlap` leaves out frames where the
+    reference has several speakers, which a transcript with one speaker per
+    segment cannot match. Returns (der, miss, false_alarm, confusion) as
+    fractions."""
     if mapping is None:
         mapping = speaker_mapping(reference, hypothesis, start, end, step)
     ref_frames = _frames(reference, start, end, step)
@@ -109,7 +112,7 @@ def der(reference, hypothesis, start, end, collar=0.25, step=0.01, mapping=None)
                 ignored[i] = True
     miss = false_alarm = confusion = total = 0
     for rf, hf, skip in zip(ref_frames, hyp_frames, ignored):
-        if skip:
+        if skip or (skip_overlap and len(rf) > 1):
             continue
         mapped = {mapping.get(h) for h in hf}
         total += len(rf)
