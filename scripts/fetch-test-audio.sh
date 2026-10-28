@@ -5,7 +5,8 @@
 #   reference transcripts. Only the first 48 MB of each audio archive is
 #   downloaded (of 214 MB and 290 MB); the complete utterances in it are used.
 # - AMI meeting ES2004a (CC BY 4.0): headset mix with the speaker reference
-#   of pyannote/AMI-diarization-setup.
+#   of pyannote/AMI-diarization-setup, and the manual word timings, read with
+#   range requests from the 22.9 MB annotation archive (about 0.6 MB fetched).
 # Every download is pinned to a revision and checked against its SHA-256.
 #
 # Usage: scripts/fetch-test-audio.sh [dir]   (default: <repo>/tests/data/audio)
@@ -44,6 +45,24 @@ for entry in "${files[@]}"; do
   total=$((total + $(stat -c %s "$path")))
 done
 awk -v b="$total" 'BEGIN { printf "downloaded %.1f MB\n", b / 1e6 }'
+
+# AMI manual word annotations, one file per participant.
+words=(
+  "ES2004a.A.words.xml|3b91765c8985e7c2652f1004832c00840e88bad4c3213296192b9fd741d675cc"
+  "ES2004a.B.words.xml|0e24646b84f2772bb3ca28e666df5f7ba48cde647589f7ae8f85e2724ff5cbc3"
+  "ES2004a.C.words.xml|07c25c4831fdc91cdff736ebf27c1380d0a7ef98e9835e33b15d44797fed7fd1"
+  "ES2004a.D.words.xml|e085188b2f4855808911934c309ba965c283e54371044c9086185f27913d44f8"
+)
+members=()
+for entry in "${words[@]}"; do members+=("words/${entry%%|*}"); done
+if ! (cd "$dest/download" && for entry in "${words[@]}"; do
+        echo "${entry##*|}  ${entry%%|*}"; done | sha256sum --check --status); then
+  python3 -I "$root/scripts/eval/zip_members.py" \
+    http://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip \
+    "$dest/download" "${members[@]}"
+  (cd "$dest/download" && for entry in "${words[@]}"; do
+     echo "${entry##*|}  ${entry%%|*}"; done | sha256sum --check --quiet)
+fi
 
 for lang in ko_kr en_us; do
   printf '%s: ' "$lang"

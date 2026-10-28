@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <numbers>
 #include <vector>
 
@@ -161,6 +163,52 @@ TEST(AudioBufferTest, FrameEnergy) {
   EXPECT_FLOAT_EQ(energy[0], 0.0f);
   EXPECT_FLOAT_EQ(energy[1], 0.25f);
   EXPECT_FLOAT_EQ(energy[2], 0.0f);
+}
+
+std::filesystem::path FreshDirectory(const char* name) {
+  const auto dir = std::filesystem::temp_directory_path() / name;
+  std::filesystem::remove_all(dir);
+  std::filesystem::create_directories(dir);
+  return dir;
+}
+
+TEST(AudioBufferTest, KeepsSamplesInATemporaryFile) {
+  const auto dir = FreshDirectory("sillok-audio-buffer-test");
+  {
+    AudioBuffer audio(dir);
+    std::vector<float> pcm(16000 * 10);
+    for (std::size_t i = 0; i < pcm.size(); ++i) {
+      pcm[i] = static_cast<float>(i % 1000) / 2000.0f;
+    }
+    audio.Push(pcm, 16000, 1);
+    audio.Finish();
+    const auto middle = audio.Read({123456, 123460});
+    EXPECT_NEAR(middle[0], pcm[123456], 1.0 / 32768.0);
+    AudioBuffer moved = std::move(audio);
+    EXPECT_EQ(moved.size(), 160000);
+    EXPECT_NEAR(moved.Read({159999, 160000})[0], pcm[159999], 1.0 / 32768.0);
+#ifndef _WIN32
+    // The file has no name while in use, so nothing can be left behind.
+    EXPECT_TRUE(std::filesystem::is_empty(dir));
+#endif
+  }
+  EXPECT_TRUE(std::filesystem::is_empty(dir));
+  std::filesystem::remove_all(dir);
+}
+
+TEST(AudioBufferTest, RemovesFilesLeftByEarlierRuns) {
+  const auto dir = FreshDirectory("sillok-audio-leftover-test");
+  std::ofstream(dir / "sillok-audio-00000000deadbeef.pcm") << "old";
+  std::ofstream(dir / "unrelated.pcm") << "keep";
+  { AudioBuffer audio(dir); }
+  EXPECT_FALSE(std::filesystem::exists(dir / "sillok-audio-00000000deadbeef.pcm"));
+  EXPECT_TRUE(std::filesystem::exists(dir / "unrelated.pcm"));
+  std::filesystem::remove_all(dir);
+}
+
+TEST(AudioBufferTest, NeedsAWritableDirectory) {
+  EXPECT_THROW(AudioBuffer(std::filesystem::temp_directory_path() / "sillok-no-such-dir"),
+               std::runtime_error);
 }
 
 }  // namespace

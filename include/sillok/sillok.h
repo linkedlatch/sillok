@@ -83,7 +83,10 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
 /* --- Engine -------------------------------------------------------------- */
 
 /* `config_json`: {"models_dir": "...", "device": "cpu" | "gpu",
- *                 "gpu_index": 0, "threads": 0}
+ *                 "gpu_index": 0, "threads": 0, "temp_dir": "..."}
+ * Jobs keep their recording in a file in "temp_dir" (default: the system's
+ * temporary directory), so memory does not grow with its length. Android has
+ * no usable default: pass the app's cache directory there.
  * Models are loaded while a job runs, one stage at a time, and freed
  * afterwards. Jobs keep the engine alive, so the engine may be destroyed
  * before its jobs. */

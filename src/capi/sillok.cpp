@@ -64,8 +64,8 @@ void RequireArgument(bool ok, const char* message) {
 }
 
 struct EngineState {
-  EngineConfig config;
   std::unique_ptr<ModelProvider> models;
+  std::filesystem::path temp_dir;
   std::atomic<bool> busy = false;
 };
 
@@ -77,9 +77,15 @@ struct sillok_engine {
 };
 
 struct sillok_job {
+  sillok_job(std::shared_ptr<sillok::EngineState> engine_state,
+             sillok::PipelineOptions pipeline_options)
+      : engine(std::move(engine_state)),
+        options(std::move(pipeline_options)),
+        audio(engine->temp_dir) {}
+
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
-  sillok::AudioBuffer audio;
+  sillok::AudioBuffer audio;  // kept in a temporary file
   std::stop_source stop;
   bool ran = false;
 };
@@ -253,9 +259,16 @@ sillok_status sillok_engine_create(const char* config_json,
     RequireArgument(config_json != nullptr && out_engine != nullptr,
                     "config_json and out_engine are required");
     *out_engine = nullptr;
+    const sillok::EngineSettings settings = sillok::ParseEngineConfig(config_json);
     auto state = std::make_shared<sillok::EngineState>();
-    state->config = sillok::ParseEngineConfig(config_json);
-    state->models = sillok::OpenModels(state->config);
+    state->temp_dir = settings.temp_dir.empty()
+                          ? std::filesystem::temp_directory_path()
+                          : settings.temp_dir;
+    if (!std::filesystem::is_directory(state->temp_dir)) {
+      throw std::invalid_argument("temp_dir is not a directory: " +
+                                  sillok::PathToUtf8(state->temp_dir));
+    }
+    state->models = sillok::OpenModels(settings.models);
     sillok::RegisterExitHandlerOnce(sillok::ExitSafeModels::engine_created);
     *out_engine = new sillok_engine{std::move(state)};
     return SILLOK_OK;
@@ -270,9 +283,8 @@ sillok_status sillok_job_create(sillok_engine* engine, const char* options_json,
     RequireArgument(engine != nullptr && out_job != nullptr,
                     "engine and out_job are required");
     *out_job = nullptr;
-    auto job = std::make_unique<sillok_job>();
-    job->engine = engine->state;
-    job->options = sillok::ParseJobOptions(options_json ? options_json : "");
+    auto job = std::make_unique<sillok_job>(
+        engine->state, sillok::ParseJobOptions(options_json ? options_json : ""));
     *out_job = job.release();
     return SILLOK_OK;
   });

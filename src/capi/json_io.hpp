@@ -15,7 +15,15 @@
 
 namespace sillok {
 
-EngineConfig ParseEngineConfig(std::string_view json);
+// Engine configuration of the C ABI.
+struct EngineSettings {
+  EngineConfig models;
+  // Where a job keeps its recording; empty for the system's temporary
+  // directory.
+  std::filesystem::path temp_dir;
+};
+
+EngineSettings ParseEngineConfig(std::string_view json);
 PipelineOptions ParseJobOptions(std::string_view json);
 // Empty input gives the defaults.
 ExportOptions ParseExportOptions(std::string_view json);

@@ -75,11 +75,13 @@ std::optional<int> ReadSpeaker(const Json& object) {
 
 }  // namespace
 
-EngineConfig ParseEngineConfig(std::string_view text) {
+EngineSettings ParseEngineConfig(std::string_view text) {
   const Json json = Parse(text, "engine config");
   RejectUnknownKeys(json, "engine config",
-                    {"models_dir", "device", "gpu_index", "threads"});
-  EngineConfig config;
+                    {"models_dir", "device", "gpu_index", "threads", "temp_dir"});
+  EngineSettings settings;
+  settings.temp_dir = PathFromUtf8(Get<std::string>(json, "temp_dir", ""));
+  EngineConfig& config = settings.models;
   const auto models_dir = Get<std::string>(json, "models_dir", "");
   if (models_dir.empty()) throw std::invalid_argument("\"models_dir\" is required");
   config.models_dir = PathFromUtf8(models_dir);
@@ -96,7 +98,7 @@ EngineConfig ParseEngineConfig(std::string_view text) {
   if (config.gpu_index < 0 || config.threads < 0) {
     throw std::invalid_argument("\"gpu_index\" and \"threads\" must be >= 0");
   }
-  return config;
+  return settings;
 }
 
 PipelineOptions ParseJobOptions(std::string_view text) {

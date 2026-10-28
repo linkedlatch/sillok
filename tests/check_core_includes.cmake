@@ -3,7 +3,7 @@
 set(standard_headers
     algorithm array atomic bit cctype chrono cmath compare concepts cstddef
     cstdint cstdio cstdlib cstring exception filesystem fstream functional
-    iterator limits map memory mutex numbers numeric optional set span sstream
+    iterator limits map memory mutex numbers numeric optional random set span sstream
     stdexcept stop_token string string_view system_error thread tuple
     type_traits unordered_map utility variant vector)
 file(GLOB sources "${CORE_DIR}/*.hpp" "${CORE_DIR}/*.cpp")
