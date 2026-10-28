@@ -104,7 +104,10 @@ SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
 
 /* Appends decoded audio: `frames` frames of `channels` interleaved float
  * samples in [-1, 1] at `sample_rate` Hz (8000-192000). Rate and channel
- * count must stay the same for the whole recording. */
+ * count must stay the same for the whole recording. Transcript times count
+ * from the first sample pushed, so push the recording from its start, with
+ * encoder priming already removed (decoders such as AVAudioFile and ffmpeg
+ * do), for the times to match the original file. */
 SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
                                                const float* samples,
                                                size_t frames,
