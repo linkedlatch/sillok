@@ -5,13 +5,19 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <optional>
 #include <set>
+#include <stop_token>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "backends/models.hpp"
+#include "core/cancel.hpp"
 #include "core/level.hpp"
 #include "wav_reader.hpp"
 
@@ -33,6 +39,34 @@ std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1
   }
   std::fclose(file);
   return pcm;
+}
+
+// Runs `work` and requests a stop after `delay`. Returns the time from the
+// request to `work` ending with Cancelled, or nothing when `work` finished
+// before the request.
+template <typename Work>
+std::optional<std::chrono::duration<double>> TimeToCancel(Work work,
+                                                          std::chrono::milliseconds delay) {
+  using Clock = std::chrono::steady_clock;
+  std::stop_source source;
+  std::atomic<Clock::rep> requested{0};
+  std::jthread stopper([&](std::stop_token done) {
+    const auto until = Clock::now() + delay;
+    while (!done.stop_requested() && Clock::now() < until) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    if (done.stop_requested()) return;
+    requested = Clock::now().time_since_epoch().count();
+    source.request_stop();
+  });
+  try {
+    work(source.get_token());
+  } catch (const Cancelled&) {
+    const Clock::time_point at{Clock::duration{requested.load()}};
+    return Clock::now() - at;
+  }
+  stopper.request_stop();
+  return std::nullopt;
 }
 
 class ModelsTest : public ::testing::Test {
@@ -87,6 +121,26 @@ TEST_F(ModelsTest, DetectsLanguage) {
   const auto scores = transcriber->DetectLanguage(pcm, candidates, {});
   ASSERT_EQ(scores.size(), 2u);
   EXPECT_GT(scores[0].probability, scores[1].probability);
+}
+
+// Needs patches/whisper.cpp: whisper.cpp itself checks for an abort only
+// between encoder passes, which take half a minute on a slow CPU.
+TEST_F(ModelsTest, CancelsInTheMiddleOfAnEncoderPassOnCpu) {
+  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 28.0);
+  NormalizeLevel(pcm);
+  auto transcriber = Models(Device::kCpu)->OpenTranscriber();
+  const std::vector<std::string> candidates = {"ko", "en"};
+  const auto detect = TimeToCancel(
+      [&](std::stop_token stop) { transcriber->DetectLanguage(pcm, candidates, stop); },
+      std::chrono::milliseconds(300));
+  const auto transcribe = TimeToCancel(
+      [&](std::stop_token stop) {
+        transcriber->Transcribe({.pcm = pcm, .language = "en", .prompt = ""}, stop);
+      },
+      std::chrono::milliseconds(300));
+  if (!detect || !transcribe) GTEST_SKIP() << "finished before the cancel request";
+  EXPECT_LT(detect->count(), 2.0);
+  EXPECT_LT(transcribe->count(), 2.0);
 }
 
 TEST_F(ModelsTest, DiarizesMeeting) {

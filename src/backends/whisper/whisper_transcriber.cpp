@@ -83,11 +83,11 @@ class WhisperTranscriber final : public Transcriber {
     }
     std::vector<float> probabilities(
         static_cast<std::size_t>(whisper_lang_max_id() + 1), 0.0f);
-    if (whisper_lang_auto_detect(context_.get(), 0, threads_,
-                                 probabilities.data()) < 0) {
-      throw ModelError("whisper_lang_auto_detect failed");
-    }
+    // From patches/whisper.cpp: whisper_lang_auto_detect cannot be aborted.
+    const int status = whisper_lang_auto_detect_with_abort(
+        context_.get(), 0, threads_, probabilities.data(), Aborted, &stop);
     ThrowIfStopped(stop);
+    if (status < 0) throw ModelError("whisper_lang_auto_detect failed");
     std::vector<LanguageScore> scores;
     for (const std::string& language : candidates) {
       const int id = whisper_lang_id(language.c_str());

@@ -42,6 +42,13 @@ for entry in "${deps[@]}"; do
     echo "error: $name is at $actual, expected $commit" >&2
     exit 1
   fi
+  # Local patches in patches/<name>/, applied once on top of the pinned commit.
+  for patch in "$root/patches/$name"/*.patch; do
+    [[ -e "$patch" ]] || continue
+    if ! git -C "$dir" apply --reverse --check "$patch" 2>/dev/null; then
+      git -C "$dir" apply "$patch"
+    fi
+  done
   bytes="$(du -sb "$dir/.git" | cut -f1)"
   total=$((total + bytes))
   awk -v n="$name" -v t="$tag" -v c="${commit:0:12}" -v b="$bytes" \
