@@ -53,7 +53,7 @@ jobs:
         with:
           arch: ${{ matrix.msvc_arch }}
       - name: Install CMake and Ninja
-        run: python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION" || python -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+        run: scripts/ci/install-cmake.sh
       - name: Configure
         run: |
           if [[ -n "${{ matrix.compiler }}" ]]; then
@@ -73,7 +73,7 @@ jobs:
         with:
           submodules: true
       - name: Install CMake and Ninja
-        run: python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+        run: scripts/ci/install-cmake.sh
       - name: Build for devices and the simulator
         run: |
           for sdk in iphoneos iphonesimulator; do
@@ -92,7 +92,7 @@ jobs:
           submodules: true
       - name: Install CMake, Ninja and the NDK
         run: |
-          python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+          scripts/ci/install-cmake.sh
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
       - name: Build for arm64 (phones) and x86_64 (the emulator)
         run: |

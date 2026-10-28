@@ -35,7 +35,7 @@ Requirements: CMake 3.28+, a C++20 compiler, git; Vulkan SDK headers
 and `glslc` for `-DSILLOK_VULKAN=ON`.
 
 ```
-git submodule update --init          # not --recursive: NeMo-Speech.cpp's own submodules are unused
+git submodule update --init --depth 1   # not --recursive: NeMo-Speech.cpp's own submodules are unused
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build
