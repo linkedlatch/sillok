@@ -50,4 +50,6 @@ jobs:
           target: google_apis
           disable-animations: true
           working-directory: apps/android
-          script: ./gradlew connectedDebugAndroidTest --console=plain
+          script: |
+            ./gradlew connectedDebugAndroidTest --console=plain
+            grep -ho '<testsuite name="[^"]*" tests="[0-9]*" failures="[0-9]*" errors="[0-9]*" skipped="[0-9]*"' app/build/outputs/androidTest-results/connected/debug/*.xml
