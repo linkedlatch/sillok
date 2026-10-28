@@ -40,6 +40,13 @@ class Evaluation:
         self.sets = os.path.join(args.audio, "sets")
         os.makedirs(args.out, exist_ok=True)
         self.results_path = os.path.join(args.out, "results.json")
+        if args.device == "gpu":
+            # The library falls back to the CPU without a GPU; measuring that
+            # as GPU results would be wrong.
+            devices = subprocess.run([self.cli, "devices"], capture_output=True, text=True,
+                                     check=True).stdout
+            if not any(line.split()[1:2] in (["gpu"], ["igpu"]) for line in devices.splitlines()):
+                sys.exit(f"no GPU found:\n{devices}")
         self.results = {}
         if os.path.exists(self.results_path):
             self.results = evaluate.load(self.results_path)
