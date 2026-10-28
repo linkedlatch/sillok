@@ -23,7 +23,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/warnings.cmake)
-include(cmake/deps.cmake)
+include(cmake/third_party.cmake)
 
 add_subdirectory(src/core)
 add_subdirectory(src/capi)

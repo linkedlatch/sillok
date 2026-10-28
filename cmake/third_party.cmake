@@ -1,13 +1,13 @@
-# Third-party libraries fetched by scripts/fetch-deps.sh into SILLOK_THIRD_PARTY_DIR.
+# Third-party libraries fetched by scripts/fetch-third-party.sh into SILLOK_THIRD_PARTY_DIR.
 # Only src/backends, src/capi, apps and tests may link the targets defined here
 # (docs/DESIGN.md D1); src/core never sees them.
 
 set(SILLOK_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party" CACHE PATH
-    "Third-party sources fetched by scripts/fetch-deps.sh")
+    "Third-party sources fetched by scripts/fetch-third-party.sh")
 
 function(sillok_require_third_party name)
     if(NOT EXISTS "${SILLOK_THIRD_PARTY_DIR}/${name}")
-        message(FATAL_ERROR "${SILLOK_THIRD_PARTY_DIR}/${name} is missing; run scripts/fetch-deps.sh")
+        message(FATAL_ERROR "${SILLOK_THIRD_PARTY_DIR}/${name} is missing; run scripts/fetch-third-party.sh")
     endif()
 endfunction()
 
@@ -15,13 +15,13 @@ endfunction()
 sillok_require_third_party(json)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
-add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/json" "${CMAKE_BINARY_DIR}/_deps/json" EXCLUDE_FROM_ALL SYSTEM)
+add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/json" "${CMAKE_BINARY_DIR}/third_party/json" EXCLUDE_FROM_ALL SYSTEM)
 
 if(SILLOK_BUILD_TESTS)
     sillok_require_third_party(googletest)
     set(BUILD_GMOCK OFF CACHE INTERNAL "")
     set(INSTALL_GTEST OFF CACHE INTERNAL "")
-    add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/googletest" "${CMAKE_BINARY_DIR}/_deps/googletest" EXCLUDE_FROM_ALL SYSTEM)
+    add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/googletest" "${CMAKE_BINARY_DIR}/third_party/googletest" EXCLUDE_FROM_ALL SYSTEM)
 endif()
 
 if(NOT SILLOK_WITH_MODELS)
@@ -44,7 +44,7 @@ set(WHISPER_COREML ${SILLOK_COREML} CACHE INTERNAL "")
 # whisper.cpp then has to fall back to its own encoder (see backends/whisper).
 set(WHISPER_COREML_ALLOW_FALLBACK ON CACHE INTERNAL "")
 set(GGML_VULKAN ${SILLOK_VULKAN} CACHE INTERNAL "")
-add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/_deps/whisper.cpp" EXCLUDE_FROM_ALL SYSTEM)
+add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/third_party/whisper.cpp" EXCLUDE_FROM_ALL SYSTEM)
 
 # NeMo-Speech.cpp: only the sources behind nemo_speech::asr::Diarizer, built
 # against the ggml above (docs/DESIGN.md D16). Its own CMake would add a second

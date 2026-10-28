@@ -1,4 +1,4 @@
-# Fetched third-party sources (scripts/fetch-deps.sh)
+# Fetched third-party sources (scripts/fetch-third-party.sh)
 /third_party/
 
 # Local build tools (cmake/ninja venv)

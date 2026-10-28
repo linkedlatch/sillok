@@ -20,8 +20,8 @@ src/backends/             one directory per model; models.cpp picks the models
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 tests/                    unit tests with fake models, integration probe
-scripts/                  fetching dependencies and test audio, evaluation
-patches/                  local patches to third-party code, applied by fetch-deps.sh
+scripts/                  fetching third-party sources and test audio, evaluation
+patches/                  local patches to third-party sources (fetch-third-party.sh applies them)
 ```
 
 `patches/whisper.cpp` lets a cancel stop a Whisper pass midway on the CPU
@@ -34,7 +34,7 @@ Requirements: CMake 3.28+, a C++20 compiler, git, curl; Vulkan SDK headers
 and `glslc` for `-DSILLOK_VULKAN=ON`.
 
 ```
-scripts/fetch-deps.sh                # pinned sources into third_party/
+scripts/fetch-third-party.sh         # pinned sources into third_party/
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build

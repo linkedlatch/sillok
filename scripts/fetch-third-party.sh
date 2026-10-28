@@ -6,14 +6,14 @@
 # checked-out commit must equal the pinned SHA, which is what makes the
 # download verifiable: git checks every object against its hash.
 #
-# Usage: scripts/fetch-deps.sh [dir]   (default: <repo>/third_party)
+# Usage: scripts/fetch-third-party.sh [dir]   (default: <repo>/third_party)
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dest="${1:-$root/third_party}"
 
 # name | url | tag | commit | sparse directories (cone mode; root files are always included)
-deps=(
+sources=(
   "whisper.cpp|https://github.com/ggml-org/whisper.cpp.git|v1.9.5|d1be6fde11ac6e0407606b4e42fe72d34add8037|cmake include src ggml/cmake ggml/include ggml/src/ggml-cpu ggml/src/ggml-vulkan ggml/src/ggml-metal ggml/src/ggml-blas"
   "NeMo-Speech.cpp|https://github.com/NVIDIA/NeMo-Speech.cpp.git|v0.2.0|6a3ca369370782acee0dd155e34394ba60b920c4|include src/asr/diar src/asr/encoder src/asr/features src/common src/runtime/ggml"
   "json|https://github.com/nlohmann/json.git|v3.12.0|55f93686c01528224f448c19128836e7df245f72|cmake include LICENSES"
@@ -22,7 +22,7 @@ deps=(
 
 mkdir -p "$dest"
 total=0
-for entry in "${deps[@]}"; do
+for entry in "${sources[@]}"; do
   IFS='|' read -r name url tag commit paths <<<"$entry"
   dir="$dest/$name"
   if [[ -d "$dir/.git" && "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" == "$commit" ]]; then
