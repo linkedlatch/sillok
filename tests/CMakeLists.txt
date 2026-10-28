@@ -1,5 +1,11 @@
 include(GoogleTest)
 
+# A cross-compiled test binary cannot run on the build machine; list its tests
+# when ctest runs them (through CMAKE_CROSSCOMPILING_EMULATOR, if set) instead.
+if(CMAKE_CROSSCOMPILING)
+    set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
+endif()
+
 # Model-free tests: the core logic driven by fake models (docs/DESIGN.md D1).
 add_library(sillok_fakes STATIC fakes/fake_models.cpp)
 target_include_directories(sillok_fakes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

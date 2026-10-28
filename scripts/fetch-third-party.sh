@@ -49,7 +49,7 @@ for entry in "${sources[@]}"; do
       git -C "$dir" apply "$patch"
     fi
   done
-  bytes="$(du -sb "$dir/.git" | cut -f1)"
+  bytes="$(( $(du -sk "$dir/.git" | cut -f1) * 1024 ))"  # du -b is GNU only
   total=$((total + bytes))
   awk -v n="$name" -v t="$tag" -v c="${commit:0:12}" -v b="$bytes" \
     'BEGIN { printf "%-18s %-8s %s  downloaded %6.1f MB\n", n, t, c, b / 1e6 }'

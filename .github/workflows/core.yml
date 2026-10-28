@@ -1,0 +1,122 @@
+# Builds the core library on every target platform and runs the model-free
+# tests where the platform can run them. The real-model integration tests skip
+# here: CI has neither the models nor the recordings.
+name: core
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "4.4.4"
+  NINJA_VERSION: "1.13.2"
+  NDK_VERSION: "30.0.16248370"
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-24.04
+          - name: windows-x64
+            os: windows-2025
+            msvc_arch: x64
+          - name: windows-arm64
+            os: windows-11-arm
+            msvc_arch: arm64
+            # MSVC proper can only target the build machine's own ARM features
+            # (ggml-cpu CMakeLists); clang-cl takes an explicit baseline.
+            compiler: clang-cl
+            cmake_args: -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16
+          - name: macos-arm64
+            os: macos-15
+            cmake_args: -DSILLOK_COREML=ON
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Keep line endings as committed
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        if: matrix.msvc_arch
+        with:
+          arch: ${{ matrix.msvc_arch }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION" || python -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+      - name: Fetch third-party sources
+        run: scripts/fetch-third-party.sh
+      - name: Configure
+        run: |
+          if [[ -n "${{ matrix.compiler }}" ]]; then
+            command -v "${{ matrix.compiler }}" || export PATH="/c/Program Files/LLVM/bin:$PATH"
+            export CC="${{ matrix.compiler }}" CXX="${{ matrix.compiler }}"
+          fi
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSILLOK_WERROR=ON ${{ matrix.cmake_args }}
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -LE integration
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+      - name: Fetch third-party sources
+        run: scripts/fetch-third-party.sh
+      - name: Build for devices and the simulator
+        run: |
+          for sdk in iphoneos iphonesimulator; do
+            cmake -S . -B "build/$sdk" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=$sdk -DCMAKE_OSX_ARCHITECTURES=arm64 \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+              -DSILLOK_COREML=ON -DSILLOK_BUILD_CLI=OFF -DSILLOK_BUILD_TESTS=OFF -DSILLOK_WERROR=ON
+            cmake --build "build/$sdk" --target sillok_static
+          done
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install CMake, Ninja and the NDK
+        run: |
+          python3 -m pip install "cmake==$CMAKE_VERSION" "ninja==$NINJA_VERSION"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
+      - name: Fetch third-party sources
+        run: scripts/fetch-third-party.sh
+      - name: Build for arm64 (phones) and x86_64 (the emulator)
+        run: |
+          for abi in arm64-v8a x86_64; do
+            arch=""
+            [[ $abi == arm64-v8a ]] && arch="-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16"
+            cmake -S . -B "build/$abi" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/$NDK_VERSION/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI=$abi -DANDROID_PLATFORM=android-29 -DSILLOK_WERROR=ON $arch
+            cmake --build "build/$abi"
+          done
+      - name: Allow the emulator to use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test on the emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb push build/x86_64/tests/sillok_unit_tests build/x86_64/tests/sillok_capi_tests /data/local/tmp/
+            adb shell 'cd /data/local/tmp && TMPDIR=/data/local/tmp ./sillok_unit_tests && TMPDIR=/data/local/tmp ./sillok_capi_tests; echo "exit=$?"' | tee android-tests.log
+            grep -q '^exit=0' android-tests.log
