@@ -81,3 +81,7 @@ set_target_properties(nemo_diar PROPERTIES
     CXX_STANDARD 17
     CXX_EXTENSIONS OFF
     POSITION_INDEPENDENT_CODE ON)
+# Upstream code we compile but do not maintain (unchecked fread in a debug
+# dump, a printf format in a log line); keep the build output to our own
+# warnings.
+target_compile_options(nemo_diar PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)

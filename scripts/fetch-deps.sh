@@ -44,6 +44,7 @@ for entry in "${deps[@]}"; do
   fi
   bytes="$(du -sb "$dir/.git" | cut -f1)"
   total=$((total + bytes))
-  printf '%-18s %-8s %s  downloaded %6.1f MB\n' "$name" "$tag" "${commit:0:12}" "$(echo "$bytes / 1000000" | bc -l)"
+  awk -v n="$name" -v t="$tag" -v c="${commit:0:12}" -v b="$bytes" \
+    'BEGIN { printf "%-18s %-8s %s  downloaded %6.1f MB\n", n, t, c, b / 1e6 }'
 done
-printf 'total downloaded %.1f MB\n' "$(echo "$total / 1000000" | bc -l)"
+awk -v b="$total" 'BEGIN { printf "total downloaded %.1f MB\n", b / 1e6 }'

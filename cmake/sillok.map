@@ -1,0 +1,4 @@
+{
+  global: sillok_*;
+  local: *;
+};
