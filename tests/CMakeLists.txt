@@ -28,3 +28,11 @@ gtest_discover_tests(sillok_capi_tests)
 add_test(NAME core_includes_only_std
     COMMAND "${CMAKE_COMMAND}" -DCORE_DIR=${PROJECT_SOURCE_DIR}/src/core
             -P "${CMAKE_CURRENT_SOURCE_DIR}/check_core_includes.cmake")
+
+# Measurements with the real models (scripts/eval), on the shared library.
+if(TARGET sillok)
+    add_executable(sillok_probe integration/probe.cpp "${PROJECT_SOURCE_DIR}/apps/cli/wav_reader.cpp")
+    target_include_directories(sillok_probe PRIVATE "${PROJECT_SOURCE_DIR}/apps/cli")
+    target_link_libraries(sillok_probe PRIVATE sillok nlohmann_json::nlohmann_json)
+    sillok_set_warnings(sillok_probe)
+endif()

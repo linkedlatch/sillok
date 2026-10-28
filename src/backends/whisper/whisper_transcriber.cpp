@@ -1,6 +1,7 @@
 #include "backends/whisper/whisper_transcriber.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <vector>
 
@@ -49,6 +50,14 @@ class WhisperTranscriber final : public Transcriber {
     whisper_context_params params = whisper_context_default_params();
     params.use_gpu = config.device.gpu_index >= 0;
     params.gpu_device = std::max(0, config.device.gpu_index);
+    // Measurement switch for word timings (docs/DESIGN.md D19), removed once
+    // one method is chosen. DTW needs flash attention off.
+    dtw_ = std::getenv("SILLOK_WHISPER_DTW") != nullptr;
+    if (dtw_) {
+      params.flash_attn = false;
+      params.dtw_token_timestamps = true;
+      params.dtw_aheads_preset = WHISPER_AHEADS_LARGE_V3_TURBO;
+    }
     const std::string path = PathToUtf8(config.model);
 #ifdef SILLOK_COREML
     const bool use_path = config.core_ml;
@@ -145,6 +154,20 @@ class WhisperTranscriber final : public Transcriber {
                                   .end = Millis{data.t1 * 10},
                                   .probability = data.p});
       }
+      if (dtw_) {
+        // DTW gives the time each token starts; it ends where the next one
+        // starts.
+        for (std::size_t k = 0, t = 0; k < segment.tokens.size(); ++t) {
+          const whisper_token_data data =
+              whisper_full_get_token_data(context, i, static_cast<int>(t));
+          if (data.id >= end_of_text) continue;
+          if (data.t_dtw >= 0) segment.tokens[k].start = Millis{data.t_dtw * 10};
+          ++k;
+        }
+        for (std::size_t k = 0; k + 1 < segment.tokens.size(); ++k) {
+          segment.tokens[k].end = std::max(segment.tokens[k].start, segment.tokens[k + 1].start);
+        }
+      }
       if (!segment.tokens.empty()) segments.push_back(std::move(segment));
     }
     return segments;
@@ -153,6 +176,7 @@ class WhisperTranscriber final : public Transcriber {
  private:
   std::unique_ptr<whisper_context, decltype(&whisper_free)> context_;
   int threads_;
+  bool dtw_ = false;
   ModelInfo info_;
 };
 

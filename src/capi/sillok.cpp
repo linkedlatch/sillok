@@ -14,6 +14,12 @@
 #include <string>
 #include <thread>
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 #include "backends/models.hpp"
 #include "capi/json_io.hpp"
 #include "core/cancel.hpp"
@@ -93,12 +99,31 @@ struct sillok_job {
 namespace sillok {
 namespace {
 
+// Thread running a job.
+struct RunThread {
+  std::thread::id id;
+#ifdef _WIN32
+  // When a DLL's exit handlers run, ExitProcess has already ended the other
+  // threads, so their runs never finish; the handle tells that apart.
+  HANDLE handle = nullptr;
+#endif
+};
+
+bool Ended(const RunThread& thread) {
+#ifdef _WIN32
+  return thread.handle != nullptr && WaitForSingleObject(thread.handle, 0) == WAIT_OBJECT_0;
+#else
+  static_cast<void>(thread);
+  return false;
+#endif
+}
+
 // Jobs running right now, so that process exit can stop them before the
 // static objects of the model libraries are destroyed under them.
 struct ActiveRuns {
   std::mutex mutex;
   std::condition_variable idle;
-  std::map<sillok_job*, std::thread::id> jobs;
+  std::map<sillok_job*, RunThread> jobs;
   bool exiting = false;
 };
 
@@ -108,7 +133,10 @@ ActiveRuns& Runs() {
 }
 
 // atexit handler. Cancels running jobs and waits for them, except a job on
-// the exiting thread itself, which cannot finish.
+// the exiting thread itself, which cannot finish. whisper.cpp checks for
+// cancellation only between encoder and decoder passes, so stopping can take
+// one encoder pass: a second or less on a GPU, tens of seconds on a slow CPU.
+// The bound only guards against a run that never returns.
 void StopRunsAtExit() {
   ActiveRuns& runs = Runs();
   std::unique_lock lock(runs.mutex);
@@ -116,10 +144,16 @@ void StopRunsAtExit() {
   runs.exiting = true;
   const std::thread::id self = std::this_thread::get_id();
   for (const auto& [job, thread] : runs.jobs) job->stop.request_stop();
-  runs.idle.wait_for(lock, std::chrono::seconds(10), [&] {
-    return std::all_of(runs.jobs.begin(), runs.jobs.end(),
-                       [&](const auto& run) { return run.second == self; });
-  });
+  const auto stopped = [&] {
+    return std::all_of(runs.jobs.begin(), runs.jobs.end(), [&](const auto& run) {
+      return run.second.id == self || Ended(run.second);
+    });
+  };
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  // Polls as well, since an ended thread notifies nobody.
+  while (!stopped() && std::chrono::steady_clock::now() < deadline) {
+    runs.idle.wait_for(lock, std::chrono::milliseconds(100));
+  }
 }
 
 // atexit handlers run in reverse order of registration and interleave with
@@ -168,11 +202,18 @@ class RunScope {
     ActiveRuns& runs = Runs();
     const std::lock_guard lock(runs.mutex);
     if (runs.exiting) throw Cancelled();
-    runs.jobs[job_] = std::this_thread::get_id();
+    RunThread& thread = runs.jobs[job_];
+    thread.id = std::this_thread::get_id();
+#ifdef _WIN32
+    thread.handle = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
+#endif
   }
   ~RunScope() {
     ActiveRuns& runs = Runs();
     const std::lock_guard lock(runs.mutex);
+#ifdef _WIN32
+    if (runs.jobs[job_].handle != nullptr) CloseHandle(runs.jobs[job_].handle);
+#endif
     runs.jobs.erase(job_);
     runs.idle.notify_all();
   }

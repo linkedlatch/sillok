@@ -12,7 +12,8 @@ import os
 import sys
 import xml.etree.ElementTree as ElementTree
 
-import metrics
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import metrics  # noqa: E402
 
 
 def load(path):
@@ -183,9 +184,6 @@ def ami(transcript, download_dir, offset):
                   start_within_0_5s=round(sum(e <= 0.5 for e in errors) / max(len(errors), 1), 4))
     if hyp_turns:
         # Speaker of each matched word, under the mapping that DER uses.
-        participant = {}
-        for line in open(os.path.join(download_dir, "ES2004a.rttm")):
-            pass  # RTTM speaker names are meeting ids; map via shared time below
         mapping = metrics.speaker_mapping(
             [(w["start"], w["end"], w["speaker"]) for w in reference], hyp_turns, start, end)
         right = sum(1 for r, h in pairs if mapping.get(h["speaker"]) == r["speaker"])
