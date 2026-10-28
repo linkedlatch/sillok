@@ -2,12 +2,12 @@
 #define SILLOK_CORE_TRANSCRIBER_HPP_
 
 #include <span>
-#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "core/audio.hpp"
+#include "core/cancel.hpp"
 #include "core/transcript.hpp"
 
 namespace sillok {
@@ -56,11 +56,11 @@ class Transcriber {
   // called when the model detects languages.
   virtual std::vector<LanguageScore> DetectLanguage(
       std::span<const float> pcm, std::span<const std::string> candidates,
-      std::stop_token stop) = 0;
+      StopToken stop) = 0;
   // Length of `text` in prompt tokens.
   virtual int CountTokens(std::string_view text) const = 0;
   virtual std::vector<TokenSegment> Transcribe(
-      const TranscribeRequest& request, std::stop_token stop) = 0;
+      const TranscribeRequest& request, StopToken stop) = 0;
 };
 
 }  // namespace sillok

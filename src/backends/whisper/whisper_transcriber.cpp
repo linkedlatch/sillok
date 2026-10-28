@@ -16,7 +16,7 @@ namespace {
 constexpr Millis kMaxAudio{30000};
 
 bool Aborted(void* stop) {
-  return static_cast<std::stop_token*>(stop)->stop_requested();
+  return static_cast<StopToken*>(stop)->StopRequested();
 }
 
 // Loads through a reader instead of a path. whisper.cpp derives the Core ML
@@ -75,7 +75,7 @@ class WhisperTranscriber final : public Transcriber {
 
   std::vector<LanguageScore> DetectLanguage(
       std::span<const float> pcm, std::span<const std::string> candidates,
-      std::stop_token stop) override {
+      StopToken stop) override {
     ThrowIfStopped(stop);
     if (whisper_pcm_to_mel(context_.get(), pcm.data(),
                            static_cast<int>(pcm.size()), threads_) != 0) {
@@ -108,7 +108,7 @@ class WhisperTranscriber final : public Transcriber {
   }
 
   std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
-                                       std::stop_token stop) override {
+                                       StopToken stop) override {
     // whisper_full checks the abort callback only after its encoder pass.
     ThrowIfStopped(stop);
     whisper_full_params params =

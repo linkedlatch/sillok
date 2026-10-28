@@ -2,11 +2,11 @@
 #define SILLOK_CORE_PIPELINE_HPP_
 
 #include <functional>
-#include <stop_token>
 #include <string>
 #include <vector>
 
 #include "core/audio_buffer.hpp"
+#include "core/cancel.hpp"
 #include "core/language.hpp"
 #include "core/model_provider.hpp"
 #include "core/postprocess.hpp"
@@ -44,7 +44,7 @@ struct PipelineOptions {
 // are never in memory together. Throws Cancelled once `stop` is requested.
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       std::stop_token stop);
+                       StopToken stop);
 
 }  // namespace sillok
 

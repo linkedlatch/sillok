@@ -172,7 +172,7 @@ TEST_F(CapiTest, CancelFromAnotherThreadDuringRun) {
   // The engine copies the fake options, so set them before creating it.
   FakeBackendOptions().on_transcribe = [&](const TranscribeRequest&) {
     ++calls;
-    std::jthread([&] { sillok_job_cancel(job); }).join();
+    std::thread([&] { sillok_job_cancel(job); }).join();
   };
   job = Job(Engine());
   Push(job, ScriptPcm(10));

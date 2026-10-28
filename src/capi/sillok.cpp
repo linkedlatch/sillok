@@ -10,7 +10,6 @@
 #include <memory>
 #include <mutex>
 #include <new>
-#include <stop_token>
 #include <string>
 #include <thread>
 
@@ -92,7 +91,7 @@ struct sillok_job {
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
   sillok::AudioBuffer audio;  // kept in a temporary file
-  std::stop_source stop;
+  sillok::StopSource stop;
   bool ran = false;
 };
 
@@ -143,7 +142,7 @@ void StopRunsAtExit() {
   if (runs.exiting) return;  // a later registration already ran
   runs.exiting = true;
   const std::thread::id self = std::this_thread::get_id();
-  for (const auto& [job, thread] : runs.jobs) job->stop.request_stop();
+  for (const auto& [job, thread] : runs.jobs) job->stop.RequestStop();
   const auto stopped = [&] {
     return std::all_of(runs.jobs.begin(), runs.jobs.end(), [&](const auto& run) {
       return run.second.id == self || Ended(run.second);
@@ -359,7 +358,7 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
     const sillok::BusyScope busy(job->engine->busy);
     const sillok::RunScope running(job);
     job->ran = true;
-    sillok::ThrowIfStopped(job->stop.get_token());
+    sillok::ThrowIfStopped(job->stop.Token());
 
     job->audio.Finish();
     sillok::ExitSafeModels models(*job->engine->models);
@@ -368,14 +367,14 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
         [&](sillok::Stage stage, double fraction) {
           if (progress) progress(user_data, static_cast<sillok_stage>(stage), fraction);
         },
-        job->stop.get_token());
+        job->stop.Token());
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;
   });
 }
 
 void sillok_job_cancel(sillok_job* job) {
-  if (job != nullptr) job->stop.request_stop();
+  if (job != nullptr) job->stop.RequestStop();
 }
 
 void sillok_job_destroy(sillok_job* job) { delete job; }

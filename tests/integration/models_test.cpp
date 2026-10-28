@@ -11,7 +11,6 @@
 #include <filesystem>
 #include <optional>
 #include <set>
-#include <stop_token>
 #include <string>
 #include <thread>
 #include <vector>
@@ -48,24 +47,32 @@ template <typename Work>
 std::optional<std::chrono::duration<double>> TimeToCancel(Work work,
                                                           std::chrono::milliseconds delay) {
   using Clock = std::chrono::steady_clock;
-  std::stop_source source;
+  StopSource source;
+  StopSource done;
   std::atomic<Clock::rep> requested{0};
-  std::jthread stopper([&](std::stop_token done) {
+  std::thread stopper([&] {
     const auto until = Clock::now() + delay;
-    while (!done.stop_requested() && Clock::now() < until) {
+    while (!done.StopRequested() && Clock::now() < until) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    if (done.stop_requested()) return;
+    if (done.StopRequested()) return;
     requested = Clock::now().time_since_epoch().count();
-    source.request_stop();
+    source.RequestStop();
   });
   try {
-    work(source.get_token());
+    work(source.Token());
   } catch (const Cancelled&) {
     const Clock::time_point at{Clock::duration{requested.load()}};
-    return Clock::now() - at;
+    const auto elapsed = Clock::now() - at;
+    stopper.join();
+    return elapsed;
+  } catch (...) {
+    done.RequestStop();
+    stopper.join();
+    throw;
   }
-  stopper.request_stop();
+  done.RequestStop();
+  stopper.join();
   return std::nullopt;
 }
 
@@ -131,10 +138,10 @@ TEST_F(ModelsTest, CancelsInTheMiddleOfAnEncoderPassOnCpu) {
   auto transcriber = Models(Device::kCpu)->OpenTranscriber();
   const std::vector<std::string> candidates = {"ko", "en"};
   const auto detect = TimeToCancel(
-      [&](std::stop_token stop) { transcriber->DetectLanguage(pcm, candidates, stop); },
+      [&](StopToken stop) { transcriber->DetectLanguage(pcm, candidates, stop); },
       std::chrono::milliseconds(300));
   const auto transcribe = TimeToCancel(
-      [&](std::stop_token stop) {
+      [&](StopToken stop) {
         transcriber->Transcribe({.pcm = pcm, .language = "en", .prompt = ""}, stop);
       },
       std::chrono::milliseconds(300));

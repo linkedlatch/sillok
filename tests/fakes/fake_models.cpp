@@ -128,7 +128,7 @@ class FakeTranscriber : public Transcriber {
 
   std::vector<LanguageScore> DetectLanguage(
       std::span<const float> pcm, std::span<const std::string> candidates,
-      std::stop_token stop) override {
+      StopToken stop) override {
     ThrowIfStopped(stop);
     std::map<std::string, double> time;
     double total = 0.0;
@@ -156,7 +156,7 @@ class FakeTranscriber : public Transcriber {
   }
 
   std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
-                                       std::stop_token stop) override {
+                                       StopToken stop) override {
     ThrowIfStopped(stop);
     ++models_.transcribe_calls_;
     if (models_.options_.on_transcribe) models_.options_.on_transcribe(request);

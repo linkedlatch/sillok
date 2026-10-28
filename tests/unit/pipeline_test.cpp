@@ -61,7 +61,7 @@ FakeOptions OptionsFor(const std::vector<ScriptWord>& script) {
 Transcript RunFakes(const AudioBuffer& audio, FakeModels& models,
                const PipelineOptions& options = {},
                const ProgressCallback& progress = [](Stage, double) {},
-               std::stop_token stop = {}) {
+               StopToken stop = {}) {
   return RunPipeline(audio, options, models, progress, stop);
 }
 
@@ -156,16 +156,16 @@ TEST(PipelineTest, ReportsProgressInStageOrder) {
 TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
   const auto script = Speech(0, 150, Millis{500});
   FakeModels models(OptionsFor(script));
-  std::stop_source source;
+  StopSource source;
   int windows_after_cancel = 0;
   const auto progress = [&](Stage stage, double) {
     if (stage == Stage::kTranscribe) {
-      if (source.stop_requested()) ++windows_after_cancel;
-      source.request_stop();
+      if (source.StopRequested()) ++windows_after_cancel;
+      source.RequestStop();
     }
   };
   EXPECT_THROW(RunFakes(RenderScript(script, Millis{61000}), models, {}, progress,
-                   source.get_token()),
+                   source.Token()),
                Cancelled);
   EXPECT_EQ(windows_after_cancel, 0);
   EXPECT_EQ(models.live().transcribers, 0);
@@ -174,13 +174,13 @@ TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
 TEST(PipelineTest, CancelFromAnotherThread) {
   const auto script = Speech(0, 150, Millis{500});
   FakeOptions options = OptionsFor(script);
-  std::stop_source source;
+  StopSource source;
   options.on_transcribe = [&](const TranscribeRequest&) {
-    std::jthread([&] { source.request_stop(); }).join();
+    std::thread([&] { source.RequestStop(); }).join();
   };
   FakeModels models(options);
   EXPECT_THROW(RunFakes(RenderScript(script, Millis{61000}), models, {},
-                   [](Stage, double) {}, source.get_token()),
+                   [](Stage, double) {}, source.Token()),
                Cancelled);
   EXPECT_EQ(models.transcribe_calls(), 1);
 }

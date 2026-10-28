@@ -39,7 +39,7 @@ struct Analysis {
 };
 
 Analysis Analyze(const AudioBuffer& audio, ModelProvider& models,
-                 const ProgressCallback& progress, const std::stop_token& stop,
+                 const ProgressCallback& progress, const StopToken& stop,
                  Transcript& transcript) {
   const auto detector = models.OpenVoiceDetector();
   Analysis analysis{.probabilities = {},
@@ -127,7 +127,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
                                       const PipelineOptions& options,
                                        ModelProvider& models,
                                        const ProgressCallback& progress,
-                                       const std::stop_token& stop,
+                                       const StopToken& stop,
                                        Transcript& transcript) {
   const auto transcriber = models.OpenTranscriber();
   const TranscriberCapabilities capabilities = transcriber->Capabilities();
@@ -233,7 +233,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
 std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
                                  ModelProvider& models,
                                  const ProgressCallback& progress,
-                                 const std::stop_token& stop,
+                                 const StopToken& stop,
                                  Transcript& transcript) {
   const auto diarizer = models.OpenDiarizer();
   for (SampleIndex begin = 0; begin < audio.size();
@@ -255,7 +255,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
 
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       std::stop_token stop) {
+                       StopToken stop) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
   if (options.language != "auto" &&
       std::find(options.candidates.begin(), options.candidates.end(),
