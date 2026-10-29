@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Sillok.App.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Sillok.App.Pages">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="24,12,24,0" RowSpacing="12">
+        <CommandBar DefaultLabelPosition="Right" HorizontalAlignment="Left">
+            <AppBarButton x:Name="OpenButton" Icon="OpenFile" Click="OnOpen" />
+            <CommandBar.SecondaryCommands>
+                <AppBarButton x:Name="VerifyButton" Click="OnVerify" />
+                <AppBarButton x:Name="AboutButton" Click="OnAbout" />
+            </CommandBar.SecondaryCommands>
+        </CommandBar>
+
+        <Button x:Name="RunningCard" Grid.Row="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Click="OnRunning">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <ProgressRing IsActive="True" Width="20" Height="20" />
+                <StackPanel>
+                    <TextBlock x:Name="RunningName" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Name="RunningStatus" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </Button>
+
+        <TextBlock x:Name="Empty" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <ListView x:Name="List" Grid.Row="2" IsItemClickEnabled="True" SelectionMode="None" ItemClick="OnItemClick">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:HistoryRow">
+                    <Grid Padding="0,8" Background="Transparent">
+                        <Grid.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="{x:Bind RenameText}" Tag="{x:Bind Id}" Click="OnRename" />
+                                <MenuFlyoutItem Text="{x:Bind DeleteText}" Tag="{x:Bind Id}" Click="OnDelete" />
+                            </MenuFlyout>
+                        </Grid.ContextFlyout>
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind Detail}" Style="{StaticResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>

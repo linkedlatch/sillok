@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Sillok</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Title" xml:space="preserve"><value>Title</value></data>
+  <data name="DeleteConfirm" xml:space="preserve"><value>Delete “{0}”?</value></data>
+  <data name="ModelsTitle" xml:space="preserve"><value>Download the models</value></data>
+  <data name="ModelsBody" xml:space="preserve"><value>Sillok transcribes on this computer. It first needs its speech models, about {0}.</value></data>
+  <data name="ModelsChecking" xml:space="preserve"><value>Checking the models…</value></data>
+  <data name="ModelsVerifying" xml:space="preserve"><value>Checking the files…</value></data>
+  <data name="ModelsProgress" xml:space="preserve"><value>{0} of {1} · {2}/s</value></data>
+  <data name="ModelsDownload" xml:space="preserve"><value>Download</value></data>
+  <data name="ModelsResume" xml:space="preserve"><value>Resume download</value></data>
+  <data name="ModelsStop" xml:space="preserve"><value>Pause</value></data>
+  <data name="ModelsDamaged" xml:space="preserve"><value>A model file was damaged and has been removed. Download it again.</value></data>
+  <data name="ModelsDownloadFailed" xml:space="preserve"><value>The download stopped: {0}</value></data>
+  <data name="ModelsVerified" xml:space="preserve"><value>All model files are intact.</value></data>
+  <data name="MenuVerifyModels" xml:space="preserve"><value>Check model files</value></data>
+  <data name="MenuAbout" xml:space="preserve"><value>About</value></data>
+  <data name="HomeOpen" xml:space="preserve"><value>Open file</value></data>
+  <data name="HomeEmpty" xml:space="preserve"><value>Open an audio or video file to transcribe it.</value></data>
+  <data name="NotificationProgress" xml:space="preserve"><value>{0} · {1}%</value></data>
+  <data name="SetupTitle" xml:space="preserve"><value>New transcription</value></data>
+  <data name="SetupLanguage" xml:space="preserve"><value>Language</value></data>
+  <data name="Language_auto" xml:space="preserve"><value>Automatic (Korean, English)</value></data>
+  <data name="Language_ko" xml:space="preserve"><value>Korean</value></data>
+  <data name="Language_en" xml:space="preserve"><value>English</value></data>
+  <data name="SetupDiarize" xml:space="preserve"><value>Tell speakers apart</value></data>
+  <data name="SetupGlossary" xml:space="preserve"><value>Terms</value></data>
+  <data name="SetupGlossaryHint" xml:space="preserve"><value>Names and terms that occur in the recording, one per line or separated by commas</value></data>
+  <data name="SetupDevice" xml:space="preserve"><value>Run on</value></data>
+  <data name="DeviceCpu" xml:space="preserve"><value>CPU</value></data>
+  <data name="SetupStart" xml:space="preserve"><value>Start</value></data>
+  <data name="RunningTitle" xml:space="preserve"><value>Transcribing</value></data>
+  <data name="RunningBack" xml:space="preserve"><value>Back to the list</value></data>
+  <data name="RunningCancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="RunningRemaining" xml:space="preserve"><value>About {0} left in this step</value></data>
+  <data name="StepRead" xml:space="preserve"><value>Reading the file</value></data>
+  <data name="StepAnalyze" xml:space="preserve"><value>Finding speech</value></data>
+  <data name="StepTranscribe" xml:space="preserve"><value>Transcribing</value></data>
+  <data name="StepDiarize" xml:space="preserve"><value>Telling speakers apart</value></data>
+  <data name="CloseRunningTitle" xml:space="preserve"><value>A transcription is running</value></data>
+  <data name="CloseRunningBody" xml:space="preserve"><value>Closing Sillok cancels it.</value></data>
+  <data name="CloseRunningConfirm" xml:space="preserve"><value>Cancel and close</value></data>
+  <data name="SpeakerLabel" xml:space="preserve"><value>Speaker {n}</value></data>
+  <data name="Speakers" xml:space="preserve"><value>Speakers</value></data>
+  <data name="Export" xml:space="preserve"><value>Export</value></data>
+  <data name="ExportTxt" xml:space="preserve"><value>Text (.txt)</value></data>
+  <data name="ExportSrt" xml:space="preserve"><value>Subtitles (.srt)</value></data>
+  <data name="ExportJson" xml:space="preserve"><value>JSON</value></data>
+  <data name="Info" xml:space="preserve"><value>Run details</value></data>
+  <data name="ResultMissing" xml:space="preserve"><value>This transcript cannot be read.</value></data>
+  <data name="ResultEmpty" xml:space="preserve"><value>No speech was found.</value></data>
+  <data name="InfoLength" xml:space="preserve"><value>Recording: {0}</value></data>
+  <data name="InfoStep" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="InfoReadParts" xml:space="preserve"><value>(decoding {0} · to the library {1} · listening copy {2})</value></data>
+  <data name="InfoTotal" xml:space="preserve"><value>Total: {0} ({1:0.00}× the recording)</value></data>
+  <data name="InfoDevice" xml:space="preserve"><value>Transcribed on: {0}</value></data>
+  <data name="InfoFellBack" xml:space="preserve"><value>{0} (the GPU was unavailable)</value></data>
+  <data name="InfoThreads" xml:space="preserve"><value>CPU threads: {0}</value></data>
+  <data name="ErrorUnsupportedFile" xml:space="preserve"><value>Cannot read the audio of this file ({0}).</value></data>
+  <data name="ErrorModel" xml:space="preserve"><value>A model could not be used: {0}</value></data>
+  <data name="ErrorEngine" xml:space="preserve"><value>Transcription failed: {0}</value></data>
+</root>

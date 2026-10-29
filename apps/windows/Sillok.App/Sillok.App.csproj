@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Windows app: WinUI 3, unpackaged, with the .NET runtime and the
+       Windows App SDK inside, so that the folder runs as it is (G8). Pass
+       -p:SillokNativeDir=<CMake build dir> to bundle sillok.dll. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>Sillok.App</RootNamespace>
+    <AssemblyName>Sillok</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <DefaultLanguage>en-US</DefaultLanguage>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sillok.Media\Sillok.Media.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SillokNativeDir)' != ''">
+    <None Include="$(SillokNativeDir)\sillok.dll" Link="sillok.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
