@@ -92,7 +92,7 @@ public sealed partial class AppState : ObservableObject, IDisposable
     private async Task CheckModelsAsync()
     {
         ModelPhase = ModelPhase.Checking;
-        var missing = await Task.Run(_downloader.Missing);
+        var missing = await Task.Run(() => _downloader.Missing());
         ModelTotal = missing.Sum(m => m.Size);
         ModelDone = _downloader.Downloaded(missing);
         ModelPhase = missing.Count == 0 ? ModelPhase.Ready : ModelPhase.Missing;
@@ -103,7 +103,7 @@ public sealed partial class AppState : ObservableObject, IDisposable
         if (_download is not null) return;
         _download = new CancellationTokenSource();
         ModelError = null;
-        var missing = await Task.Run(_downloader.Missing);
+        var missing = await Task.Run(() => _downloader.Missing());
         ModelTotal = missing.Sum(m => m.Size);
         ModelPhase = ModelPhase.Downloading;
         long last = _downloader.Downloaded(missing);
