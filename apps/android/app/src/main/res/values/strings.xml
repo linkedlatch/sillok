@@ -81,7 +81,7 @@
     <string name="info_threads">CPU threads: %1$d</string>
 
     <!-- Errors -->
-    <string name="error_time_limit">Android stopped the transcription: background processing is limited to 6 hours a day.</string>
+    <string name="error_time_limit">Android stopped the transcription: an app may work in the background for 6 hours in 24. Opening the app resets this.</string>
     <string name="error_unsupported_file">Cannot read the audio of this file (%1$s).</string>
     <string name="error_model">A model could not be used: %1$s</string>
     <string name="error_engine">Transcription failed: %1$s</string>

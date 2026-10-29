@@ -71,10 +71,15 @@ class TranscriptionService : Service() {
         return START_NOT_STICKY
     }
 
-    // Android 15 limits mediaProcessing services to 6 hours a day; the job
-    // must stop within seconds once the system says so.
+    // From Android 15, mediaProcessing services may run 6 hours in 24 while
+    // the app is in the background (opening the app resets it). Once the
+    // system says so, the service must stop within seconds or the app is
+    // ended: stop now rather than when the job has wound down, which can take
+    // longer on a GPU.
     override fun onTimeout(startId: Int, fgsType: Int) {
         transcriber.cancel(timeout = true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onDestroy() {

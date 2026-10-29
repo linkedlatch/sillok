@@ -73,7 +73,7 @@
     <string name="info_fell_back">%1$s (GPU를 쓸 수 없어 대체)</string>
     <string name="info_threads">CPU 스레드: %1$d</string>
 
-    <string name="error_time_limit">Android가 전사를 중단했습니다: 백그라운드 처리는 하루 6시간까지입니다.</string>
+    <string name="error_time_limit">Android가 전사를 중단했습니다: 앱이 백그라운드에서 일할 수 있는 시간은 24시간 중 6시간입니다. 앱을 열면 다시 6시간이 주어집니다.</string>
     <string name="error_unsupported_file">이 파일의 소리를 읽을 수 없습니다(%1$s).</string>
     <string name="error_model">모델을 쓸 수 없습니다: %1$s</string>
     <string name="error_engine">전사하지 못했습니다: %1$s</string>
