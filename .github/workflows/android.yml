@@ -72,6 +72,6 @@ jobs:
           working-directory: apps/android
           script: |
             adb push ../../speech.wav /data/local/tmp/speech.wav
-            ./gradlew connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.speech=/data/local/tmp/speech.wav || (adb logcat -d -b crash; adb logcat -d | grep -E "AndroidRuntime|DEBUG|sillok|libc" | tail -300; exit 1)
+            ./gradlew connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.speech=/data/local/tmp/speech.wav || (grep -h -B1 -A8 "<failure" app/build/outputs/androidTest-results/connected/debug/*.xml; adb logcat -d -b crash; adb logcat -d | grep -E "AndroidRuntime|DEBUG|sillok|libc" | tail -300; exit 1)
             adb logcat -d -s sillok-test:I
             grep -ho '<testsuite name="[^"]*" tests="[0-9]*" failures="[0-9]*" errors="[0-9]*" skipped="[0-9]*"' app/build/outputs/androidTest-results/connected/debug/*.xml
