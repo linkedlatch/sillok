@@ -12,12 +12,14 @@ function(sillok_require_third_party name)
 endfunction()
 
 # Applies patches/<name>/*.patch to a submodule once (.gitmodules ignores the
-# resulting changes).
+# resulting changes, and the lock file). Build trees configured at the same
+# time, such as Gradle's one per Android ABI, take turns.
 function(sillok_apply_patches name)
     file(GLOB patches "${PROJECT_SOURCE_DIR}/patches/${name}/*.patch")
     if(NOT patches)
         return()
     endif()
+    file(LOCK "${SILLOK_THIRD_PARTY_DIR}/${name}" DIRECTORY GUARD FUNCTION TIMEOUT 300)
     find_package(Git REQUIRED)
     foreach(patch IN LISTS patches)
         execute_process(
