@@ -27,6 +27,8 @@ data class RunState(
     val fraction: Double,
     val stepStartedAt: Long,
     val cancelling: Boolean = false,
+    /** How the read step went, once it is done. */
+    val read: TranscriptionRunner.ReadTimings? = null,
 )
 
 /** How the last transcription ended, until the app has shown it. */
@@ -81,7 +83,7 @@ class Transcriber(private val app: Application) {
         scope.launch {
             var lastFraction = 0.0
             val outcome = try {
-                val entry = runner.run(uri, name, settings) { step, fraction ->
+                val entry = runner.run(uri, name, settings, onRead = { read -> _state.update { it?.copy(read = read) } }) { step, fraction ->
                     // Called often from the worker; pass on visible changes only.
                     val current = _state.value ?: return@run
                     if (step != current.step) {

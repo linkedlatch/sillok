@@ -36,7 +36,13 @@ class TranscriptionRunner(
     }
 
     /** Blocks until done. Returns the stored job, or null if cancelled. */
-    fun run(uri: Uri, source: String, settings: JobSettings, onProgress: (Step, Double) -> Unit): JobEntry? {
+    fun run(
+        uri: Uri,
+        source: String,
+        settings: JobSettings,
+        onRead: (ReadTimings) -> Unit = {},
+        onProgress: (Step, Double) -> Unit,
+    ): JobEntry? {
         val dir = store.create()
         var entry: JobEntry? = null
         // Wall time of each step, kept with the job to compare devices.
@@ -62,6 +68,7 @@ class TranscriptionRunner(
                     report(Step.READ, 0.0)
                     val read = read(uri, job, store.audioFile(dir.name), report)
                     if (cancelled.get()) return null
+                    onRead(read)
                     val transcript = try {
                         job.run { stage, fraction -> report(stage.step, fraction) }
                     } catch (e: SillokException) {

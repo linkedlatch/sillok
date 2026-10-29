@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.linkedlatch.sillok.R
 import io.github.linkedlatch.sillok.data.RunState
+import io.github.linkedlatch.sillok.data.Step
 import io.github.linkedlatch.sillok.service.Notifications.label
 import kotlinx.coroutines.delay
 
@@ -191,6 +192,15 @@ fun RunningScreen(run: RunState, onCancel: () -> Unit, onBack: () -> Unit) {
                             else -> Spacer(Modifier.size(24.dp))
                         }
                         Text(stringResource(step.label), Modifier.padding(start = 16.dp))
+                    }
+                    val read = run.read
+                    if (step == Step.READ && read != null) {
+                        Text(
+                            stringResource(R.string.info_read_parts, formatTime(read.decodeMs), formatTime(read.pushMs),
+                                formatTime(read.copyMs)) + "\n" + stringResource(R.string.info_decoder, read.decoder ?: "?"),
+                            Modifier.padding(start = 40.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                     if (i == current) {
                         LinearProgressIndicator({ run.fraction.toFloat() }, Modifier.fillMaxWidth())
