@@ -7,7 +7,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.github.linkedlatch.sillok.SillokApplication
 import kotlinx.coroutines.Job
@@ -38,8 +37,10 @@ class TranscriptionService : Service() {
         // A service started with startForegroundService() must go to the
         // foreground even if the job has already ended.
         val state = transcriber.state.value
-        ServiceCompat.startForeground(
-            this, Notifications.PROGRESS_ID,
+        // Not ServiceCompat: it drops the types newer than Android 14, such as
+        // mediaProcessing, and Android then refuses a service of type none.
+        startForeground(
+            Notifications.PROGRESS_ID,
             if (state != null) Notifications.progress(this, state) else Notifications.idle(this),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
@@ -58,7 +59,7 @@ class TranscriptionService : Service() {
                 // delay limits the notification to one update a second.
                 transcriber.state.collect { current ->
                     if (current == null) {
-                        ServiceCompat.stopForeground(this@TranscriptionService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                        stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     } else {
                         Notifications.update(this@TranscriptionService, current)
