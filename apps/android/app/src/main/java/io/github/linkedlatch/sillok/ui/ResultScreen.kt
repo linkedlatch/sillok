@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
@@ -55,7 +56,10 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.linkedlatch.sillok.R
+import io.github.linkedlatch.sillok.data.JobEntry
+import io.github.linkedlatch.sillok.data.Step
 import io.github.linkedlatch.sillok.engine.Transcript
+import io.github.linkedlatch.sillok.service.Notifications.label
 import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -124,6 +128,7 @@ fun ResultScreen(vm: AppViewModel, id: String) {
     }
 
     var shareMenu by remember { mutableStateOf(false) }
+    var info by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
     val speakerLabel = stringResource(R.string.speaker_label)
 
@@ -138,6 +143,9 @@ fun ResultScreen(vm: AppViewModel, id: String) {
                 },
                 actions = {
                     val current = transcript ?: return@TopAppBar
+                    IconButton(onClick = { info = true }) {
+                        Icon(Icons.Default.Info, stringResource(R.string.info))
+                    }
                     if (current.speakers.isNotEmpty()) {
                         IconButton(onClick = { naming = true }) {
                             Icon(Icons.Default.Person, stringResource(R.string.speakers))
@@ -228,12 +236,41 @@ fun ResultScreen(vm: AppViewModel, id: String) {
     }
 
     val current = transcript
+    if (info && current != null) {
+        RunDetailsDialog(entry, current, onDismiss = { info = false })
+    }
     if (naming && current != null) {
         SpeakerDialog(current, speakerLabel, onDismiss = { naming = false }) { names ->
             naming = false
             scope.launch { transcript = vm.saveSpeakerNames(id, current, names) }
         }
     }
+}
+
+/** Where the time went, to compare devices and settings. */
+@Composable
+private fun RunDetailsDialog(entry: JobEntry, transcript: Transcript, onDismiss: () -> Unit) {
+    val lines = buildList {
+        add(stringResource(R.string.info_length, formatTime(entry.durationMs)))
+        entry.stats?.let { stats ->
+            Step.entries.forEach { step ->
+                stats.timingsMs[step.name.lowercase()]?.let { add(stringResource(R.string.info_step, stringResource(step.label), formatTime(it))) }
+            }
+            val total = stats.timingsMs.values.sum()
+            add(stringResource(R.string.info_total, formatTime(total), total.toDouble() / entry.durationMs.coerceAtLeast(1)))
+        }
+        transcript.models["transcription"]?.let { model ->
+            val device = if (model.fellBackToCpu) stringResource(R.string.info_fell_back, model.device) else model.device
+            add(stringResource(R.string.info_device, device))
+        }
+        entry.stats?.let { add(stringResource(R.string.info_threads, it.threads)) }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.info)) },
+        text = { Text(lines.joinToString("\n")) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
+    )
 }
 
 @Composable

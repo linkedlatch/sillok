@@ -2,6 +2,7 @@ package io.github.linkedlatch.sillok.data
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import io.github.linkedlatch.sillok.engine.Engine
 import io.github.linkedlatch.sillok.engine.Job
 import io.github.linkedlatch.sillok.engine.SillokException
@@ -38,22 +39,40 @@ class TranscriptionRunner(
     fun run(uri: Uri, source: String, settings: JobSettings, onProgress: (Step, Double) -> Unit): JobEntry? {
         val dir = store.create()
         var entry: JobEntry? = null
+        // Wall time of each step, kept with the job to compare devices.
+        val timings = linkedMapOf<Step, Long>()
+        var current: Step? = null
+        var since = 0L
+        fun enter(step: Step?) {
+            val now = SystemClock.elapsedRealtime()
+            current?.let { timings[it] = (timings[it] ?: 0L) + now - since }
+            current = step
+            since = now
+        }
+        val report = { step: Step, fraction: Double ->
+            if (step != current) enter(step)
+            onProgress(step, fraction)
+        }
+        val threads = threads()
         try {
-            Engine(modelsDir, context.cacheDir, settings.gpuIndex, threads()).use { engine ->
+            Engine(modelsDir, context.cacheDir, settings.gpuIndex, threads).use { engine ->
                 Job(engine, settings.language, settings.diarize, settings.terms).use { job ->
                     this.job = job
                     if (cancelled.get()) return null
-                    decode(uri, job, store.audioFile(dir.name), onProgress)
+                    report(Step.READ, 0.0)
+                    decode(uri, job, store.audioFile(dir.name), report)
                     if (cancelled.get()) return null
                     val transcript = try {
-                        job.run { stage, fraction -> onProgress(stage.step, fraction) }
+                        job.run { stage, fraction -> report(stage.step, fraction) }
                     } catch (e: SillokException) {
                         if (e.status == SillokException.CANCELLED) return null
                         throw e
                     } finally {
                         this.job = null
                     }
-                    entry = store.complete(dir, transcript, source, Transcript(transcript).durationMs)
+                    enter(null)
+                    val stats = JobStats(timings.mapKeys { it.key.name.lowercase() }, threads)
+                    entry = store.complete(dir, transcript, source, Transcript(transcript).durationMs, stats)
                 }
             }
         } finally {
@@ -71,8 +90,11 @@ class TranscriptionRunner(
         var format: Pair<Int, Int>? = null
         var copied = 0L
         AacWriter(copy, Job.SAMPLE_RATE).use { writer ->
-            fun copyNewAudio() {
+            // Copies once at least [COPY_BLOCK] samples are new, or everything when
+            // [all]; small writes would cost a codec round trip each.
+            fun copyNewAudio(all: Boolean = false) {
                 val length = job.audioLength
+                if (!all && length - copied < COPY_BLOCK) return
                 while (copied < length) {
                     val pcm = job.readAudio(copied, minOf(length - copied, COPY_BLOCK).toInt())
                     writer.write(pcm)
@@ -92,7 +114,7 @@ class TranscriptionRunner(
             if (cancelled.get()) return
             if (format == null) throw UnsupportedMediaException("the file has no audio")
             job.endAudio()
-            copyNewAudio()
+            copyNewAudio(all = true)
             writer.finish()
         }
     }

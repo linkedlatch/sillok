@@ -6,6 +6,9 @@ import java.util.Date
 import java.util.Locale
 import org.json.JSONObject
 
+/** How a job ran: wall time per step ("read", "analyze", ...) and the CPU threads. */
+data class JobStats(val timingsMs: Map<String, Long>, val threads: Int)
+
 /** A finished transcription in the history. */
 data class JobEntry(
     val id: String,
@@ -13,6 +16,7 @@ data class JobEntry(
     val source: String,
     val createdMs: Long,
     val durationMs: Long,
+    val stats: JobStats? = null,
 )
 
 /**
@@ -40,10 +44,10 @@ class JobStore(private val root: File) {
         return dir
     }
 
-    fun complete(dir: File, transcript: String, source: String, durationMs: Long): JobEntry {
+    fun complete(dir: File, transcript: String, source: String, durationMs: Long, stats: JobStats? = null): JobEntry {
         writeAtomically(transcriptFile(dir.name), transcript)
         val entry = JobEntry(dir.name, source.substringBeforeLast('.').ifEmpty { source }, source,
-            System.currentTimeMillis(), durationMs)
+            System.currentTimeMillis(), durationMs, stats)
         write(entry)
         return entry
     }
@@ -68,8 +72,12 @@ class JobStore(private val root: File) {
 
     private fun read(dir: File): JobEntry {
         val json = JSONObject(File(dir, META).readText())
+        val stats = json.optJSONObject("stats")?.let { stats ->
+            val timings = stats.getJSONObject("timings_ms")
+            JobStats(timings.keys().asSequence().associateWith { timings.getLong(it) }, stats.getInt("threads"))
+        }
         return JobEntry(dir.name, json.getString("title"), json.getString("source"),
-            json.getLong("created_ms"), json.getLong("duration_ms"))
+            json.getLong("created_ms"), json.getLong("duration_ms"), stats)
     }
 
     private fun write(entry: JobEntry) {
@@ -78,6 +86,9 @@ class JobStore(private val root: File) {
             .put("source", entry.source)
             .put("created_ms", entry.createdMs)
             .put("duration_ms", entry.durationMs)
+        entry.stats?.let { stats ->
+            json.put("stats", JSONObject().put("timings_ms", JSONObject(stats.timingsMs)).put("threads", stats.threads))
+        }
         writeAtomically(File(File(root, entry.id), META), json.toString(2))
     }
 

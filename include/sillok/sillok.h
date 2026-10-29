@@ -53,7 +53,8 @@ typedef struct sillok_engine sillok_engine;
 typedef struct sillok_job sillok_job;
 
 /* Progress of `stage` as a fraction in [0, 1]. Called on the thread running
- * sillok_job_run(); stages arrive in order. */
+ * sillok_job_run(); stages arrive in order, each first with 0 as it starts
+ * (before its model loads). */
 typedef void (*sillok_progress_fn)(void* user_data, sillok_stage stage,
                                    double fraction);
 

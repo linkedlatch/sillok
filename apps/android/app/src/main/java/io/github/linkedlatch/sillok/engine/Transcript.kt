@@ -10,10 +10,14 @@ import org.json.JSONObject
 class Transcript(val json: String) {
     data class Speaker(val id: Int, val name: String?)
     data class Segment(val startMs: Long, val endMs: Long, val text: String, val speaker: Int?)
+    /** A model the run used: [device] as the library names it, and whether a GPU request fell back to the CPU. */
+    data class ModelUse(val name: String, val device: String, val fellBackToCpu: Boolean)
 
     val durationMs: Long
     val speakers: List<Speaker>
     val segments: List<Segment>
+    /** By role: "transcription", "voice_detection", "diarization". */
+    val models: Map<String, ModelUse>
 
     init {
         val root = JSONObject(json)
@@ -30,6 +34,11 @@ class Transcript(val json: String) {
                 segment.getLong("start_ms"), segment.getLong("end_ms"), segment.getString("text"),
                 if (segment.has("speaker")) segment.getInt("speaker") else null,
             )
+        }
+        val modelObject = root.optJSONObject("models") ?: JSONObject()
+        models = modelObject.keys().asSequence().associateWith { role ->
+            val model = modelObject.getJSONObject(role)
+            ModelUse(model.optString("name"), model.optString("device"), model.optBoolean("fell_back_to_cpu"))
         }
     }
 

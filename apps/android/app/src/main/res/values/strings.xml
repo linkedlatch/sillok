@@ -51,7 +51,7 @@
     <string name="step_diarize">Telling speakers apart</string>
     <string name="running_remaining">About %1$s left in this step</string>
     <string name="running_cancelling">Cancelling…</string>
-    <string name="running_keep_open">Keep the app open until it finishes.</string>
+    <string name="running_background">It goes on while you use other apps or the screen is off; the notification shows its progress.</string>
 
     <!-- Result -->
     <string name="speaker_label">Speaker {n}</string>
@@ -65,7 +65,23 @@
     <string name="result_missing">This transcript cannot be read.</string>
     <string name="result_empty">No speech was found.</string>
 
+    <!-- Notifications -->
+    <string name="channel_progress">Transcription progress</string>
+    <string name="channel_finished">Finished transcriptions</string>
+    <string name="notification_progress">%1$s · %2$d%%</string>
+    <string name="notification_done">The transcript is ready.</string>
+
+    <!-- Run details -->
+    <string name="info">Run details</string>
+    <string name="info_length">Recording: %1$s</string>
+    <string name="info_step">%1$s: %2$s</string>
+    <string name="info_total">Total: %1$s (%2$.2f× the recording)</string>
+    <string name="info_device">Transcribed on: %1$s</string>
+    <string name="info_fell_back">%1$s (the GPU was unavailable)</string>
+    <string name="info_threads">CPU threads: %1$d</string>
+
     <!-- Errors -->
+    <string name="error_time_limit">Android stopped the transcription: background processing is limited to 6 hours a day.</string>
     <string name="error_unsupported_file">Cannot read the audio of this file (%1$s).</string>
     <string name="error_model">A model could not be used: %1$s</string>
     <string name="error_engine">Transcription failed: %1$s</string>

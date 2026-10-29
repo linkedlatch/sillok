@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,9 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.linkedlatch.sillok.R
 import io.github.linkedlatch.sillok.data.JobEntry
+import io.github.linkedlatch.sillok.service.Notifications.label
 
 @Composable
 fun SillokApp(vm: AppViewModel = viewModel()) {
@@ -62,7 +66,7 @@ fun SillokApp(vm: AppViewModel = viewModel()) {
         ModelState.Ready -> when (val screen = vm.screen) {
             Screen.Home -> HomeScreen(vm)
             is Screen.Setup -> SetupScreen(vm, screen)
-            Screen.Running -> vm.run?.let { RunningScreen(it, vm::cancelRun) }
+            Screen.Running -> vm.run?.let { RunningScreen(it, vm::cancelRun, { vm.back() }) }
             is Screen.Result -> ResultScreen(vm, screen.id)
         }
         else -> ModelsScreen(models, vm::startDownload, vm::stopDownload)
@@ -160,14 +164,16 @@ private fun HomeScreen(vm: AppViewModel) {
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            // One job at a time; the next file waits until it ends.
+            if (vm.run == null) ExtendedFloatingActionButton(
                 onClick = { picker.launch(arrayOf("audio/*", "video/*")) },
                 icon = { Icon(Icons.Default.Add, null) },
                 text = { Text(stringResource(R.string.home_open)) },
             )
         },
     ) { padding ->
-        if (vm.history.isEmpty()) {
+        val run = vm.run
+        if (vm.history.isEmpty() && run == null) {
             Box(Modifier.fillMaxSize().padding(padding).padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(stringResource(R.string.home_empty), textAlign = TextAlign.Center)
             }
@@ -179,6 +185,19 @@ private fun HomeScreen(vm: AppViewModel) {
                     bottom = padding.calculateBottomPadding() + 88.dp,  // room for the button
                 ),
             ) {
+                if (run != null) {
+                    item(key = "running") {
+                        ListItem(
+                            headlineContent = { Text(run.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            supportingContent = {
+                                Text(stringResource(R.string.notification_progress, stringResource(run.step.label), (run.fraction * 100).toInt()))
+                            },
+                            leadingContent = { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) },
+                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            modifier = Modifier.clickable(onClick = vm::showRunning),
+                        )
+                    }
+                }
                 items(vm.history, key = { it.id }) { entry ->
                     HistoryItem(
                         entry,

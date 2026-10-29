@@ -47,7 +47,7 @@
     <string name="step_diarize">화자 구분</string>
     <string name="running_remaining">이 단계 약 %1$s 남음</string>
     <string name="running_cancelling">취소하는 중…</string>
-    <string name="running_keep_open">끝날 때까지 앱을 켜 두세요.</string>
+    <string name="running_background">다른 앱을 쓰거나 화면을 꺼도 계속 진행되고, 알림에서 진행 상황을 볼 수 있습니다.</string>
 
     <string name="speaker_label">화자 {n}</string>
     <string name="speakers">화자</string>
@@ -60,6 +60,20 @@
     <string name="result_missing">이 결과를 읽을 수 없습니다.</string>
     <string name="result_empty">음성을 찾지 못했습니다.</string>
 
+    <string name="channel_progress">전사 진행</string>
+    <string name="channel_finished">전사 완료</string>
+    <string name="notification_progress">%1$s · %2$d%%</string>
+    <string name="notification_done">전사가 끝났습니다.</string>
+
+    <string name="info">처리 정보</string>
+    <string name="info_length">원본 길이: %1$s</string>
+    <string name="info_step">%1$s: %2$s</string>
+    <string name="info_total">합계: %1$s (원본의 %2$.2f배)</string>
+    <string name="info_device">전사 장치: %1$s</string>
+    <string name="info_fell_back">%1$s (GPU를 쓸 수 없어 대체)</string>
+    <string name="info_threads">CPU 스레드: %1$d</string>
+
+    <string name="error_time_limit">Android가 전사를 중단했습니다: 백그라운드 처리는 하루 6시간까지입니다.</string>
     <string name="error_unsupported_file">이 파일의 소리를 읽을 수 없습니다(%1$s).</string>
     <string name="error_model">모델을 쓸 수 없습니다: %1$s</string>
     <string name="error_engine">전사하지 못했습니다: %1$s</string>

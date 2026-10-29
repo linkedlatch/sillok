@@ -74,17 +74,19 @@ class AudioDecoder(private val context: Context, private val uri: Uri) {
         var inputDone = false
         var output = codec.outputFormat
         while (!isCancelled()) {
-            if (!inputDone) {
-                val index = codec.dequeueInputBuffer(TIMEOUT_US)
-                if (index >= 0) {
-                    val size = extractor.readSampleData(codec.getInputBuffer(index)!!, 0)
-                    if (size < 0) {
-                        codec.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        inputDone = true
-                    } else {
-                        codec.queueInputBuffer(index, 0, size, extractor.sampleTime, 0)
-                        extractor.advance()
-                    }
+            // Fill every free input buffer before waiting for output. The codec
+            // runs in another process; one frame in flight at a time would make
+            // each frame (23 ms of AAC) cost a round trip, minutes for an hour.
+            while (!inputDone) {
+                val index = codec.dequeueInputBuffer(0)
+                if (index < 0) break
+                val size = extractor.readSampleData(codec.getInputBuffer(index)!!, 0)
+                if (size < 0) {
+                    codec.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    inputDone = true
+                } else {
+                    codec.queueInputBuffer(index, 0, size, extractor.sampleTime, 0)
+                    extractor.advance()
                 }
             }
             val index = codec.dequeueOutputBuffer(info, TIMEOUT_US)

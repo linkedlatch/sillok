@@ -41,6 +41,7 @@ struct Analysis {
 Analysis Analyze(const AudioBuffer& audio, ModelProvider& models,
                  const ProgressCallback& progress, const StopToken& stop,
                  Transcript& transcript) {
+  progress(Stage::kAnalyze, 0.0);  // before the model loads, which takes a while
   const auto detector = models.OpenVoiceDetector();
   Analysis analysis{.probabilities = {},
                     .frame_samples = detector->FrameSamples()};
@@ -129,6 +130,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
                                        const ProgressCallback& progress,
                                        const StopToken& stop,
                                        Transcript& transcript) {
+  progress(Stage::kTranscribe, 0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
   const TranscriberCapabilities capabilities = transcriber->Capabilities();
   // Windows never hold more audio than the model accepts.
@@ -235,6 +237,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
                                  const ProgressCallback& progress,
                                  const StopToken& stop,
                                  Transcript& transcript) {
+  progress(Stage::kDiarize, 0.0);  // before the model loads, which takes a while
   const auto diarizer = models.OpenDiarizer();
   for (SampleIndex begin = 0; begin < audio.size();
        begin += kDiarizationChunk) {

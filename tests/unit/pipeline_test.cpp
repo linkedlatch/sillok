@@ -146,6 +146,11 @@ TEST(PipelineTest, ReportsProgressInStageOrder) {
     EXPECT_GE(fraction, 0.0);
     EXPECT_LE(fraction, 1.0);
   }
+  // Each stage is announced as it starts, before its model loads.
+  std::map<Stage, double> first;
+  for (const auto& [stage, fraction] : events) first.try_emplace(stage, fraction);
+  EXPECT_EQ(first.size(), 3u);
+  for (const auto& [stage, fraction] : first) EXPECT_EQ(fraction, 0.0);
   std::map<Stage, double> last;
   for (const auto& [stage, fraction] : events) last[stage] = fraction;
   EXPECT_DOUBLE_EQ(last[Stage::kAnalyze], 1.0);

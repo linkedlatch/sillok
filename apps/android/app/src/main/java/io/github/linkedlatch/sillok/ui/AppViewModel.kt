@@ -10,24 +10,23 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.linkedlatch.sillok.R
+import io.github.linkedlatch.sillok.SillokApplication
 import io.github.linkedlatch.sillok.data.JobEntry
 import io.github.linkedlatch.sillok.data.JobSettings
-import io.github.linkedlatch.sillok.data.JobStore
 import io.github.linkedlatch.sillok.data.ModelDownloader
 import io.github.linkedlatch.sillok.data.ModelIntegrityException
+import io.github.linkedlatch.sillok.data.RunOutcome
+import io.github.linkedlatch.sillok.data.RunState
 import io.github.linkedlatch.sillok.data.SettingsStore
-import io.github.linkedlatch.sillok.data.Step
-import io.github.linkedlatch.sillok.data.TranscriptionRunner
 import io.github.linkedlatch.sillok.engine.ComputeDevice
 import io.github.linkedlatch.sillok.engine.Sillok
-import io.github.linkedlatch.sillok.engine.SillokException
 import io.github.linkedlatch.sillok.engine.Transcript
-import io.github.linkedlatch.sillok.media.UnsupportedMediaException
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -46,21 +45,11 @@ sealed interface Screen {
     data class Result(val id: String) : Screen
 }
 
-/** Progress of the running transcription: the current step, its fraction and when it began. */
-data class RunState(
-    val name: String,
-    val steps: List<Step>,
-    val step: Step,
-    val fraction: Double,
-    val stepStartedAt: Long,
-    val cancelling: Boolean = false,
-)
-
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application
-    private val modelsDir = File(app.filesDir, "models")
-    private val downloader = ModelDownloader(modelsDir)
-    private val store = JobStore(File(app.filesDir, "jobs"))
+    private val transcriber = (application as SillokApplication).transcriber
+    private val downloader = ModelDownloader(transcriber.modelsDir)
+    private val store = transcriber.store
     private val settingsStore = SettingsStore(app)
 
     var models by mutableStateOf<ModelState>(ModelState.Checking)
@@ -81,13 +70,31 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val version: String = Sillok.version
 
     private var download: Job? = null
-    private var runner: TranscriptionRunner? = null
 
     init {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { store.removeIncomplete() }
             refreshHistory()
             checkModels()
+        }
+        // The job runs apart from this screen and may outlive it, or have
+        // ended while no screen was open.
+        if (transcriber.state.value != null) screen = Screen.Running
+        viewModelScope.launch { transcriber.state.collect { run = it } }
+        viewModelScope.launch {
+            transcriber.outcome.filterNotNull().collect { outcome ->
+                when (outcome) {
+                    is RunOutcome.Done -> {
+                        refreshHistory()
+                        screen = Screen.Result(outcome.id)
+                    }
+                    is RunOutcome.Failed -> {
+                        error = outcome.message
+                        if (screen == Screen.Running) screen = Screen.Home
+                    }
+                    RunOutcome.Cancelled -> if (screen == Screen.Running) screen = Screen.Home
+                }
+                transcriber.consumeOutcome()
+            }
         }
     }
 
@@ -172,12 +179,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         screen = Screen.Result(id)
     }
 
+    fun showRunning() {
+        if (run != null) screen = Screen.Running
+    }
+
     /** Handles the back gesture; returns false when the app should close. */
     fun back(): Boolean {
         when (screen) {
             Screen.Home -> return false
-            Screen.Running -> cancelRun()
-            else -> screen = Screen.Home
+            else -> screen = Screen.Home  // a running job goes on in the background
         }
         return true
     }
@@ -192,67 +202,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (run != null) return
         this.settings = settings
         settingsStore.save(settings)
-        val steps = buildList {
-            add(Step.READ)
-            add(Step.ANALYZE)
-            add(Step.TRANSCRIBE)
-            if (settings.diarize) add(Step.DIARIZE)
-        }
-        val runner = TranscriptionRunner(app, store, modelsDir).also { runner = it }
-        run = RunState(name, steps, Step.READ, 0.0, SystemClock.elapsedRealtime())
+        transcriber.start(uri, name, settings)
         screen = Screen.Running
-        viewModelScope.launch {
-            try {
-                var lastStep = Step.READ
-                var lastFraction = 0.0
-                val entry = withContext(Dispatchers.Default) {
-                    runner.run(uri, name, settings) { step, fraction ->
-                        // Called often from the worker; pass on visible changes only.
-                        if (step != lastStep || fraction - lastFraction >= 0.001 || fraction >= 1.0) {
-                            lastStep = step
-                            lastFraction = fraction
-                            onMain { progress(step, fraction) }
-                        }
-                    }
-                }
-                refreshHistory()
-                screen = if (entry != null) Screen.Result(entry.id) else Screen.Home
-            } catch (e: Exception) {
-                error = describe(e)
-                screen = Screen.Home
-            } finally {
-                this@AppViewModel.runner = null
-                run = null
-            }
-        }
     }
 
-    private fun progress(step: Step, fraction: Double) {
-        val current = run ?: return
-        val now = SystemClock.elapsedRealtime()
-        run = if (step != current.step) {
-            current.copy(step = step, fraction = fraction, stepStartedAt = now)
-        } else {
-            current.copy(fraction = fraction)
-        }
-    }
+    fun cancelRun() = transcriber.cancel()
 
     private fun onMain(block: () -> Unit) {
         viewModelScope.launch(Dispatchers.Main) { block() }
-    }
-
-    fun cancelRun() {
-        val current = run ?: return
-        run = current.copy(cancelling = true)
-        runner?.cancel()
-    }
-
-    private fun describe(e: Exception): String = when (e) {
-        is UnsupportedMediaException -> app.getString(R.string.error_unsupported_file, e.message ?: "")
-        is SillokException ->
-            if (e.status == SillokException.MODEL_ERROR) app.getString(R.string.error_model, e.message ?: "")
-            else app.getString(R.string.error_engine, e.message ?: "")
-        else -> app.getString(R.string.error_engine, e.message ?: e.javaClass.simpleName)
     }
 
     // --- History --------------------------------------------------------------
@@ -296,9 +253,5 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val dir = File(app.cacheDir, "export").apply { deleteRecursively(); mkdirs() }
         val safe = entry.title.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(80).ifBlank { "transcript" }
         File(dir, "$safe.$format").apply { writeText(text) }
-    }
-
-    override fun onCleared() {
-        runner?.cancel()
     }
 }

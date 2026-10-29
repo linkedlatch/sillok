@@ -1,6 +1,11 @@
 package io.github.linkedlatch.sillok.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +38,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -42,12 +46,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.linkedlatch.sillok.R
-import io.github.linkedlatch.sillok.data.Step
+import io.github.linkedlatch.sillok.data.RunState
+import io.github.linkedlatch.sillok.service.Notifications.label
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,7 +130,25 @@ fun SetupScreen(vm: AppViewModel, screen: Screen.Setup) {
                     }
                 }
 
-                Button(onClick = { vm.start(screen.uri, screen.name, settings) }, Modifier.fillMaxWidth()) {
+                // The progress notification needs permission from Android 13 on;
+                // the job runs either way.
+                val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                    vm.start(screen.uri, screen.name, settings)
+                }
+                val context = LocalContext.current
+                Button(
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                            PackageManager.PERMISSION_GRANTED
+                        ) {
+                            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            vm.start(screen.uri, screen.name, settings)
+                        }
+                    },
+                    Modifier.fillMaxWidth(),
+                ) {
                     Text(stringResource(R.string.setup_start))
                 }
             }
@@ -134,14 +158,7 @@ fun SetupScreen(vm: AppViewModel, screen: Screen.Setup) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RunningScreen(run: RunState, onCancel: () -> Unit) {
-    // Without a background service (docs/GUI-DESIGN.md G6) the work needs the
-    // app in front; at least keep the screen from locking.
-    val view = LocalView.current
-    DisposableEffect(view) {
-        view.keepScreenOn = true
-        onDispose { view.keepScreenOn = false }
-    }
+fun RunningScreen(run: RunState, onCancel: () -> Unit, onBack: () -> Unit) {
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -150,7 +167,18 @@ fun RunningScreen(run: RunState, onCancel: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.running_title)) }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.running_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
         CenteredColumn(padding) {
             Text(run.name, style = MaterialTheme.typography.titleMedium)
             val current = run.steps.indexOf(run.step)
@@ -175,7 +203,7 @@ fun RunningScreen(run: RunState, onCancel: () -> Unit) {
                     }
                 }
             }
-            Text(stringResource(R.string.running_keep_open), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.running_background), style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = onCancel, enabled = !run.cancelling) {
                 Text(stringResource(if (run.cancelling) R.string.running_cancelling else R.string.cancel))
             }
@@ -189,11 +217,3 @@ private fun remaining(run: RunState, now: Long): Long? {
     if (run.cancelling || run.fraction < 0.02 || elapsed < 5_000) return null
     return (elapsed * (1 - run.fraction) / run.fraction).toLong()
 }
-
-private val Step.label
-    get() = when (this) {
-        Step.READ -> R.string.step_read
-        Step.ANALYZE -> R.string.step_analyze
-        Step.TRANSCRIBE -> R.string.step_transcribe
-        Step.DIARIZE -> R.string.step_diarize
-    }
