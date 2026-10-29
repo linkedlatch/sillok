@@ -85,7 +85,8 @@ class ModelsTest : public ::testing::Test {
     }
   }
   static std::unique_ptr<ModelProvider> Models(Device device = Device::kCpu) {
-    return OpenModels({.models_dir = kModels, .device = device, .gpu_index = 0, .threads = 0});
+    return OpenModels({.models_dir = kModels, .device = device, .gpu_index = 0, .threads = 0,
+                       .transcription_model = ""});
   }
 };
 

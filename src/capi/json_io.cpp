@@ -78,7 +78,8 @@ std::optional<int> ReadSpeaker(const Json& object) {
 EngineSettings ParseEngineConfig(std::string_view text) {
   const Json json = Parse(text, "engine config");
   RejectUnknownKeys(json, "engine config",
-                    {"models_dir", "device", "gpu_index", "threads", "temp_dir"});
+                    {"models_dir", "device", "gpu_index", "threads", "temp_dir",
+                     "transcription_model"});
   EngineSettings settings;
   settings.temp_dir = PathFromUtf8(Get<std::string>(json, "temp_dir", ""));
   EngineConfig& config = settings.models;
@@ -95,6 +96,7 @@ EngineSettings ParseEngineConfig(std::string_view text) {
   }
   config.gpu_index = Get<int>(json, "gpu_index", 0);
   config.threads = Get<int>(json, "threads", 0);
+  config.transcription_model = Get<std::string>(json, "transcription_model", "");
   if (config.gpu_index < 0 || config.threads < 0) {
     throw std::invalid_argument("\"gpu_index\" and \"threads\" must be >= 0");
   }
@@ -126,28 +128,41 @@ ExportOptions ParseExportOptions(std::string_view text) {
   return options;
 }
 
+namespace {
+
+Json SegmentToJson(const Segment& segment) {
+  Json words = Json::array();
+  for (const Word& word : segment.words) {
+    Json item = {{"text", word.text},
+                 {"start_ms", Ms(word.start)},
+                 {"end_ms", Ms(word.end)},
+                 {"confidence", word.confidence}};
+    if (word.speaker) item["speaker"] = *word.speaker;
+    words.push_back(std::move(item));
+  }
+  Json item = {{"start_ms", Ms(segment.start)},
+               {"end_ms", Ms(segment.end)},
+               {"text", segment.text},
+               {"language", segment.language},
+               {"words", std::move(words)}};
+  if (segment.speaker) item["speaker"] = *segment.speaker;
+  return item;
+}
+
+}  // namespace
+
+std::string SegmentsToJson(std::span<const Segment> segments) {
+  Json items = Json::array();
+  for (const Segment& segment : segments) items.push_back(SegmentToJson(segment));
+  return Dump(items);
+}
+
 std::string TranscriptToJson(const Transcript& transcript) {
   std::set<int> speaker_ids;
   Json segments = Json::array();
   for (const Segment& segment : transcript.segments) {
-    Json words = Json::array();
-    for (const Word& word : segment.words) {
-      Json item = {{"text", word.text},
-                   {"start_ms", Ms(word.start)},
-                   {"end_ms", Ms(word.end)},
-                   {"confidence", word.confidence}};
-      if (word.speaker) item["speaker"] = *word.speaker;
-      words.push_back(std::move(item));
-    }
-    Json item = {{"start_ms", Ms(segment.start)},
-                 {"end_ms", Ms(segment.end)},
-                 {"text", segment.text},
-                 {"language", segment.language},
-                 {"words", std::move(words)}};
-    if (segment.speaker) {
-      item["speaker"] = *segment.speaker;
-      speaker_ids.insert(*segment.speaker);
-    }
+    Json item = SegmentToJson(segment);
+    if (segment.speaker) speaker_ids.insert(*segment.speaker);
     segments.push_back(std::move(item));
   }
   for (const auto& [id, name] : transcript.speaker_names) speaker_ids.insert(id);
@@ -209,17 +224,25 @@ Transcript TranscriptFromJson(std::string_view text) {
   return transcript;
 }
 
-std::string CatalogToJson(const std::vector<CatalogEntry>& catalog) {
-  Json entries = Json::array();
-  for (const CatalogEntry& entry : catalog) {
-    entries.push_back({{"role", entry.role},
-                       {"file", entry.file},
-                       {"url", entry.url},
-                       {"size", entry.size},
-                       {"sha256", entry.sha256},
-                       {"zip", entry.zip}});
+std::string CatalogToJson(const std::vector<CatalogModel>& catalog) {
+  Json models = Json::array();
+  for (const CatalogModel& model : catalog) {
+    Json files = Json::array();
+    for (const CatalogFile& file : model.files) {
+      files.push_back({{"file", file.file},
+                       {"url", file.url},
+                       {"size", file.size},
+                       {"sha256", file.sha256},
+                       {"zip", file.zip}});
+    }
+    models.push_back({{"id", model.id},
+                      {"role", model.role},
+                      {"family", model.family},
+                      {"quantization", model.quantization},
+                      {"recommended", model.recommended},
+                      {"files", std::move(files)}});
   }
-  return Dump(entries);
+  return Dump(models);
 }
 
 std::string DevicesToJson(const std::vector<DeviceInfo>& devices) {
@@ -237,8 +260,9 @@ std::string DevicesToJson(const std::vector<DeviceInfo>& devices) {
 std::string CatalogStatusToJson(const std::vector<CatalogStatus>& statuses) {
   Json entries = Json::array();
   for (const CatalogStatus& status : statuses) {
-    entries.push_back({{"role", status.entry->role},
-                       {"file", status.entry->file},
+    entries.push_back({{"model", status.model->id},
+                       {"role", status.model->role},
+                       {"file", status.file->file},
                        {"status", status.status}});
   }
   return Dump(entries);

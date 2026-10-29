@@ -29,6 +29,9 @@ class AacWriter(
         val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channels).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
             setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
+            // A second of samples per input buffer: each buffer is a round
+            // trip to the codec's process.
+            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, sampleRate * channels * 2)
         }
         try {
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)

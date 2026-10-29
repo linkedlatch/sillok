@@ -2,6 +2,7 @@
 #define SILLOK_CORE_PIPELINE_HPP_
 
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,11 @@ enum class Stage { kAnalyze, kTranscribe, kDiarize };
 
 // Progress of `stage` as a fraction in [0, 1].
 using ProgressCallback = std::function<void(Stage stage, double fraction)>;
+
+// Transcribed segments, in order, as each becomes final during the
+// transcription stage. They preview the transcript, which then removes
+// hallucinations in silence, adds speakers and splits long segments.
+using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
 struct PipelineOptions {
   // "auto" or one of `candidates` (ISO 639-1).
@@ -44,7 +50,8 @@ struct PipelineOptions {
 // are never in memory together. Throws Cancelled once `stop` is requested.
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       StopToken stop);
+                       StopToken stop,
+                       const SegmentsCallback& on_segments = {});
 
 }  // namespace sillok
 

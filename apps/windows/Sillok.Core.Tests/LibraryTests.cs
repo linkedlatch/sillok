@@ -24,6 +24,15 @@ public class LibraryTests
     }
 
     [Fact]
+    public void EachRoleHasOneRecommendedModel()
+    {
+        var models = SillokLibrary.EngineModels(null);
+        Assert.Equal(["diarization", "transcription", "voice_detection"], models.Select(m => m.Role).Order());
+        var other = SillokLibrary.Catalog().First(m => m.Role == "transcription" && !m.Recommended);
+        Assert.Contains(SillokLibrary.EngineModels(other.Id), m => m.Id == other.Id);
+    }
+
+    [Fact]
     public void DevicesIncludeTheCpu() => Assert.Contains(SillokLibrary.Devices(), d => d.Type == "cpu");
 
     [Fact]
@@ -50,7 +59,7 @@ public class LibraryTests
     {
         var empty = Directory.CreateTempSubdirectory("sillok-check").FullName;
         var status = SillokLibrary.Check(empty, verifyHash: false);
-        Assert.Equal(SillokLibrary.Catalog().Count, status.Count);
+        Assert.Equal(SillokLibrary.Catalog().SelectMany(m => m.Files).Select(f => f.File).Distinct().Count(), status.Count);
         Assert.All(status.Values, s => Assert.Equal("missing", s));
     }
 }

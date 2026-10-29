@@ -23,22 +23,33 @@ struct EngineConfig {
   Device device = Device::kCpu;
   int gpu_index = 0;  // among the GPUs ListDevices() reports
   int threads = 0;    // CPU threads; 0 picks a default
+  // Catalog id of the transcription model; empty for the recommended one.
+  std::string transcription_model;
 };
 
-// A file of the model catalog.
-struct CatalogEntry {
-  std::string role;  // "voice_detection", "transcription", "diarization", ...
+// A file of a catalog model.
+struct CatalogFile {
   std::string file;  // name inside the models directory
   std::string url;
   std::uint64_t size = 0;
   std::string sha256;
   // A zip archive the app extracts into the models directory; the extracted
-  // directory is `file` without ".zip".
+  // directory is `file` without ".zip". Archives are optional accelerators.
   bool zip = false;
 };
 
-// Files the models of this build need.
-std::vector<CatalogEntry> ModelCatalog();
+// A model the app can download: its files and how to describe it.
+struct CatalogModel {
+  std::string id;            // e.g. "whisper-large-v3-turbo-q5_0"
+  std::string role;          // "voice_detection", "transcription", "diarization"
+  std::string family;        // e.g. "large-v3-turbo", for apps to describe
+  std::string quantization;  // e.g. "q5_0", "q8_0", "f16"
+  bool recommended = false;  // its role's default
+  std::vector<CatalogFile> files;
+};
+
+// The models of this build; one model of each role is recommended.
+std::vector<CatalogModel> ModelCatalog();
 
 struct DeviceInfo {
   std::string name;

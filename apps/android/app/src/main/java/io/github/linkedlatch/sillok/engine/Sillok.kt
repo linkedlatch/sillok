@@ -17,8 +17,25 @@ class SillokException(val status: Int, message: String) : Exception(message) {
     }
 }
 
-/** One file of the model catalog. */
-data class ModelFile(val role: String, val file: String, val url: String, val size: Long, val sha256: String)
+/** A file of a catalog model; [zip] files are optional accelerators (Apple only). */
+data class ModelFile(val file: String, val url: String, val size: Long, val sha256: String, val zip: Boolean)
+
+/**
+ * A model of the catalog. [role] is "voice_detection", "transcription" or
+ * "diarization"; [family] and [quantization] (e.g. "large-v3-turbo",
+ * "q5_0") are for describing it.
+ */
+data class CatalogModel(
+    val id: String,
+    val role: String,
+    val family: String,
+    val quantization: String,
+    val recommended: Boolean,
+    val files: List<ModelFile>,
+) {
+    /** Bytes to download: the files the app uses (not the archives). */
+    val size: Long get() = files.filter { !it.zip }.sumOf { it.size }
+}
 
 /** A compute device the library can use; [type] is "cpu", "gpu", "igpu", ... */
 data class ComputeDevice(val name: String, val description: String, val type: String) {
@@ -33,9 +50,22 @@ private fun String.utf8() = encodeToByteArray()
 object Sillok {
     val version: String get() = Native.version().decodeToString()
 
-    fun catalog(): List<ModelFile> = objects(Native.modelCatalog()).map {
-        ModelFile(it.getString("role"), it.getString("file"), it.getString("url"),
-            it.getLong("size"), it.getString("sha256"))
+    fun catalog(): List<CatalogModel> = objects(Native.modelCatalog()).map { model ->
+        val files = model.getJSONArray("files")
+        CatalogModel(
+            model.getString("id"), model.getString("role"), model.getString("family"),
+            model.getString("quantization"), model.getBoolean("recommended"),
+            List(files.length()) {
+                val file = files.getJSONObject(it)
+                ModelFile(file.getString("file"), file.getString("url"), file.getLong("size"),
+                    file.getString("sha256"), file.getBoolean("zip"))
+            },
+        )
+    }
+
+    /** The models an engine uses: each role's recommended one, with [transcription] (when given) instead for transcription. */
+    fun engineModels(transcription: String?): List<CatalogModel> = catalog().filter {
+        if (it.role == "transcription" && transcription != null) it.id == transcription else it.recommended
     }
 
     /** Status of each catalog file in [dir] by file name: "ok", "missing", "wrong_size", ... */
@@ -59,8 +89,11 @@ object Sillok {
     }
 }
 
-/** sillok_engine: loads the models in [modelsDir] while a job runs. [gpuIndex] null means CPU only. */
-class Engine(modelsDir: File, tempDir: File, gpuIndex: Int?, threads: Int) : AutoCloseable {
+/**
+ * sillok_engine: loads the models in [modelsDir] while a job runs. [gpuIndex]
+ * null means CPU only; [transcriptionModel] null means the recommended one.
+ */
+class Engine(modelsDir: File, tempDir: File, gpuIndex: Int?, threads: Int, transcriptionModel: String? = null) : AutoCloseable {
     internal var handle: Long = Native.engineCreate(
         JSONObject()
             .put("models_dir", modelsDir.path)
@@ -68,6 +101,7 @@ class Engine(modelsDir: File, tempDir: File, gpuIndex: Int?, threads: Int) : Aut
             .put("device", if (gpuIndex != null) "gpu" else "cpu")
             .put("gpu_index", gpuIndex ?: 0)
             .put("threads", threads)
+            .apply { if (transcriptionModel != null) put("transcription_model", transcriptionModel) }
             .toString().utf8(),
     )
         private set

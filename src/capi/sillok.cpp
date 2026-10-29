@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>
@@ -97,6 +98,8 @@ struct sillok_job {
   sillok::AudioBuffer audio;  // kept in a temporary file
   sillok::StopSource stop;
   bool ran = false;
+  sillok_segments_fn on_segments = nullptr;
+  void* segments_user_data = nullptr;
 };
 
 namespace sillok {
@@ -267,22 +270,24 @@ sillok_status sillok_model_check(const char* models_dir, int verify_hash,
     RequireArgument(models_dir != nullptr && out_json != nullptr,
                     "models_dir and out_json are required");
     const std::filesystem::path dir = sillok::PathFromUtf8(models_dir);
-    const std::vector<sillok::CatalogEntry> catalog = sillok::ModelCatalog();
+    const std::vector<sillok::CatalogModel> catalog = sillok::ModelCatalog();
     std::vector<sillok::CatalogStatus> statuses;
-    for (const sillok::CatalogEntry& entry : catalog) {
-      const std::filesystem::path path = dir / sillok::PathFromUtf8(entry.file);
-      std::string status;
-      if (entry.zip && std::filesystem::is_directory(path.parent_path() / path.stem())) {
-        status = "ok";
-      } else {
-        switch (sillok::CheckFile(path, entry.size, entry.sha256, verify_hash != 0)) {
-          case sillok::FileCheck::kOk: status = entry.zip ? "extract" : "ok"; break;
-          case sillok::FileCheck::kMissing: status = "missing"; break;
-          case sillok::FileCheck::kWrongSize: status = "wrong_size"; break;
-          case sillok::FileCheck::kWrongHash: status = "wrong_hash"; break;
+    for (const sillok::CatalogModel& model : catalog) {
+      for (const sillok::CatalogFile& file : model.files) {
+        const std::filesystem::path path = dir / sillok::PathFromUtf8(file.file);
+        std::string status;
+        if (file.zip && std::filesystem::is_directory(path.parent_path() / path.stem())) {
+          status = "ok";
+        } else {
+          switch (sillok::CheckFile(path, file.size, file.sha256, verify_hash != 0)) {
+            case sillok::FileCheck::kOk: status = file.zip ? "extract" : "ok"; break;
+            case sillok::FileCheck::kMissing: status = "missing"; break;
+            case sillok::FileCheck::kWrongSize: status = "wrong_size"; break;
+            case sillok::FileCheck::kWrongHash: status = "wrong_hash"; break;
+          }
         }
+        statuses.push_back({&model, &file, std::move(status)});
       }
-      statuses.push_back({&entry, std::move(status)});
     }
     *out_json = sillok::CopyString(sillok::CatalogStatusToJson(statuses));
     return SILLOK_OK;
@@ -386,6 +391,17 @@ sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
   });
 }
 
+sillok_status sillok_job_on_segments(sillok_job* job, sillok_segments_fn callback,
+                                     void* user_data) {
+  return Guard([&] {
+    RequireArgument(job != nullptr, "job is NULL");
+    RequireArgument(!job->ran, "the job already ran");
+    job->on_segments = callback;
+    job->segments_user_data = user_data;
+    return SILLOK_OK;
+  });
+}
+
 sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
                              void* user_data, char** out_json) {
   return Guard([&] {
@@ -409,7 +425,12 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
         [&](sillok::Stage stage, double fraction) {
           if (progress) progress(user_data, static_cast<sillok_stage>(stage), fraction);
         },
-        job->stop.Token());
+        job->stop.Token(),
+        [&](std::span<const sillok::Segment> segments) {
+          if (job->on_segments == nullptr) return;
+          const std::string json = sillok::SegmentsToJson(segments);
+          job->on_segments(job->segments_user_data, json.c_str());
+        });
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;
   });

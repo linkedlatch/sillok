@@ -103,6 +103,31 @@ TEST_F(CapiTest, TranscribesAndReportsProgress) {
   EXPECT_EQ(transcript["models"]["transcription"]["name"], "fake-transcriber");
 }
 
+TEST_F(CapiTest, PreviewsSegmentsWhileTranscribing) {
+  sillok_job* job = Job(Engine(), R"({"language": "en"})");
+  Push(job, ScriptPcm(150));  // a minute: several windows
+  struct Previews {
+    int calls = 0;
+    std::vector<std::string> texts;
+  } previews;
+  ASSERT_EQ(sillok_job_on_segments(job, [](void* user, const char* json) {
+    auto* self = static_cast<Previews*>(user);
+    ++self->calls;
+    for (const Json& segment : Json::parse(json)) {
+      EXPECT_FALSE(segment.contains("speaker"));
+      self->texts.push_back(segment["text"]);
+    }
+  }, &previews), SILLOK_OK);
+  char* out = nullptr;
+  ASSERT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  const Json transcript = Json::parse(Take(out));
+  std::vector<std::string> final_texts;
+  for (const Json& segment : transcript["segments"]) final_texts.push_back(segment["text"]);
+  EXPECT_GT(previews.calls, 1);
+  EXPECT_EQ(previews.texts, final_texts);
+  EXPECT_EQ(sillok_job_on_segments(job, nullptr, nullptr), SILLOK_INVALID_ARGUMENT);  // after the run
+}
+
 TEST_F(CapiTest, DiarizesAndListsSpeakers) {
   FakeBackendOptions().speakers = {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
                                    {5, 1}, {6, 1}, {7, 1}, {8, 1}, {9, 1}};
@@ -289,13 +314,25 @@ TEST_F(CapiTest, ExportsEditedDocuments) {
 TEST_F(CapiTest, ChecksModelFiles) {
   char* out = nullptr;
   ASSERT_EQ(sillok_model_catalog(&out), SILLOK_OK);
-  EXPECT_EQ(Json::parse(Take(out)).size(), 2u);
+  const Json catalog = Json::parse(Take(out));
+  ASSERT_EQ(catalog.size(), 2u);
+  EXPECT_EQ(catalog[0]["id"], "fake-transcriber");
+  EXPECT_EQ(catalog[0]["role"], "transcription");
+  EXPECT_EQ(catalog[0]["family"], "fake");
+  EXPECT_EQ(catalog[0]["quantization"], "q5_0");
+  EXPECT_TRUE(catalog[0]["recommended"].get<bool>());
+  EXPECT_FALSE(catalog[1]["recommended"].get<bool>());
+  ASSERT_EQ(catalog[0]["files"].size(), 2u);
+  EXPECT_EQ(catalog[0]["files"][1]["zip"], true);
 
   using Statuses = std::pair<std::string, std::string>;
   const auto status = [&](bool verify) {
     char* json = nullptr;
     EXPECT_EQ(sillok_model_check(PathToUtf8(models_dir_).c_str(), verify, &json), SILLOK_OK);
     const Json entries = Json::parse(Take(json));
+    EXPECT_EQ(entries.size(), 3u);  // every file of every model
+    EXPECT_EQ(entries[0]["model"], "fake-transcriber");
+    EXPECT_EQ(entries[2]["model"], "fake-small");
     return Statuses(entries[0]["status"].get<std::string>(),
                     entries[1]["status"].get<std::string>());
   };
@@ -306,6 +343,19 @@ TEST_F(CapiTest, ChecksModelFiles) {
   EXPECT_EQ(status(true).first, "wrong_hash");
   std::filesystem::create_directory(models_dir_ / "fake-encoder");
   EXPECT_EQ(status(true).second, "ok");
+}
+
+TEST_F(CapiTest, EngineTakesACatalogTranscriptionModel) {
+  const auto create = [&](const char* model) {
+    const Json config = {{"models_dir", PathToUtf8(models_dir_)}, {"transcription_model", model}};
+    sillok_engine* engine = nullptr;
+    const sillok_status status = sillok_engine_create(config.dump().c_str(), &engine);
+    sillok_engine_destroy(engine);
+    return status;
+  };
+  EXPECT_EQ(create("fake-small"), SILLOK_OK);
+  EXPECT_EQ(create("no-such-model"), SILLOK_INVALID_ARGUMENT);
+  EXPECT_NE(std::string(sillok_last_error()).find("no-such-model"), std::string::npos);
 }
 
 TEST_F(CapiTest, VersionAndDevices) {

@@ -5,8 +5,19 @@ using System.Text.Json.Nodes;
 
 namespace Sillok;
 
-/// <summary>One file of the model catalog.</summary>
-public sealed record ModelFile(string Role, string File, string Url, long Size, string Sha256);
+/// <summary>A file of a catalog model; <see cref="Zip"/> files are optional accelerators (Apple only).</summary>
+public sealed record ModelFile(string File, string Url, long Size, string Sha256, bool Zip);
+
+/// <summary>
+/// A model of the catalog. <see cref="Role"/> is "voice_detection",
+/// "transcription" or "diarization"; <see cref="Family"/> and
+/// <see cref="Quantization"/> (e.g. "large-v3-turbo", "q5_0") describe it.
+/// </summary>
+public sealed record CatalogModel(string Id, string Role, string Family, string Quantization, bool Recommended, IReadOnlyList<ModelFile> Files)
+{
+    /// <summary>Bytes to download: the files the app uses, not the archives.</summary>
+    public long Size => Files.Where(f => !f.Zip).Sum(f => f.Size);
+}
 
 /// <summary>A compute device the library can use; <see cref="Type"/> is "cpu", "gpu", "igpu", ...</summary>
 public sealed record ComputeDevice(string Name, string Description, string Type, long MemoryTotal)
@@ -25,18 +36,27 @@ public static class SillokLibrary
 
     public static string Version => Marshal.PtrToStringUTF8(Native.Version()) ?? "";
 
-    public static IReadOnlyList<ModelFile> Catalog()
+    public static IReadOnlyList<CatalogModel> Catalog()
     {
         Native.Check(Native.ModelCatalog(out var json));
-        return Objects(Native.Take(json)).Select(o => new ModelFile(
-            (string)o["role"]!, (string)o["file"]!, (string)o["url"]!, (long)o["size"]!, (string)o["sha256"]!)).ToList();
+        return Objects(Native.Take(json)).Select(o => new CatalogModel(
+            (string)o["id"]!, (string)o["role"]!, (string)o["family"]!, (string)o["quantization"]!, (bool)o["recommended"]!,
+            o["files"]!.AsArray().Select(f => new ModelFile(
+                (string)f!["file"]!, (string)f["url"]!, (long)f["size"]!, (string)f["sha256"]!, (bool)f["zip"]!)).ToList())).ToList();
     }
+
+    /// <summary>The models an engine uses: each role's recommended one, with <paramref name="transcription"/> (when given) for transcription.</summary>
+    public static IReadOnlyList<CatalogModel> EngineModels(string? transcription) =>
+        Catalog().Where(m => m.Role == "transcription" && transcription is not null ? m.Id == transcription : m.Recommended).ToList();
 
     /// <summary>Status of each catalog file in <paramref name="dir"/> by file name: "ok", "missing", "wrong_size", ...</summary>
     public static IReadOnlyDictionary<string, string> Check(string dir, bool verifyHash)
     {
         Native.Check(Native.ModelCheck(dir, verifyHash ? 1 : 0, out var json));
-        return Objects(Native.Take(json)).ToDictionary(o => (string)o["file"]!, o => (string)o["status"]!);
+        // Files shared between models appear once per model.
+        return Objects(Native.Take(json))
+            .GroupBy(o => (string)o["file"]!)
+            .ToDictionary(g => g.Key, g => (string)g.First()["status"]!);
     }
 
     public static IReadOnlyList<ComputeDevice> Devices()
@@ -65,7 +85,8 @@ public sealed class Engine : IDisposable
 
     /// <param name="gpuIndex">null for the CPU only.</param>
     /// <param name="threads">0 for the library's default.</param>
-    public Engine(string modelsDir, string tempDir, int? gpuIndex, int threads = 0)
+    /// <param name="transcriptionModel">A catalog id; null for the recommended model.</param>
+    public Engine(string modelsDir, string tempDir, int? gpuIndex, int threads = 0, string? transcriptionModel = null)
     {
         var config = new JsonObject
         {
@@ -75,6 +96,7 @@ public sealed class Engine : IDisposable
             ["gpu_index"] = gpuIndex ?? 0,
             ["threads"] = threads,
         };
+        if (transcriptionModel is not null) config["transcription_model"] = transcriptionModel;
         Native.Check(Native.EngineCreate(config.ToJsonString(), out var handle));
         Handle = handle;
     }

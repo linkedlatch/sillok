@@ -128,6 +128,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
                                       const PipelineOptions& options,
                                        ModelProvider& models,
                                        const ProgressCallback& progress,
+                                       const SegmentsCallback& on_segments,
                                        const StopToken& stop,
                                        Transcript& transcript) {
   progress(Stage::kTranscribe, 0.0);  // before the model loads, which takes a while
@@ -214,6 +215,8 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
       KeepLeadingWords(previous, cut.earlier_keep);
       DropLeadingWords(segments, cut.later_skip);
     }
+    // The next window can no longer cut the previous one's segments.
+    if (on_segments && !previous.empty()) on_segments(previous);
     std::move(previous.begin(), previous.end(), std::back_inserter(done));
 
     const bool switched = !context.language.empty() && language != context.language;
@@ -227,6 +230,7 @@ std::vector<Segment> TranscribeSpeech(const AudioBuffer& audio,
     progress(Stage::kTranscribe, static_cast<double>(done_samples) /
                                      static_cast<double>(total));
   }
+  if (on_segments && !previous.empty()) on_segments(previous);
   std::move(previous.begin(), previous.end(), std::back_inserter(done));
   transcript.models["transcription"] = transcriber->Info();
   return done;
@@ -258,7 +262,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
 
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       StopToken stop) {
+                       StopToken stop, const SegmentsCallback& on_segments) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
   if (options.language != "auto" &&
       std::find(options.candidates.begin(), options.candidates.end(),
@@ -279,8 +283,8 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   // before the next stage starts.
   std::vector<Segment> segments;
   if (!speech.empty()) {
-    segments = TranscribeSpeech(audio, speech, options, models, progress, stop,
-                                transcript);
+    segments = TranscribeSpeech(audio, speech, options, models, progress,
+                                on_segments, stop, transcript);
   }
   progress(Stage::kTranscribe, 1.0);
   RemoveSilenceHallucinations(segments, analysis.probabilities,

@@ -68,13 +68,24 @@ SILLOK_API void sillok_free_string(char* text);
 
 /* --- Models and devices ------------------------------------------------- */
 
-/* The model files this build needs: name, role, URL, size and SHA-256. The
- * app downloads them into one directory and passes that directory to
- * sillok_engine_create(). */
+/* The models this build can use, each with the files to download into one
+ * directory, which the app passes to sillok_engine_create():
+ * [{"id": "whisper-large-v3-turbo-q5_0", "role": "transcription",
+ *   "family": "large-v3-turbo", "quantization": "q5_0", "recommended": true,
+ *   "files": [{"file": "...", "url": "...", "size": 574041195,
+ *              "sha256": "...", "zip": false}, ...]}, ...]
+ * Roles are "voice_detection", "transcription" and "diarization"; an engine
+ * needs one model of each, the recommended one unless the engine config
+ * names another transcription model. A "zip" file is an optional
+ * accelerator (the Core ML encoder on Apple) that the app extracts into the
+ * directory. Files may be shared between models. */
 SILLOK_API sillok_status sillok_model_catalog(char** out_json);
 
-/* State of every catalog file in `models_dir`. Sizes are always checked;
- * hashes only when `verify_hash` is non-zero (reads every file). */
+/* State of every catalog file in `models_dir`:
+ * [{"model": "...", "role": "...", "file": "...", "status": "ok"}, ...] with
+ * "ok", "missing", "wrong_size", "wrong_hash" or, for archives, "extract".
+ * Sizes are always checked; hashes only when `verify_hash` is non-zero
+ * (reads every file). */
 SILLOK_API sillok_status sillok_model_check(const char* models_dir,
                                             int verify_hash, char** out_json);
 
@@ -84,7 +95,10 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
 /* --- Engine -------------------------------------------------------------- */
 
 /* `config_json`: {"models_dir": "...", "device": "cpu" | "gpu",
- *                 "gpu_index": 0, "threads": 0, "temp_dir": "..."}
+ *                 "gpu_index": 0, "threads": 0, "temp_dir": "...",
+ *                 "transcription_model": "<catalog id>"}
+ * Without "transcription_model" the recommended one is used. Only the
+ * engine's models need to be in "models_dir".
  * Jobs keep their recording in a file in "temp_dir" (default: the system's
  * temporary directory), so memory does not grow with its length. Android has
  * no usable default: pass the app's cache directory there.
@@ -141,6 +155,19 @@ SILLOK_API sillok_status sillok_job_audio_length(const sillok_job* job,
 SILLOK_API sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
                                                float* samples, size_t count,
                                                size_t* out_read);
+
+/* Segments of the transcript as the transcription stage finishes them, for
+ * the app to show while the job runs: `segments_json` is an array of
+ * segments as in the transcript document (below), without "speaker". They
+ * are previews; the transcript sillok_job_run() returns then drops
+ * hallucinations in silence, adds speakers and splits long segments. Called
+ * on the thread running sillok_job_run(); the string lives for the call. */
+typedef void (*sillok_segments_fn)(void* user_data, const char* segments_json);
+
+/* Sets the job's segment callback before it runs; NULL removes it. */
+SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
+                                                sillok_segments_fn callback,
+                                                void* user_data);
 
 /* Transcribes the pushed audio and blocks until done. An engine runs one job
  * at a time (SILLOK_BUSY otherwise). A job runs once; no audio can be pushed

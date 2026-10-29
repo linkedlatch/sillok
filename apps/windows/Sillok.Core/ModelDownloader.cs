@@ -17,11 +17,17 @@ public sealed class ModelIntegrityException(IReadOnlyList<string> files) : IOExc
 /// </summary>
 public sealed class ModelDownloader(string dir, HttpClient http)
 {
-    /// <summary>Catalog files that are not complete in the folder. Archives (Core ML, Apple only) never are here.</summary>
-    public IReadOnlyList<ModelFile> Missing()
+    /// <summary>
+    /// Files of the engine's models (see <see cref="SillokLibrary.EngineModels"/>)
+    /// that are not complete in the folder. Archives are left out: only Apple uses them.
+    /// </summary>
+    public IReadOnlyList<ModelFile> Missing(string? transcriptionModel = null)
     {
         var status = SillokLibrary.Check(dir, verifyHash: false);
-        return SillokLibrary.Catalog().Where(m => status.GetValueOrDefault(m.File) != "ok").ToList();
+        return SillokLibrary.EngineModels(transcriptionModel).SelectMany(m => m.Files)
+            .Where(f => !f.Zip && status.GetValueOrDefault(f.File) != "ok")
+            .DistinctBy(f => f.File)
+            .ToList();
     }
 
     /// <summary>Bytes already downloaded of <paramref name="files"/>, counting partial downloads.</summary>
@@ -47,7 +53,10 @@ public sealed class ModelDownloader(string dir, HttpClient http)
     /// <summary>Checks every file's hash; removes and reports damaged ones.</summary>
     public void Verify()
     {
-        var damaged = SillokLibrary.Check(dir, verifyHash: true).Where(s => s.Value != "ok").Select(s => s.Key).ToList();
+        // Only files that are there: other models' files are not downloaded.
+        var damaged = SillokLibrary.Check(dir, verifyHash: true)
+            .Where(s => s.Value is not ("ok" or "missing") && File.Exists(Path.Combine(dir, s.Key)))
+            .Select(s => s.Key).ToList();
         foreach (var file in damaged) File.Delete(Path.Combine(dir, file));
         if (damaged.Count > 0) throw new ModelIntegrityException(damaged);
     }

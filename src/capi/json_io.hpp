@@ -1,6 +1,7 @@
 #ifndef SILLOK_CAPI_JSON_IO_HPP_
 #define SILLOK_CAPI_JSON_IO_HPP_
 
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,14 +30,17 @@ PipelineOptions ParseJobOptions(std::string_view json);
 ExportOptions ParseExportOptions(std::string_view json);
 
 std::string TranscriptToJson(const Transcript& transcript);
+// Segments as in a transcript document, as an array.
+std::string SegmentsToJson(std::span<const Segment> segments);
 Transcript TranscriptFromJson(std::string_view json);
 
-std::string CatalogToJson(const std::vector<CatalogEntry>& catalog);
+std::string CatalogToJson(const std::vector<CatalogModel>& catalog);
 std::string DevicesToJson(const std::vector<DeviceInfo>& devices);
 
 // State of one catalog file in a models directory.
 struct CatalogStatus {
-  const CatalogEntry* entry = nullptr;
+  const CatalogModel* model = nullptr;
+  const CatalogFile* file = nullptr;
   // "ok", "missing", "wrong_size", "wrong_hash", or for archives also
   // "extract" (the archive is valid but not extracted yet).
   std::string status;

@@ -51,11 +51,13 @@ constexpr const char* kUsage = R"(usage:
       --device cpu|gpu        compute device (default cpu)
       --gpu-index N           which GPU (default 0)
       --threads N             CPU threads (default: automatic)
+      --model ID              transcription model (default: the recommended one)
       --models DIR            model directory
       --quiet                 no progress output
   sillok export TRANSCRIPT.json --format txt|srt|json [--output FILE]
                 [--speaker-label TEXT]
-  sillok models list|download|check [--models DIR]
+  sillok models list|check [--models DIR]
+  sillok models download [--model ID] [--models DIR]
   sillok devices
   sillok --version
 
@@ -205,6 +207,23 @@ void Extract(const std::filesystem::path& archive, const std::filesystem::path& 
   if (unzip.Wait() != 0) throw std::runtime_error("cannot extract " + PathToUtf8(archive));
 }
 
+// The models an engine with transcription model `id` uses: each role's
+// recommended one, with `id` (if not empty) for transcription.
+std::vector<Json> EngineModels(const Json& catalog, const std::string& id) {
+  std::vector<Json> models;
+  for (const Json& model : catalog) {
+    const bool transcription = model["role"] == "transcription";
+    if (transcription && !id.empty() ? model["id"] == id : model["recommended"].get<bool>()) {
+      models.push_back(model);
+    }
+  }
+  if (!id.empty() && std::none_of(models.begin(), models.end(),
+                                  [&](const Json& m) { return m["id"] == id; })) {
+    throw UsageError("unknown model: " + id + " (see sillok models list)");
+  }
+  return models;
+}
+
 int RunModels(const std::vector<std::string>& all_args) {
   const Arguments args = Parse(all_args, 2, {});
   if (args.positional.size() != 1) throw UsageError("models needs list, download or check");
@@ -217,55 +236,66 @@ int RunModels(const std::vector<std::string>& all_args) {
   if (action == "list" || action == "check") {
     const bool verify = action == "check";
     const Json statuses = std::filesystem::is_directory(dir) ? ModelStatus(dir, verify) : Json::array();
-    bool all_ok = true;
-    std::printf("models in %s\n", PathToUtf8(dir).c_str());
-    for (const Json& entry : catalog) {
-      const std::string status = StatusOf(statuses, entry["file"]);
-      all_ok = all_ok && status == "ok";
-      std::printf("  %-22s %-44s %8.1f MB  %s\n",
-                  entry["role"].get<std::string>().c_str(),
-                  entry["file"].get<std::string>().c_str(),
-                  entry["size"].get<double>() / 1e6, status.c_str());
+    std::printf("models in %s (* recommended)\n", PathToUtf8(dir).c_str());
+    bool recommended_ok = true;
+    for (const Json& model : catalog) {
+      double size = 0;
+      std::string status = "ok";
+      for (const Json& file : model["files"]) {
+        size += file["size"].get<double>();
+        const std::string file_status = StatusOf(statuses, file["file"]);
+        if (!file["zip"].get<bool>() && file_status != "ok") status = file_status;
+      }
+      const bool recommended = model["recommended"].get<bool>();
+      recommended_ok = recommended_ok && (!recommended || status == "ok");
+      std::printf("  %s %-30s %-16s %8.1f MB  %s\n", recommended ? "*" : " ",
+                  model["id"].get<std::string>().c_str(), model["role"].get<std::string>().c_str(),
+                  size / 1e6, status.c_str());
     }
-    return all_ok ? 0 : kExitError;
+    return recommended_ok ? 0 : kExitError;
   }
   if (action != "download") throw UsageError("unknown models action: " + action);
 
   std::filesystem::create_directories(dir);
-  for (const Json& entry : catalog) {
-    const std::string file = entry["file"];
-    const std::filesystem::path path = dir / PathFromUtf8(file);
-    std::string status = StatusOf(ModelStatus(dir, false), file);
-    if (status == "ok") {
-      std::printf("%s: present\n", file.c_str());
-      continue;
-    }
-    if (status != "extract") {
-      std::printf("%s: downloading %.1f MB\n", file.c_str(), entry["size"].get<double>() / 1e6);
-      std::fflush(stdout);
-      std::filesystem::path part = path;
-      part += ".part";
-      // -C - resumes an interrupted download.
-      Process curl({"curl", "-L", "--fail", "--retry", "3", "-C", "-",
-                    StderrIsTerminal() ? "--progress-bar" : "--no-progress-meter",
-                    "-o", PathToUtf8(part), entry["url"].get<std::string>()},
-                   false);
-      if (curl.Wait() != 0) throw std::runtime_error("download of " + file + " failed");
-      std::filesystem::rename(part, path);
-    }
-    status = StatusOf(ModelStatus(dir, true), file);
-    if (status != "ok" && status != "extract") {
-      std::filesystem::remove(path);
-      throw std::runtime_error(file + " failed verification (" + status + "); removed");
-    }
-    if (status == "extract") {
-      Extract(path, dir);
-      if (StatusOf(ModelStatus(dir, false), file) != "ok") {
-        throw std::runtime_error("extracting " + file + " did not produce the model");
+  std::vector<std::string> done;  // files are shared between models
+  for (const Json& model : EngineModels(catalog, args.Get("model").value_or(""))) {
+    for (const Json& entry : model["files"]) {
+      const std::string file = entry["file"];
+      if (std::find(done.begin(), done.end(), file) != done.end()) continue;
+      done.push_back(file);
+      const std::filesystem::path path = dir / PathFromUtf8(file);
+      std::string status = StatusOf(ModelStatus(dir, false), file);
+      if (status == "ok") {
+        std::printf("%s: present\n", file.c_str());
+        continue;
       }
-      std::filesystem::remove(path);
+      if (status != "extract") {
+        std::printf("%s: downloading %.1f MB\n", file.c_str(), entry["size"].get<double>() / 1e6);
+        std::fflush(stdout);
+        std::filesystem::path part = path;
+        part += ".part";
+        // -C - resumes an interrupted download.
+        Process curl({"curl", "-L", "--fail", "--retry", "3", "-C", "-",
+                      StderrIsTerminal() ? "--progress-bar" : "--no-progress-meter",
+                      "-o", PathToUtf8(part), entry["url"].get<std::string>()},
+                     false);
+        if (curl.Wait() != 0) throw std::runtime_error("download of " + file + " failed");
+        std::filesystem::rename(part, path);
+      }
+      status = StatusOf(ModelStatus(dir, true), file);
+      if (status != "ok" && status != "extract") {
+        std::filesystem::remove(path);
+        throw std::runtime_error(file + " failed verification (" + status + "); removed");
+      }
+      if (status == "extract") {
+        Extract(path, dir);
+        if (StatusOf(ModelStatus(dir, false), file) != "ok") {
+          throw std::runtime_error("extracting " + file + " did not produce the model");
+        }
+        std::filesystem::remove(path);
+      }
+      std::printf("%s: verified\n", file.c_str());
     }
-    std::printf("%s: verified\n", file.c_str());
   }
   return 0;
 }
@@ -384,11 +414,12 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
     throw UsageError("unknown format: " + format);
   }
 
-  const Json config = {
+  Json config = {
       {"models_dir", PathToUtf8(ModelsDir(args))},
       {"device", args.Get("device").value_or("cpu")},
       {"gpu_index", std::stoi(args.Get("gpu-index").value_or("0"))},
       {"threads", std::stoi(args.Get("threads").value_or("0"))}};
+  if (const auto model = args.Get("model")) config["transcription_model"] = *model;
   sillok_engine* raw_engine = nullptr;
   Check(sillok_engine_create(config.dump().c_str(), &raw_engine), "engine");
   const Engine engine(raw_engine);

@@ -27,8 +27,12 @@ patches/                  local patches to the submodules (CMake applies them)
 ```
 
 `patches/whisper.cpp` lets a cancel stop a Whisper pass midway on the CPU
-(upstream checks only between passes). After updating whisper.cpp, run the
-integration tests: one of them fails if the patch no longer takes effect.
+(upstream checks only between passes), and reuses the encoder output when
+language detection and the transcription encode the same audio (auto
+language ran the encoder twice per window). After updating whisper.cpp, run
+the integration tests: one of them fails if the cancel patch no longer takes
+effect; compare an auto-language run's output and time with the previous
+version for the other.
 
 ## Build
 
@@ -53,9 +57,12 @@ the system libraries: OpenMP, Vulkan or Apple frameworks).
 ## CLI
 
 ```
+sillok models list                   # * marks the recommended models
 sillok models download               # into the default model directory
+sillok models download --model whisper-small-q5_1   # another transcription model
 sillok transcribe lecture.m4a --diarize --format srt --output lecture.srt
 sillok transcribe talk.wav --language ko --term "Kubernetes" --device gpu
+sillok transcribe talk.wav --model whisper-small-q5_1
 sillok export lecture.json --format txt --speaker-label "화자 {n}"
 ```
 

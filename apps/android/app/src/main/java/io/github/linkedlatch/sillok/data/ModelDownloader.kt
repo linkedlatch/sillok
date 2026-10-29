@@ -19,10 +19,15 @@ class ModelIntegrityException(val files: List<String>) : IOException("damaged: $
  * downloads them again.
  */
 class ModelDownloader(private val dir: File) {
-    /** Catalog files that are not complete in [dir]. */
-    fun missing(): List<ModelFile> {
+    /**
+     * Files of the engine's models (see [Sillok.engineModels]) that are not
+     * complete in [dir]. Archives are left out: only Apple builds use them.
+     */
+    fun missing(transcriptionModel: String? = null): List<ModelFile> {
         val status = Sillok.check(dir, verifyHash = false)
-        return Sillok.catalog().filter { status[it.file] != "ok" }
+        return Sillok.engineModels(transcriptionModel).flatMap { it.files }
+            .filter { !it.zip && status[it.file] != "ok" }
+            .distinctBy { it.file }
     }
 
     /** Bytes already downloaded of [files], counting partial downloads. */
@@ -42,7 +47,9 @@ class ModelDownloader(private val dir: File) {
 
     /** Checks every file's hash; removes and reports damaged ones. */
     fun verify() {
-        val damaged = Sillok.check(dir, verifyHash = true).filterValues { it != "ok" }.keys.toList()
+        // Only files that are there: other models' files are not downloaded.
+        val damaged = Sillok.check(dir, verifyHash = true)
+            .filter { (file, status) -> status != "ok" && status != "missing" && File(dir, file).exists() }.keys.toList()
         damaged.forEach { File(dir, it).delete() }
         if (damaged.isNotEmpty()) throw ModelIntegrityException(damaged)
     }
