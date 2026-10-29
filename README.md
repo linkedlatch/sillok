@@ -75,8 +75,8 @@ cd apps/android
 ```
 
 The app downloads the models on first start. It decodes files with the
-platform decoders and keeps a 16 kHz AAC copy of each recording for listening
-back. `app/debug.keystore` is a fixed debug key, so that builds from any
+platform decoders and keeps an AAC copy of the job's 16 kHz recording for
+listening back. `app/debug.keystore` is a fixed debug key, so that builds from any
 machine install over each other; it is not a release key.
 
 ## Library use
@@ -94,7 +94,9 @@ sillok_export(transcript, "srt", "{\"speaker_label\": \"Speaker {n}\"}", &srt);
 ```
 
 The transcript is JSON with millisecond times in the original recording,
-words with confidence, and speaker ids that the app can name. See
+words with confidence, and speaker ids that the app can name. Apps that
+keep a copy for listening back read the job's own 16 kHz mono recording
+(`sillok_job_read_audio`), the audio those times refer to. See
 `include/sillok/sillok.h` for the schemas and the threading rules.
 
 ## Evaluation

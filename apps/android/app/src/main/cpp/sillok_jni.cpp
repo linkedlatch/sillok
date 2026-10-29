@@ -5,16 +5,15 @@
 
 #include <jni.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <sillok/sillok.h>
-
-#include "core/resampler.hpp"
 
 namespace {
 
@@ -93,25 +92,14 @@ bool ReadPcm(JNIEnv* env, jobject buffer, jint offset, jint size,
   return true;
 }
 
-// Downmixes and resamples decoded audio to the 16 kHz mono of the listening
-// copy.
-struct Downsampler {
-  explicit Downsampler(int input_rate) : resampler(input_rate) {}
-
-  sillok::Resampler resampler;
-  std::vector<float> mono;
-  std::vector<float> output;
-};
-
-jshortArray ToPcm16(JNIEnv* env, std::vector<float>& samples) {
+// The job's recording as 16-bit PCM for the platform encoder. The library
+// keeps 16-bit samples, so scaling back is exact.
+jshortArray ToPcm16(JNIEnv* env, const std::vector<float>& samples) {
   std::vector<jshort> pcm(samples.size());
   for (std::size_t i = 0; i < samples.size(); ++i) {
-    const float scaled = samples[i] * 32767.0f;
-    pcm[i] = static_cast<jshort>(scaled > 32767.0f    ? 32767.0f
-                                 : scaled < -32768.0f ? -32768.0f
-                                                      : scaled);
+    const float scaled = std::round(samples[i] * 32768.0f);
+    pcm[i] = static_cast<jshort>(std::clamp(scaled, -32768.0f, 32767.0f));
   }
-  samples.clear();
   jshortArray array = env->NewShortArray(static_cast<jsize>(pcm.size()));
   if (array != nullptr) {
     env->SetShortArrayRegion(array, 0, static_cast<jsize>(pcm.size()), pcm.data());
@@ -247,46 +235,31 @@ SILLOK_JNI(jbyteArray, export)(JNIEnv* env, jobject, jbyteArray transcript,
   return TakeString(env, text);
 }
 
-SILLOK_JNI(jlong, downsamplerCreate)(JNIEnv* env, jobject, jint input_rate) {
-  try {
-    return ToHandle(new Downsampler(input_rate));
-  } catch (const std::exception& error) {
-    ThrowArgument(env, error.what());
-    return 0;
-  }
+SILLOK_JNI(void, jobEndAudio)(JNIEnv* env, jobject, jlong job) {
+  Check(env, sillok_job_end_audio(FromHandle<sillok_job>(job)));
 }
 
-SILLOK_JNI(jshortArray, downsamplerProcess)(JNIEnv* env, jobject, jlong handle,
-                                           jobject buffer, jint offset, jint size,
-                                           jint channels, jboolean is_float) {
-  if (channels <= 0) {
-    ThrowArgument(env, "channels must be positive");
+SILLOK_JNI(jlong, jobAudioLength)(JNIEnv* env, jobject, jlong job) {
+  std::uint64_t length = 0;
+  if (!Check(env, sillok_job_audio_length(FromHandle<sillok_job>(job), &length))) return 0;
+  return static_cast<jlong>(length);
+}
+
+SILLOK_JNI(jshortArray, jobReadAudio)(JNIEnv* env, jobject, jlong job, jlong start,
+                                      jint count) {
+  if (start < 0 || count < 0) {
+    ThrowArgument(env, "start and count must not be negative");
     return nullptr;
   }
-  Downsampler& self = *FromHandle<Downsampler>(handle);
-  std::vector<float> samples;
-  if (!ReadPcm(env, buffer, offset, size, is_float, samples)) return nullptr;
-  const auto count = static_cast<std::size_t>(channels);
-  self.mono.assign(samples.size() / count, 0.0f);
-  for (std::size_t frame = 0; frame < self.mono.size(); ++frame) {
-    float sum = 0.0f;
-    for (std::size_t channel = 0; channel < count; ++channel) {
-      sum += samples[frame * count + channel];
-    }
-    self.mono[frame] = sum / static_cast<float>(count);
+  std::vector<float> samples(static_cast<std::size_t>(count));
+  std::size_t read = 0;
+  if (!Check(env, sillok_job_read_audio(FromHandle<sillok_job>(job),
+                                        static_cast<std::uint64_t>(start),
+                                        samples.data(), samples.size(), &read))) {
+    return nullptr;
   }
-  self.resampler.Process(self.mono, self.output);
-  return ToPcm16(env, self.output);
-}
-
-SILLOK_JNI(jshortArray, downsamplerFinish)(JNIEnv* env, jobject, jlong handle) {
-  Downsampler& self = *FromHandle<Downsampler>(handle);
-  self.resampler.Finish(self.output);
-  return ToPcm16(env, self.output);
-}
-
-SILLOK_JNI(void, downsamplerDestroy)(JNIEnv*, jobject, jlong handle) {
-  delete FromHandle<Downsampler>(handle);
+  samples.resize(read);
+  return ToPcm16(env, samples);
 }
 
 }  // extern "C"

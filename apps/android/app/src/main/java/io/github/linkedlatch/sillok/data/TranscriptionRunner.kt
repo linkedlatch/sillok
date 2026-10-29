@@ -2,7 +2,6 @@ package io.github.linkedlatch.sillok.data
 
 import android.content.Context
 import android.net.Uri
-import io.github.linkedlatch.sillok.engine.Downsampler
 import io.github.linkedlatch.sillok.engine.Engine
 import io.github.linkedlatch.sillok.engine.Job
 import io.github.linkedlatch.sillok.engine.SillokException
@@ -63,29 +62,38 @@ class TranscriptionRunner(
         return entry
     }
 
+    /**
+     * Decodes the file into [job] and writes the listening copy from the
+     * job's own 16 kHz recording, read back as it grows: the copy then holds
+     * exactly what the transcript's times refer to.
+     */
     private fun decode(uri: Uri, job: Job, copy: File, onProgress: (Step, Double) -> Unit) {
         var format: Pair<Int, Int>? = null
-        var downsampler: Downsampler? = null
-        val writer = AacWriter(copy, Downsampler.SAMPLE_RATE)
-        try {
+        var copied = 0L
+        AacWriter(copy, Job.SAMPLE_RATE).use { writer ->
+            fun copyNewAudio() {
+                val length = job.audioLength
+                while (copied < length) {
+                    val pcm = job.readAudio(copied, minOf(length - copied, COPY_BLOCK).toInt())
+                    writer.write(pcm)
+                    copied += pcm.size
+                }
+            }
             AudioDecoder(context, uri).decode(cancelled::get, { onProgress(Step.READ, it) }) { pcm ->
                 val chunkFormat = pcm.sampleRate to pcm.channels
                 if (format == null) {
                     format = chunkFormat
-                    downsampler = Downsampler(pcm.sampleRate)
                 } else if (format != chunkFormat) {
                     throw UnsupportedMediaException("audio format changes within the file")
                 }
                 job.pushAudio(pcm.buffer, pcm.offset, pcm.size, pcm.sampleRate, pcm.channels, pcm.isFloat)
-                writer.write(downsampler!!.process(pcm.buffer, pcm.offset, pcm.size, pcm.channels, pcm.isFloat))
+                copyNewAudio()
             }
             if (cancelled.get()) return
-            val last = downsampler ?: throw UnsupportedMediaException("the file has no audio")
-            writer.write(last.finish())
+            if (format == null) throw UnsupportedMediaException("the file has no audio")
+            job.endAudio()
+            copyNewAudio()
             writer.finish()
-        } finally {
-            writer.close()
-            downsampler?.close()
         }
     }
 
@@ -97,6 +105,8 @@ class TranscriptionRunner(
         }
 
     companion object {
+        private const val COPY_BLOCK = 16_000L  // samples per read, 1 s
+
         /**
          * Threads for the CPU: the cores outside the slowest cluster. ggml
          * splits work evenly, so efficiency cores would hold the others back

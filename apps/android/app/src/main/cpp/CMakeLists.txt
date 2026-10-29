@@ -15,7 +15,5 @@ endif()
 add_subdirectory("${SILLOK_ROOT}" sillok EXCLUDE_FROM_ALL)
 
 add_library(sillok_jni SHARED sillok_jni.cpp)
-# Besides the C ABI, the bridge uses the core's resampler for the 16 kHz
-# listening copy: Android has no platform resampler (docs/GUI-DESIGN.md).
-target_link_libraries(sillok_jni PRIVATE sillok sillok_core log)
+target_link_libraries(sillok_jni PRIVATE sillok)
 sillok_set_warnings(sillok_jni)

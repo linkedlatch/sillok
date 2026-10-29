@@ -12,6 +12,7 @@
 #include <new>
 #include <string>
 #include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -21,6 +22,7 @@
 
 #include "backends/models.hpp"
 #include "capi/json_io.hpp"
+#include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/pipeline.hpp"
 
@@ -80,6 +82,8 @@ struct EngineState {
 struct sillok_engine {
   std::shared_ptr<sillok::EngineState> state;
 };
+
+static_assert(SILLOK_SAMPLE_RATE == sillok::kSampleRate);
 
 struct sillok_job {
   sillok_job(std::shared_ptr<sillok::EngineState> engine_state,
@@ -338,8 +342,46 @@ sillok_status sillok_job_push_audio(sillok_job* job, const float* samples,
                     "job and samples are required");
     RequireArgument(channels > 0, "channels must be positive");
     RequireArgument(!job->ran, "audio cannot be added after the job ran");
+    RequireArgument(!job->audio.finished(),
+                    "audio cannot be added after sillok_job_end_audio");
     job->audio.Push({samples, frames * static_cast<size_t>(channels)},
                     sample_rate, channels);
+    return SILLOK_OK;
+  });
+}
+
+sillok_status sillok_job_end_audio(sillok_job* job) {
+  return Guard([&] {
+    RequireArgument(job != nullptr, "job is NULL");
+    job->audio.Finish();
+    return SILLOK_OK;
+  });
+}
+
+sillok_status sillok_job_audio_length(const sillok_job* job, uint64_t* out_samples) {
+  return Guard([&] {
+    RequireArgument(job != nullptr && out_samples != nullptr,
+                    "job and out_samples are required");
+    *out_samples = static_cast<uint64_t>(job->audio.size());
+    return SILLOK_OK;
+  });
+}
+
+sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
+                                    float* samples, size_t count,
+                                    size_t* out_read) {
+  return Guard([&] {
+    RequireArgument(job != nullptr && (samples != nullptr || count == 0) &&
+                        out_read != nullptr,
+                    "job, samples and out_read are required");
+    *out_read = 0;
+    const auto length = static_cast<uint64_t>(job->audio.size());
+    RequireArgument(start <= length, "start is past the end of the recording");
+    const uint64_t end = start + std::min<uint64_t>(count, length - start);
+    const std::vector<float> read = job->audio.Read(
+        {static_cast<sillok::SampleIndex>(start), static_cast<sillok::SampleIndex>(end)});
+    std::copy(read.begin(), read.end(), samples);
+    *out_read = read.size();
     return SILLOK_OK;
   });
 }

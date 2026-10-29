@@ -78,7 +78,11 @@ class Engine(modelsDir: File, tempDir: File, gpuIndex: Int?, threads: Int) : Aut
     }
 }
 
-/** sillok_job: one recording. [cancel] may be called from any thread. */
+/**
+ * sillok_job: one recording. The job keeps it as 16 kHz mono, the audio the
+ * transcript's times refer to, and the app reads it back for the listening
+ * copy. [cancel] may be called from any thread.
+ */
 class Job(engine: Engine, language: String, diarize: Boolean, glossary: List<String>) : AutoCloseable {
     private val lock = Any()
     private var handle: Long = Native.jobCreate(
@@ -94,6 +98,15 @@ class Job(engine: Engine, language: String, diarize: Boolean, glossary: List<Str
     fun pushAudio(pcm: ByteBuffer, offset: Int, size: Int, sampleRate: Int, channels: Int, isFloat: Boolean) =
         Native.jobPushAudio(handle, pcm, offset, size, sampleRate, channels, isFloat)
 
+    /** Ends the recording; every sample of it becomes readable. */
+    fun endAudio() = Native.jobEndAudio(handle)
+
+    /** Samples of the job's recording (16 kHz mono, [SAMPLE_RATE]) available so far. */
+    val audioLength: Long get() = Native.jobAudioLength(handle)
+
+    /** Up to [count] samples of the job's recording from [start], as 16-bit PCM. */
+    fun readAudio(start: Long, count: Int): ShortArray = Native.jobReadAudio(handle, start, count)
+
     /** Blocks until the transcript document is ready; [onProgress] runs on this thread. */
     fun run(onProgress: (Stage, Double) -> Unit): String =
         Native.jobRun(handle) { stage, fraction -> onProgress(Stage.entries[stage], fraction) }
@@ -108,23 +121,9 @@ class Job(engine: Engine, language: String, diarize: Boolean, glossary: List<Str
         if (handle != 0L) Native.jobDestroy(handle)
         handle = 0
     }
-}
-
-/** Converts decoded audio to the 16 kHz mono PCM of the listening copy. */
-class Downsampler(inputRate: Int) : AutoCloseable {
-    private var handle = Native.downsamplerCreate(inputRate)
-
-    fun process(pcm: ByteBuffer, offset: Int, size: Int, channels: Int, isFloat: Boolean): ShortArray =
-        Native.downsamplerProcess(handle, pcm, offset, size, channels, isFloat)
-
-    fun finish(): ShortArray = Native.downsamplerFinish(handle)
-
-    override fun close() {
-        if (handle != 0L) Native.downsamplerDestroy(handle)
-        handle = 0
-    }
 
     companion object {
+        /** SILLOK_SAMPLE_RATE */
         const val SAMPLE_RATE = 16_000
     }
 }

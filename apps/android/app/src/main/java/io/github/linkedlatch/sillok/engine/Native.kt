@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 /**
  * The JNI functions of libsillok_jni.so, one per C ABI function of
- * include/sillok/sillok.h (plus the listening-copy downsampler). Strings are
+ * include/sillok/sillok.h. Strings are
  * UTF-8 byte arrays; handles are pointers. [Sillok] wraps these for the app.
  */
 internal object Native {
@@ -29,17 +29,12 @@ internal object Native {
         job: Long, pcm: ByteBuffer, offset: Int, size: Int,
         sampleRate: Int, channels: Int, isFloat: Boolean,
     )
+    external fun jobEndAudio(job: Long)
+    external fun jobAudioLength(job: Long): Long
+    external fun jobReadAudio(job: Long, start: Long, count: Int): ShortArray
     external fun jobRun(job: Long, progress: Progress): ByteArray
     external fun jobCancel(job: Long)
     external fun jobDestroy(job: Long)
 
     external fun export(transcript: ByteArray, format: ByteArray, options: ByteArray?): ByteArray
-
-    external fun downsamplerCreate(inputRate: Int): Long
-    external fun downsamplerProcess(
-        downsampler: Long, pcm: ByteBuffer, offset: Int, size: Int,
-        channels: Int, isFloat: Boolean,
-    ): ShortArray
-    external fun downsamplerFinish(downsampler: Long): ShortArray
-    external fun downsamplerDestroy(downsampler: Long)
 }
