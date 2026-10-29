@@ -3,7 +3,6 @@ package io.github.linkedlatch.sillok.media
 import android.content.Context
 import android.media.AudioFormat
 import android.media.MediaCodec
-import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -52,7 +51,7 @@ class AudioDecoder(private val context: Context, private val uri: Uri) {
             val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
             val mime = format.getString(MediaFormat.KEY_MIME)!!
             val codec = try {
-                softwareDecoder(mime, format) ?: MediaCodec.createDecoderByType(mime).apply { configure(format, null, null, 0) }
+                MediaCodec.createDecoderByType(mime).apply { configure(format, null, null, 0) }
             } catch (e: Exception) {
                 throw UnsupportedMediaException("no decoder for $mime: ${e.message}")
             }
@@ -65,27 +64,6 @@ class AudioDecoder(private val context: Context, private val uri: Uri) {
             }
         } finally {
             extractor.release()
-        }
-    }
-
-    /**
-     * A configured software decoder, if there is one for [mime]. Phones may
-     * list a hardware audio decoder first, made for low-power playback;
-     * decoding a whole file through it is much slower than through the
-     * platform's software codec.
-     */
-    private fun softwareDecoder(mime: String, format: MediaFormat): MediaCodec? {
-        val info = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->
-            !info.isEncoder && info.isSoftwareOnly && !info.isAlias &&
-                info.supportedTypes.any { it.equals(mime, ignoreCase = true) }
-        } ?: return null
-        val codec = MediaCodec.createByCodecName(info.name)
-        return try {
-            codec.configure(format, null, null, 0)
-            codec
-        } catch (e: Exception) {
-            codec.release()
-            null
         }
     }
 

@@ -65,6 +65,14 @@ class ReadSpeedTest {
                     "(${seconds * 1000 / timings.totalMs.coerceAtLeast(1)}x real time): decode ${timings.decodeMs}, " +
                     "push ${timings.pushMs}, copy ${timings.copyMs}, decoder ${timings.decoder}; writing the test file took $encodeMs ms"
                 Log.i("sillok-test", summary)
+                // Whether the decoder takes many frames per buffer (Android 15+).
+                val multipleFrames = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).codecInfos
+                    .filter { !it.isEncoder && it.supportedTypes.any { t -> t.equals("audio/mp4a-latm", true) } }
+                    .joinToString { info ->
+                        val caps = info.getCapabilitiesForType("audio/mp4a-latm")
+                        "${info.name}=${caps.isFeatureSupported(android.media.MediaCodecInfo.CodecCapabilities.FEATURE_MultipleFrames)}"
+                    }
+                Log.i("sillok-test", "AAC decoders and FEATURE_MultipleFrames: $multipleFrames")
                 assertTrue(summary, abs(samples - seconds * 16_000L) < 16_000)
             }
         }
