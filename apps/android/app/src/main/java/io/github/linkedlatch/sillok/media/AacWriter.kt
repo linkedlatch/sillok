@@ -8,19 +8,25 @@ import java.io.File
 import java.nio.ByteOrder
 
 /**
- * Encodes 16-bit mono PCM as AAC-LC into an .m4a file with the platform
- * encoder: the compressed copy the app plays transcript segments from.
+ * Encodes 16-bit PCM (interleaved if [channels] > 1) as AAC-LC into an .m4a
+ * file with the platform encoder: the compressed copy the app plays
+ * transcript segments from.
  */
-class AacWriter(private val file: File, private val sampleRate: Int, bitRate: Int = 24_000) : AutoCloseable {
+class AacWriter(
+    private val file: File,
+    private val sampleRate: Int,
+    bitRate: Int = 24_000,
+    private val channels: Int = 1,
+) : AutoCloseable {
     private val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
     private val muxer = MediaMuxer(file.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     private val info = MediaCodec.BufferInfo()
     private var track = -1
-    private var samples = 0L
+    private var frames = 0L
     private var released = false
 
     init {
-        val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1).apply {
+        val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channels).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
             setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
         }
@@ -40,10 +46,11 @@ class AacWriter(private val file: File, private val sampleRate: Int, bitRate: In
             if (index >= 0) {
                 val buffer = codec.getInputBuffer(index)!!
                 buffer.clear()
-                val count = minOf(pcm.size - position, buffer.remaining() / 2)
+                // Whole frames, so that timestamps stay exact.
+                val count = minOf(pcm.size - position, buffer.remaining() / 2 / channels * channels)
                 buffer.order(ByteOrder.nativeOrder()).asShortBuffer().put(pcm, position, count)
-                codec.queueInputBuffer(index, 0, count * 2, samples * 1_000_000 / sampleRate, 0)
-                samples += count
+                codec.queueInputBuffer(index, 0, count * 2, frames * 1_000_000 / sampleRate, 0)
+                frames += count / channels
                 position += count
             }
             drain(endOfStream = false)
@@ -55,13 +62,13 @@ class AacWriter(private val file: File, private val sampleRate: Int, bitRate: In
         while (true) {
             val index = codec.dequeueInputBuffer(TIMEOUT_US)
             if (index >= 0) {
-                codec.queueInputBuffer(index, 0, 0, samples * 1_000_000 / sampleRate, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                codec.queueInputBuffer(index, 0, 0, frames * 1_000_000 / sampleRate, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 break
             }
             drain(endOfStream = false)
         }
         drain(endOfStream = true)
-        val written = track >= 0 && samples > 0
+        val written = track >= 0 && frames > 0
         if (track >= 0) muxer.stop()
         close()
         return written

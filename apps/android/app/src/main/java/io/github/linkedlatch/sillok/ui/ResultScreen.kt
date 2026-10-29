@@ -253,10 +253,18 @@ private fun RunDetailsDialog(entry: JobEntry, transcript: Transcript, onDismiss:
     val lines = buildList {
         add(stringResource(R.string.info_length, formatTime(entry.durationMs)))
         entry.stats?.let { stats ->
+            var total = 0L
             Step.entries.forEach { step ->
-                stats.timingsMs[step.name.lowercase()]?.let { add(stringResource(R.string.info_step, stringResource(step.label), formatTime(it))) }
+                stats.timingsMs[step.name.lowercase()]?.let {
+                    total += it
+                    add(stringResource(R.string.info_step, stringResource(step.label), formatTime(it)))
+                }
+                val decode = stats.timingsMs["read_decode"]
+                if (step == Step.READ && decode != null) {
+                    add(stringResource(R.string.info_read_parts, formatTime(decode),
+                        formatTime(stats.timingsMs["read_push"] ?: 0), formatTime(stats.timingsMs["read_copy"] ?: 0)))
+                }
             }
-            val total = stats.timingsMs.values.sum()
             add(stringResource(R.string.info_total, formatTime(total), total.toDouble() / entry.durationMs.coerceAtLeast(1)))
         }
         transcript.models["transcription"]?.let { model ->

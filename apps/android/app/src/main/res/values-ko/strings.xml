@@ -68,6 +68,7 @@
     <string name="info">처리 정보</string>
     <string name="info_length">원본 길이: %1$s</string>
     <string name="info_step">%1$s: %2$s</string>
+    <string name="info_read_parts">(디코딩 %1$s · 코어 전달 %2$s · 다시 듣기 사본 %3$s)</string>
     <string name="info_total">합계: %1$s (원본의 %2$.2f배)</string>
     <string name="info_device">전사 장치: %1$s</string>
     <string name="info_fell_back">%1$s (GPU를 쓸 수 없어 대체)</string>

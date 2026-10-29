@@ -75,6 +75,7 @@
     <string name="info">Run details</string>
     <string name="info_length">Recording: %1$s</string>
     <string name="info_step">%1$s: %2$s</string>
+    <string name="info_read_parts">(decoding %1$s · to the library %2$s · listening copy %3$s)</string>
     <string name="info_total">Total: %1$s (%2$.2f× the recording)</string>
     <string name="info_device">Transcribed on: %1$s</string>
     <string name="info_fell_back">%1$s (the GPU was unavailable)</string>

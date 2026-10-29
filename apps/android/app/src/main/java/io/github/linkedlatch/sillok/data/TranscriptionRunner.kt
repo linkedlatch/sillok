@@ -60,7 +60,7 @@ class TranscriptionRunner(
                     this.job = job
                     if (cancelled.get()) return null
                     report(Step.READ, 0.0)
-                    decode(uri, job, store.audioFile(dir.name), report)
+                    val read = read(uri, job, store.audioFile(dir.name), report)
                     if (cancelled.get()) return null
                     val transcript = try {
                         job.run { stage, fraction -> report(stage.step, fraction) }
@@ -71,7 +71,11 @@ class TranscriptionRunner(
                         this.job = null
                     }
                     enter(null)
-                    val stats = JobStats(timings.mapKeys { it.key.name.lowercase() }, threads)
+                    val stats = JobStats(
+                        timings.mapKeys { it.key.name.lowercase() } +
+                            mapOf("read_decode" to read.decodeMs, "read_push" to read.pushMs, "read_copy" to read.copyMs),
+                        threads,
+                    )
                     entry = store.complete(dir, transcript, source, Transcript(transcript).durationMs, stats)
                 }
             }
@@ -81,12 +85,21 @@ class TranscriptionRunner(
         return entry
     }
 
+    /** Where the time of the read step goes, in milliseconds. */
+    data class ReadTimings(val totalMs: Long, val pushMs: Long, val copyMs: Long) {
+        /** Extracting and decoding: what is left. */
+        val decodeMs get() = totalMs - pushMs - copyMs
+    }
+
     /**
      * Decodes the file into [job] and writes the listening copy from the
      * job's own 16 kHz recording, read back as it grows: the copy then holds
      * exactly what the transcript's times refer to.
      */
-    private fun decode(uri: Uri, job: Job, copy: File, onProgress: (Step, Double) -> Unit) {
+    internal fun read(uri: Uri, job: Job, copy: File, onProgress: (Step, Double) -> Unit): ReadTimings {
+        val start = System.nanoTime()
+        var pushNs = 0L
+        var copyNs = 0L
         var format: Pair<Int, Int>? = null
         var copied = 0L
         AacWriter(copy, Job.SAMPLE_RATE).use { writer ->
@@ -95,11 +108,13 @@ class TranscriptionRunner(
             fun copyNewAudio(all: Boolean = false) {
                 val length = job.audioLength
                 if (!all && length - copied < COPY_BLOCK) return
+                val begin = System.nanoTime()
                 while (copied < length) {
                     val pcm = job.readAudio(copied, minOf(length - copied, COPY_BLOCK).toInt())
                     writer.write(pcm)
                     copied += pcm.size
                 }
+                copyNs += System.nanoTime() - begin
             }
             AudioDecoder(context, uri).decode(cancelled::get, { onProgress(Step.READ, it) }) { pcm ->
                 val chunkFormat = pcm.sampleRate to pcm.channels
@@ -108,15 +123,21 @@ class TranscriptionRunner(
                 } else if (format != chunkFormat) {
                     throw UnsupportedMediaException("audio format changes within the file")
                 }
+                val begin = System.nanoTime()
                 job.pushAudio(pcm.buffer, pcm.offset, pcm.size, pcm.sampleRate, pcm.channels, pcm.isFloat)
+                pushNs += System.nanoTime() - begin
                 copyNewAudio()
             }
-            if (cancelled.get()) return
-            if (format == null) throw UnsupportedMediaException("the file has no audio")
-            job.endAudio()
-            copyNewAudio(all = true)
-            writer.finish()
+            if (!cancelled.get()) {
+                if (format == null) throw UnsupportedMediaException("the file has no audio")
+                job.endAudio()
+                copyNewAudio(all = true)
+                val begin = System.nanoTime()
+                writer.finish()
+                copyNs += System.nanoTime() - begin
+            }
         }
+        return ReadTimings((System.nanoTime() - start) / 1_000_000, pushNs / 1_000_000, copyNs / 1_000_000)
     }
 
     private val Stage.step
