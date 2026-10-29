@@ -68,6 +68,7 @@ public sealed partial class AppState : ObservableObject, IDisposable
     {
         _download?.Dispose();
         _http.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public void Attach(Window window)

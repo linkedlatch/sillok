@@ -43,6 +43,7 @@ public sealed partial class ResultPage : Page, IDisposable
         _clock.Stop();
         _player?.Dispose();
         _player = null;
+        GC.SuppressFinalize(this);
     }
 
     private void Load()
