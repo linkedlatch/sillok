@@ -160,7 +160,6 @@ private fun ModelRow(vm: AppViewModel, model: CatalogModel, inUse: Boolean, onUs
 private fun familyDescription(family: String) = when (family) {
     "large-v3-turbo" -> R.string.model_family_large_v3_turbo
     "large-v3" -> R.string.model_family_large_v3
-    "medium" -> R.string.model_family_medium
     "small" -> R.string.model_family_small
     else -> R.string.model_family_base
 }

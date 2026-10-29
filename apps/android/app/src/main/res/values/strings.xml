@@ -106,7 +106,6 @@
     <string name="model_in_use">Used for new files</string>
     <string name="model_family_large_v3_turbo">Fast and accurate</string>
     <string name="model_family_large_v3">Most accurate, slowest</string>
-    <string name="model_family_medium">Medium size</string>
     <string name="model_family_small">Fast, less accurate</string>
     <string name="model_family_base">Fastest, for slow devices; least accurate</string>
     <string name="model_quant_f16">full precision</string>

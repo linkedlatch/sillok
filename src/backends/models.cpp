@@ -81,6 +81,8 @@ std::vector<CatalogModel> BuildCatalog() {
                   .zip = false}}},
       // Transcription, from the recommended model to ones for slower and
       // faster devices. The .en models are left out: recordings are Korean.
+      // So is medium: about turbo's size, but slower (24 decoder layers to
+      // turbo's 4) and less accurate.
       Whisper("large-v3-turbo", "q5_0",
               WhisperFile("ggml-large-v3-turbo-q5_0.bin", 574041195,
                           "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"),
@@ -102,11 +104,6 @@ std::vector<CatalogModel> BuildCatalog() {
               WhisperFile("ggml-large-v3.bin", 3095033483,
                           "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"),
               large_v3_encoder),
-      Whisper("medium", "q5_0",
-              WhisperFile("ggml-medium-q5_0.bin", 539212467,
-                          "19fea4b380c3a618ec4723c3eef2eb785ffba0d0538cf43f8f235e7b3b34220f"),
-              CoreMlEncoder("ggml-medium-encoder.mlmodelc.zip", 567829413,
-                            "79b0b8d436d47d3f24dd3afc91f19447dd686a4f37521b2f6d9c30a642133fbd")),
       Whisper("small", "q5_1",
               WhisperFile("ggml-small-q5_1.bin", 190085487,
                           "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"),

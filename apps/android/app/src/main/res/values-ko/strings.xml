@@ -95,7 +95,6 @@
     <string name="model_in_use">새 파일에 사용</string>
     <string name="model_family_large_v3_turbo">빠르고 정확함</string>
     <string name="model_family_large_v3">가장 정확, 가장 느림</string>
-    <string name="model_family_medium">중간 크기</string>
     <string name="model_family_small">빠름, 정확도 낮음</string>
     <string name="model_family_base">가장 빠름, 저사양 기기용, 정확도 가장 낮음</string>
     <string name="model_quant_f16">원본 정밀도</string>
