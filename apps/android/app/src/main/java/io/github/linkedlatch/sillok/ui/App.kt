@@ -89,7 +89,17 @@ import kotlinx.coroutines.launch
 @Composable
 fun SillokApp(vm: AppViewModel = viewModel()) {
     when {
-        !vm.modelsChecked -> Box(Modifier.fillMaxSize())
+        !vm.modelsChecked -> Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+            val error = vm.modelsError
+            if (error == null) {
+                CircularProgressIndicator()
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(stringResource(R.string.models_check_failed, error), textAlign = TextAlign.Center)
+                    Button(onClick = vm::retryModelCheck) { Text(stringResource(R.string.retry)) }
+                }
+            }
+        }
         // First start: nothing to transcribe with yet.
         vm.readyTranscriptionModels().isEmpty() && vm.library.isEmpty() -> WelcomeScreen(vm)
         vm.showSettings -> {

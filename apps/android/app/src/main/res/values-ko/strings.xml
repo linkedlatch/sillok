@@ -140,4 +140,5 @@
     <string name="model_quant_f16">압축 없음</string>
     <string name="model_quant_q8_0">약한 압축</string>
     <string name="model_quant_q5">압축</string>
+    <string name="models_check_failed">모델 파일을 확인하지 못했습니다: %1$s</string>
 </resources>

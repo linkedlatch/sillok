@@ -76,6 +76,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     var models by mutableStateOf<Map<String, ModelStatus>>(emptyMap())
         private set
+    /** Why the model files could not be checked; the app cannot start without them. */
+    var modelsError by mutableStateOf<String?>(null)
+        private set
     /** False until the first check of the model files is done. */
     var modelsChecked by mutableStateOf(false)
         private set
@@ -158,13 +161,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun readyTranscriptionModels(): List<CatalogModel> = transcriptionModels().filter { models[it.id] == ModelStatus.Ready }
 
     private suspend fun checkModels() {
-        val status = withContext(Dispatchers.IO) { Sillok.check(transcriber.modelsDir, verifyHash = false) }
-        models = catalog.associate { model ->
-            val files = model.files.filter { !it.zip }
-            model.id to if (files.all { status[it.file] == "ok" }) ModelStatus.Ready
-            else ModelStatus.Missing(downloader.downloaded(files.filter { status[it.file] != "ok" }))
+        try {
+            val status = withContext(Dispatchers.IO) { Sillok.check(transcriber.modelsDir, verifyHash = false) }
+            models = catalog.associate { model ->
+                val files = model.files.filter { !it.zip }
+                model.id to if (files.all { status[it.file] == "ok" }) ModelStatus.Ready
+                else ModelStatus.Missing(downloader.downloaded(files.filter { status[it.file] != "ok" }))
+            }
+            modelsError = null
+            modelsChecked = true
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            // The start screen shows this with a way to try again instead of nothing.
+            modelsError = e.message ?: e.javaClass.simpleName
         }
-        modelsChecked = true
+    }
+
+    /** Checks the model files again after [modelsError]. */
+    fun retryModelCheck() {
+        modelsError = null
+        viewModelScope.launch { checkModels() }
     }
 
     /** Downloads [modelId] with the other roles' models it needs. One download at a time. */
