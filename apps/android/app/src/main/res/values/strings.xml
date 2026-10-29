@@ -154,4 +154,5 @@
     <string name="model_quant_q8_0">light compression</string>
     <string name="model_quant_q5">compressed</string>
     <string name="models_check_failed">The model files could not be checked: %1$s</string>
+    <string name="export_recording">Share the recording (.m4a)</string>
 </resources>

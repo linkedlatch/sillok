@@ -287,6 +287,18 @@ private fun TranscriptDetail(vm: AppViewModel, entry: JobEntry, showBack: Boolea
     var deleting by remember { mutableStateOf(false) }
     val speakerLabel = stringResource(R.string.speaker_label)
 
+    fun shareRecording() {
+        val file = vm.audioFile(entry.id)
+        if (!file.exists()) return
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("audio/mp4")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, entry.title)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(Intent.createChooser(send, entry.title))
+    }
+
     fun share(format: String) {
         val current = transcript ?: return
         scope.launch {
@@ -329,6 +341,9 @@ private fun TranscriptDetail(vm: AppViewModel, entry: JobEntry, showBack: Boolea
                             DropdownMenuItem(text = { Text(stringResource(R.string.export_txt)) }, onClick = { menu = false; share("txt") })
                             DropdownMenuItem(text = { Text(stringResource(R.string.export_srt)) }, onClick = { menu = false; share("srt") })
                             DropdownMenuItem(text = { Text(stringResource(R.string.export_json)) }, onClick = { menu = false; share("json") })
+                            if (player.available) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.export_recording)) }, onClick = { menu = false; shareRecording() })
+                            }
                             DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { menu = false; renaming = true })
                             DropdownMenuItem(text = { Text(stringResource(R.string.info)) }, onClick = { menu = false; info = true })
                             DropdownMenuItem(text = { Text(stringResource(R.string.delete)) }, onClick = { menu = false; deleting = true })

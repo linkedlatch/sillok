@@ -60,6 +60,13 @@ object Notifications {
             .setOnlyAlertOnce(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openApp(context, null))
+            .setDeleteIntent(
+                PendingIntent.getService(
+                    context, 1,
+                    Intent(context, TranscriptionService::class.java).setAction(TranscriptionService.ACTION_SHOW),
+                    PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
             .addAction(
                 0, context.getString(R.string.cancel),
                 PendingIntent.getService(

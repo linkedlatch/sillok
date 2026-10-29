@@ -34,6 +34,15 @@ class TranscriptionService : Service() {
             transcriber.cancel()
             return START_NOT_STICKY
         }
+        // Android 14+ lets the user swipe the notification away; the work goes
+        // on, so show it again at once.
+        if (intent?.action == ACTION_SHOW) {
+            transcriber.state.value?.let { current ->
+                val waiting = transcriber.queue.value.count { it.error == null && it.key != current.key }
+                Notifications.update(this, current, waiting)
+            }
+            return START_NOT_STICKY
+        }
         // A service started with startForegroundService() must go to the
         // foreground even if the job has already ended.
         val state = transcriber.state.value
@@ -91,6 +100,7 @@ class TranscriptionService : Service() {
 
     companion object {
         const val ACTION_CANCEL = "io.github.linkedlatch.sillok.action.CANCEL"
+        const val ACTION_SHOW = "io.github.linkedlatch.sillok.action.SHOW"
 
         /** Longer than any recording the app expects; the job releases it earlier. */
         private const val WAKE_LOCK_LIMIT_MS = 12 * 60 * 60 * 1000L

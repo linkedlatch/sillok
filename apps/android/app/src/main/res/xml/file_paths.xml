@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="export" path="export/" />
+    <!-- Listening copies, shared as they are. -->
+    <files-path name="jobs" path="jobs/" />
 </paths>
