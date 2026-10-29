@@ -107,7 +107,7 @@
     <string name="model_family_large_v3_turbo">Fast and accurate</string>
     <string name="model_family_large_v3">Most accurate, slowest</string>
     <string name="model_family_small">Fast, less accurate</string>
-    <string name="model_family_base">Fastest, for slow devices; least accurate</string>
+    <string name="model_family_base">Fastest, for a quick draft; least accurate</string>
     <string name="model_quant_f16">full precision</string>
     <string name="model_quant_q8_0">light compression</string>
     <string name="model_quant_q5">compressed</string>
