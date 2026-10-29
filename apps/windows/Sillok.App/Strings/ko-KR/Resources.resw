@@ -13,9 +13,6 @@
   <data name="Delete" xml:space="preserve"><value>삭제</value></data>
   <data name="Title" xml:space="preserve"><value>제목</value></data>
   <data name="DeleteConfirm" xml:space="preserve"><value>“{0}”을(를) 삭제할까요?</value></data>
-  <data name="ModelsTitle" xml:space="preserve"><value>모델 받기</value></data>
-  <data name="ModelsBody" xml:space="preserve"><value>실록은 이 컴퓨터 안에서 전사합니다. 먼저 음성 모델 약 {0}를 받아야 합니다.</value></data>
-  <data name="ModelsChecking" xml:space="preserve"><value>모델을 확인하는 중…</value></data>
   <data name="ModelsVerifying" xml:space="preserve"><value>파일을 확인하는 중…</value></data>
   <data name="ModelsProgress" xml:space="preserve"><value>{1} 중 {0} · 초당 {2}</value></data>
   <data name="ModelsDownload" xml:space="preserve"><value>받기</value></data>
@@ -26,10 +23,8 @@
   <data name="ModelsVerified" xml:space="preserve"><value>모델 파일이 모두 정상입니다.</value></data>
   <data name="MenuVerifyModels" xml:space="preserve"><value>모델 파일 확인</value></data>
   <data name="MenuAbout" xml:space="preserve"><value>정보</value></data>
-  <data name="HomeOpen" xml:space="preserve"><value>파일 열기</value></data>
   <data name="HomeEmpty" xml:space="preserve"><value>오디오나 동영상 파일을 열어 전사하세요.</value></data>
   <data name="NotificationProgress" xml:space="preserve"><value>{0} · {1}%</value></data>
-  <data name="SetupTitle" xml:space="preserve"><value>새 전사</value></data>
   <data name="SetupLanguage" xml:space="preserve"><value>언어</value></data>
   <data name="Language_auto" xml:space="preserve"><value>자동 (한국어·영어)</value></data>
   <data name="Language_ko" xml:space="preserve"><value>한국어</value></data>
@@ -39,11 +34,7 @@
   <data name="SetupGlossaryHint" xml:space="preserve"><value>녹음에 나오는 이름과 용어. 한 줄에 하나씩 또는 쉼표로 구분</value></data>
   <data name="SetupDevice" xml:space="preserve"><value>연산 장치</value></data>
   <data name="DeviceCpu" xml:space="preserve"><value>CPU</value></data>
-  <data name="SetupStart" xml:space="preserve"><value>시작</value></data>
-  <data name="RunningTitle" xml:space="preserve"><value>전사 중</value></data>
-  <data name="RunningBack" xml:space="preserve"><value>목록으로</value></data>
   <data name="RunningCancelling" xml:space="preserve"><value>취소하는 중…</value></data>
-  <data name="RunningRemaining" xml:space="preserve"><value>이 단계 약 {0} 남음</value></data>
   <data name="StepRead" xml:space="preserve"><value>파일 읽기</value></data>
   <data name="StepAnalyze" xml:space="preserve"><value>음성 구간 찾기</value></data>
   <data name="StepTranscribe" xml:space="preserve"><value>받아쓰기</value></data>
@@ -70,4 +61,63 @@
   <data name="ErrorUnsupportedFile" xml:space="preserve"><value>이 파일의 소리를 읽을 수 없습니다({0}).</value></data>
   <data name="ErrorModel" xml:space="preserve"><value>모델을 쓸 수 없습니다: {0}</value></data>
   <data name="ErrorEngine" xml:space="preserve"><value>전사하지 못했습니다: {0}</value></data>
+  <data name="AccuracyHighest" xml:space="preserve"><value>최상</value></data>
+  <data name="AccuracyHigh" xml:space="preserve"><value>높음</value></data>
+  <data name="AccuracyMedium" xml:space="preserve"><value>보통</value></data>
+  <data name="AccuracyLow" xml:space="preserve"><value>낮음</value></data>
+  <data name="AccuracyVeryLow" xml:space="preserve"><value>매우 낮음</value></data>
+  <data name="SpeedVerySlow" xml:space="preserve"><value>매우 느림</value></data>
+  <data name="SpeedSlow" xml:space="preserve"><value>느림</value></data>
+  <data name="SpeedMedium" xml:space="preserve"><value>보통</value></data>
+  <data name="SpeedFast" xml:space="preserve"><value>빠름</value></data>
+  <data name="SpeedVeryFast" xml:space="preserve"><value>매우 빠름</value></data>
+  <data name="SpeedFastest" xml:space="preserve"><value>가장 빠름</value></data>
+  <data name="QuantF16" xml:space="preserve"><value>압축 없음</value></data>
+  <data name="QuantQ8" xml:space="preserve"><value>약한 압축</value></data>
+  <data name="QuantQ5" xml:space="preserve"><value>압축</value></data>
+  <data name="ModelSummary" xml:space="preserve"><value>정확도 {0} · 속도 {1} · {2} · {3}</value></data>
+  <data name="Add" xml:space="preserve"><value>파일 추가</value></data>
+  <data name="AddTitle" xml:space="preserve"><value>파일 {0}개 전사</value></data>
+  <data name="AddTitleOne" xml:space="preserve"><value>파일 전사</value></data>
+  <data name="AddOptions" xml:space="preserve"><value>옵션</value></data>
+  <data name="AddStart" xml:space="preserve"><value>시작</value></data>
+  <data name="AddModelMissing" xml:space="preserve"><value>{0} 모델이 이 컴퓨터에 없습니다. 설정에서 받거나 다른 모델을 고르세요.</value></data>
+  <data name="DetailNone" xml:space="preserve"><value>결과를 고르거나, 오디오·동영상 파일을 여기에 끌어다 놓으세요.</value></data>
+  <data name="DetailWaiting" xml:space="preserve"><value>시작 대기 중: {0}번째 순서입니다.</value></data>
+  <data name="DiarizeOn" xml:space="preserve"><value>화자 구분</value></data>
+  <data name="DiarizeOff" xml:space="preserve"><value>화자 구분 안 함</value></data>
+  <data name="DropCaption" xml:space="preserve"><value>전사하기</value></data>
+  <data name="ExportRecording" xml:space="preserve"><value>녹음 사본(.m4a)</value></data>
+  <data name="Follow" xml:space="preserve"><value>따라가기</value></data>
+  <data name="LanguageNameKo" xml:space="preserve"><value>한국어</value></data>
+  <data name="LanguageNameEn" xml:space="preserve"><value>영어</value></data>
+  <data name="LibraryFailed" xml:space="preserve"><value>실패: {0}</value></data>
+  <data name="LibraryRunningLeft" xml:space="preserve"><value>{0} · {1}% · 약 {2} 남음</value></data>
+  <data name="LibraryWaiting" xml:space="preserve"><value>대기 중 ({0}번째)</value></data>
+  <data name="ModelDelete" xml:space="preserve"><value>삭제</value></data>
+  <data name="ModelInUse" xml:space="preserve"><value>새 파일에 사용</value></data>
+  <data name="ModelRecommended" xml:space="preserve"><value>권장</value></data>
+  <data name="NotificationDone" xml:space="preserve"><value>전사가 끝났습니다.</value></data>
+  <data name="OpenDataFolder" xml:space="preserve"><value>데이터 폴더 열기</value></data>
+  <data name="Remove" xml:space="preserve"><value>목록에서 빼기</value></data>
+  <data name="Retry" xml:space="preserve"><value>다시 시도</value></data>
+  <data name="RunningBackground" xml:space="preserve"><value>창을 닫으면 작업이 취소됩니다. 그동안 다른 창과 앱은 자유롭게 쓸 수 있습니다.</value></data>
+  <data name="RunningDetails" xml:space="preserve"><value>자세히</value></data>
+  <data name="RunningLeft" xml:space="preserve"><value>약 {0} 남음</value></data>
+  <data name="RunningPreviews" xml:space="preserve"><value>지금까지 받아쓴 문장입니다. 끝나면 화자와 함께 정리됩니다.</value></data>
+  <data name="SearchHint" xml:space="preserve"><value>검색 (Ctrl+F)</value></data>
+  <data name="SearchNone" xml:space="preserve"><value>일치하는 문장이 없습니다.</value></data>
+  <data name="SegmentCopy" xml:space="preserve"><value>복사</value></data>
+  <data name="SegmentPlay" xml:space="preserve"><value>여기서 재생</value></data>
+  <data name="Settings" xml:space="preserve"><value>설정</value></data>
+  <data name="SettingsDefaults" xml:space="preserve"><value>새 파일 기본 설정</value></data>
+  <data name="SettingsModels" xml:space="preserve"><value>받아쓰기 모델</value></data>
+  <data name="SettingsModelsHint" xml:space="preserve"><value>큰 모델은 정확하지만 느리고 메모리를 더 씁니다. 대부분의 컴퓨터에는 권장 모델이 알맞습니다.</value></data>
+  <data name="SettingsStorage" xml:space="preserve"><value>저장 공간</value></data>
+  <data name="SettingsStorageModels" xml:space="preserve"><value>모델: {0}</value></data>
+  <data name="SettingsStorageHistory" xml:space="preserve"><value>결과와 녹음 사본: {0}</value></data>
+  <data name="SetupModel" xml:space="preserve"><value>받아쓰기 모델</value></data>
+  <data name="SpeakerListen" xml:space="preserve"><value>들어 보기</value></data>
+  <data name="WelcomeTitle" xml:space="preserve"><value>이 컴퓨터에서 전사하기</value></data>
+  <data name="WelcomeBody" xml:space="preserve"><value>실록은 녹음을 화자별 텍스트로 바꿉니다. 모든 처리는 이 컴퓨터 안에서 하므로 녹음이 밖으로 나가지 않습니다. 먼저 음성 모델 약 {0}를 받아야 합니다.</value></data>
 </root>

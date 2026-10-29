@@ -13,9 +13,6 @@
   <data name="Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Title" xml:space="preserve"><value>Title</value></data>
   <data name="DeleteConfirm" xml:space="preserve"><value>Delete “{0}”?</value></data>
-  <data name="ModelsTitle" xml:space="preserve"><value>Download the models</value></data>
-  <data name="ModelsBody" xml:space="preserve"><value>Sillok transcribes on this computer. It first needs its speech models, about {0}.</value></data>
-  <data name="ModelsChecking" xml:space="preserve"><value>Checking the models…</value></data>
   <data name="ModelsVerifying" xml:space="preserve"><value>Checking the files…</value></data>
   <data name="ModelsProgress" xml:space="preserve"><value>{0} of {1} · {2}/s</value></data>
   <data name="ModelsDownload" xml:space="preserve"><value>Download</value></data>
@@ -26,10 +23,8 @@
   <data name="ModelsVerified" xml:space="preserve"><value>All model files are intact.</value></data>
   <data name="MenuVerifyModels" xml:space="preserve"><value>Check model files</value></data>
   <data name="MenuAbout" xml:space="preserve"><value>About</value></data>
-  <data name="HomeOpen" xml:space="preserve"><value>Open file</value></data>
   <data name="HomeEmpty" xml:space="preserve"><value>Open an audio or video file to transcribe it.</value></data>
   <data name="NotificationProgress" xml:space="preserve"><value>{0} · {1}%</value></data>
-  <data name="SetupTitle" xml:space="preserve"><value>New transcription</value></data>
   <data name="SetupLanguage" xml:space="preserve"><value>Language</value></data>
   <data name="Language_auto" xml:space="preserve"><value>Automatic (Korean, English)</value></data>
   <data name="Language_ko" xml:space="preserve"><value>Korean</value></data>
@@ -39,11 +34,7 @@
   <data name="SetupGlossaryHint" xml:space="preserve"><value>Names and terms that occur in the recording, one per line or separated by commas</value></data>
   <data name="SetupDevice" xml:space="preserve"><value>Run on</value></data>
   <data name="DeviceCpu" xml:space="preserve"><value>CPU</value></data>
-  <data name="SetupStart" xml:space="preserve"><value>Start</value></data>
-  <data name="RunningTitle" xml:space="preserve"><value>Transcribing</value></data>
-  <data name="RunningBack" xml:space="preserve"><value>Back to the list</value></data>
   <data name="RunningCancelling" xml:space="preserve"><value>Cancelling…</value></data>
-  <data name="RunningRemaining" xml:space="preserve"><value>About {0} left in this step</value></data>
   <data name="StepRead" xml:space="preserve"><value>Reading the file</value></data>
   <data name="StepAnalyze" xml:space="preserve"><value>Finding speech</value></data>
   <data name="StepTranscribe" xml:space="preserve"><value>Transcribing</value></data>
@@ -70,4 +61,63 @@
   <data name="ErrorUnsupportedFile" xml:space="preserve"><value>Cannot read the audio of this file ({0}).</value></data>
   <data name="ErrorModel" xml:space="preserve"><value>A model could not be used: {0}</value></data>
   <data name="ErrorEngine" xml:space="preserve"><value>Transcription failed: {0}</value></data>
+  <data name="AccuracyHighest" xml:space="preserve"><value>highest</value></data>
+  <data name="AccuracyHigh" xml:space="preserve"><value>high</value></data>
+  <data name="AccuracyMedium" xml:space="preserve"><value>medium</value></data>
+  <data name="AccuracyLow" xml:space="preserve"><value>low</value></data>
+  <data name="AccuracyVeryLow" xml:space="preserve"><value>very low</value></data>
+  <data name="SpeedVerySlow" xml:space="preserve"><value>very slow</value></data>
+  <data name="SpeedSlow" xml:space="preserve"><value>slow</value></data>
+  <data name="SpeedMedium" xml:space="preserve"><value>medium</value></data>
+  <data name="SpeedFast" xml:space="preserve"><value>fast</value></data>
+  <data name="SpeedVeryFast" xml:space="preserve"><value>very fast</value></data>
+  <data name="SpeedFastest" xml:space="preserve"><value>fastest</value></data>
+  <data name="QuantF16" xml:space="preserve"><value>no compression</value></data>
+  <data name="QuantQ8" xml:space="preserve"><value>light compression</value></data>
+  <data name="QuantQ5" xml:space="preserve"><value>compressed</value></data>
+  <data name="ModelSummary" xml:space="preserve"><value>Accuracy {0} · speed {1} · {2} · {3}</value></data>
+  <data name="Add" xml:space="preserve"><value>Add files</value></data>
+  <data name="AddTitle" xml:space="preserve"><value>Transcribe {0} files</value></data>
+  <data name="AddTitleOne" xml:space="preserve"><value>Transcribe a file</value></data>
+  <data name="AddOptions" xml:space="preserve"><value>Options</value></data>
+  <data name="AddStart" xml:space="preserve"><value>Start</value></data>
+  <data name="AddModelMissing" xml:space="preserve"><value>The model {0} is not on this computer. Download it in Settings, or choose another.</value></data>
+  <data name="DetailNone" xml:space="preserve"><value>Choose a transcript, or drop audio and video files here.</value></data>
+  <data name="DetailWaiting" xml:space="preserve"><value>Waiting to start: number {0} in line.</value></data>
+  <data name="DiarizeOn" xml:space="preserve"><value>speakers told apart</value></data>
+  <data name="DiarizeOff" xml:space="preserve"><value>no speakers</value></data>
+  <data name="DropCaption" xml:space="preserve"><value>Transcribe</value></data>
+  <data name="ExportRecording" xml:space="preserve"><value>Recording (.m4a)</value></data>
+  <data name="Follow" xml:space="preserve"><value>Follow</value></data>
+  <data name="LanguageNameKo" xml:space="preserve"><value>Korean</value></data>
+  <data name="LanguageNameEn" xml:space="preserve"><value>English</value></data>
+  <data name="LibraryFailed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="LibraryRunningLeft" xml:space="preserve"><value>{0} · {1}% · about {2} left</value></data>
+  <data name="LibraryWaiting" xml:space="preserve"><value>Waiting ({0})</value></data>
+  <data name="ModelDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="ModelInUse" xml:space="preserve"><value>Used for new files</value></data>
+  <data name="ModelRecommended" xml:space="preserve"><value>Recommended</value></data>
+  <data name="NotificationDone" xml:space="preserve"><value>The transcript is ready.</value></data>
+  <data name="OpenDataFolder" xml:space="preserve"><value>Open the data folder</value></data>
+  <data name="Remove" xml:space="preserve"><value>Remove from the list</value></data>
+  <data name="Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="RunningBackground" xml:space="preserve"><value>Closing the window cancels the work; other windows and apps can be used meanwhile.</value></data>
+  <data name="RunningDetails" xml:space="preserve"><value>Details</value></data>
+  <data name="RunningLeft" xml:space="preserve"><value>About {0} left</value></data>
+  <data name="RunningPreviews" xml:space="preserve"><value>Transcribed so far. Speakers are added when it finishes.</value></data>
+  <data name="SearchHint" xml:space="preserve"><value>Search (Ctrl+F)</value></data>
+  <data name="SearchNone" xml:space="preserve"><value>Nothing matches.</value></data>
+  <data name="SegmentCopy" xml:space="preserve"><value>Copy</value></data>
+  <data name="SegmentPlay" xml:space="preserve"><value>Play from here</value></data>
+  <data name="Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="SettingsDefaults" xml:space="preserve"><value>Defaults for new files</value></data>
+  <data name="SettingsModels" xml:space="preserve"><value>Transcription models</value></data>
+  <data name="SettingsModelsHint" xml:space="preserve"><value>Larger models are more accurate but slower and need more memory. The recommended model suits most computers.</value></data>
+  <data name="SettingsStorage" xml:space="preserve"><value>Storage</value></data>
+  <data name="SettingsStorageModels" xml:space="preserve"><value>Models: {0}</value></data>
+  <data name="SettingsStorageHistory" xml:space="preserve"><value>Transcripts and recordings: {0}</value></data>
+  <data name="SetupModel" xml:space="preserve"><value>Transcription model</value></data>
+  <data name="SpeakerListen" xml:space="preserve"><value>Listen</value></data>
+  <data name="WelcomeTitle" xml:space="preserve"><value>Transcribe on this computer</value></data>
+  <data name="WelcomeBody" xml:space="preserve"><value>Sillok turns recordings into text with speakers, entirely on this computer: your recordings never leave it. It first needs its speech models, about {0}.</value></data>
 </root>

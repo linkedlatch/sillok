@@ -33,4 +33,38 @@ internal static class Strings
 
     public static string Date(long ms) =>
         DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime.ToString("g", CultureInfo.CurrentCulture);
+
+    /// <summary>"large-v3 turbo / q5_0": the model, then its quantization.</summary>
+    public static string ModelName(CatalogModel model) =>
+        model.Family.Replace("-turbo", " turbo", StringComparison.Ordinal) + " / " + model.Quantization;
+
+    /// <summary>
+    /// "Accuracy high · speed medium · compressed · 574 MB": one scale for all
+    /// models with turbo q5_0 (recommended) in the middle. Without compression a
+    /// model was 1.7 to 2 times slower on a CPU and a GTX 1060, a step down.
+    /// </summary>
+    public static string ModelSummary(CatalogModel model)
+    {
+        string[] speeds = ["SpeedVerySlow", "SpeedSlow", "SpeedMedium", "SpeedFast", "SpeedVeryFast", "SpeedFastest"];
+        var (accuracy, speed) = model.Family switch
+        {
+            "large-v3" => ("AccuracyHighest", 1),
+            "large-v3-turbo" => ("AccuracyHigh", 2),
+            "small" => ("AccuracyMedium", 3),
+            "base" => ("AccuracyLow", 4),
+            _ => ("AccuracyVeryLow", 5),
+        };
+        if (model.Quantization == "f16") speed--;
+        var compression = model.Quantization switch
+        {
+            "f16" => "QuantF16",
+            "q8_0" => "QuantQ8",
+            _ => "QuantQ5",
+        };
+        return Format("ModelSummary", Get(accuracy), Get(speeds[speed]), Get(compression), Bytes(model.Size));
+    }
+
+    /// <summary>"Automatic · speakers told apart · large-v3 turbo / q5_0"</summary>
+    public static string SettingsSummary(JobSettings settings, CatalogModel model) =>
+        string.Join(" · ", Get("Language_" + settings.Language), Get(settings.Diarize ? "DiarizeOn" : "DiarizeOff"), ModelName(model));
 }
