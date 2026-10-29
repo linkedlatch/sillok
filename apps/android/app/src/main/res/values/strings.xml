@@ -104,13 +104,6 @@
     <string name="model_verifying">Checking…</string>
     <string name="model_delete">Delete</string>
     <string name="model_in_use">Used for new files</string>
-    <string name="model_family_large_v3_turbo">Fast and accurate</string>
-    <string name="model_family_large_v3">Most accurate, slowest</string>
-    <string name="model_family_small">Fast, less accurate</string>
-    <string name="model_family_base">Fastest, for a quick draft; least accurate</string>
-    <string name="model_quant_f16">full precision</string>
-    <string name="model_quant_q8_0">light compression</string>
-    <string name="model_quant_q5">compressed</string>
     <string name="library_waiting">Waiting (%1$d)</string>
     <string name="library_running">%1$s · %2$d%%</string>
     <string name="library_running_left">%1$s · %2$d%% · about %3$s left</string>
@@ -145,4 +138,19 @@
         <item quantity="one">%1$d more waiting</item>
         <item quantity="other">%1$d more waiting</item>
     </plurals>
+    <string name="model_summary">Accuracy %1$s · speed %2$s · %3$s · %4$s</string>
+    <string name="accuracy_highest">highest</string>
+    <string name="accuracy_high">high</string>
+    <string name="accuracy_medium">medium</string>
+    <string name="accuracy_low">low</string>
+    <string name="accuracy_very_low">very low</string>
+    <string name="speed_very_slow">very slow</string>
+    <string name="speed_slow">slow</string>
+    <string name="speed_medium">medium</string>
+    <string name="speed_fast">fast</string>
+    <string name="speed_very_fast">very fast</string>
+    <string name="speed_fastest">fastest</string>
+    <string name="model_quant_f16">no compression</string>
+    <string name="model_quant_q8_0">light compression</string>
+    <string name="model_quant_q5">compressed</string>
 </resources>

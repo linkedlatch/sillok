@@ -82,7 +82,8 @@ std::vector<CatalogModel> BuildCatalog() {
       // Transcription, from the recommended model to ones for slower and
       // faster devices. The .en models are left out: recordings are Korean.
       // So is medium: about turbo's size, but slower (24 decoder layers to
-      // turbo's 4) and less accurate.
+      // turbo's 4) and less accurate. The small models come in one
+      // quantization: they are chosen for speed, which more bits would cost.
       Whisper("large-v3-turbo", "q5_0",
               WhisperFile("ggml-large-v3-turbo-q5_0.bin", 574041195,
                           "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"),
@@ -114,6 +115,11 @@ std::vector<CatalogModel> BuildCatalog() {
                           "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"),
               CoreMlEncoder("ggml-base-encoder.mlmodelc.zip", 37922638,
                             "7e6ab77041942572f239b5b602f8aaa1c3ed29d73e3d8f20abea03a773541089")),
+      Whisper("tiny", "q5_1",
+              WhisperFile("ggml-tiny-q5_1.bin", 32152673,
+                          "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"),
+              CoreMlEncoder("ggml-tiny-encoder.mlmodelc.zip", 15037446,
+                            "c88cbd2648e1f5415092bcf5256add463a0f19943e6938f46e8d4ffdebd47739")),
       {.id = "nemotron-3-diarization-q8_0",
        .role = "diarization",
        .family = "nemotron-3-diarization",

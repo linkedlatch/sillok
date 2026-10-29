@@ -110,11 +110,11 @@ private fun Section(title: String) {
 private fun ModelRow(vm: AppViewModel, model: CatalogModel, inUse: Boolean, onUse: () -> Unit) {
     val context = LocalContext.current
     val status = vm.models[model.id]
-    val description = listOf(
-        stringResource(familyDescription(model.family)),
-        stringResource(quantizationDescription(model.quantization)),
-        formatBytes(context, model.size),
-    ).joinToString(" · ")
+    val (accuracy, speed) = levels(model)
+    val description = stringResource(
+        R.string.model_summary, stringResource(accuracy), stringResource(speed),
+        stringResource(quantizationDescription(model.quantization)), formatBytes(context, model.size),
+    )
     ListItem(
         headlineContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -157,11 +157,25 @@ private fun ModelRow(vm: AppViewModel, model: CatalogModel, inUse: Boolean, onUs
     )
 }
 
-private fun familyDescription(family: String) = when (family) {
-    "large-v3-turbo" -> R.string.model_family_large_v3_turbo
-    "large-v3" -> R.string.model_family_large_v3
-    "small" -> R.string.model_family_small
-    else -> R.string.model_family_base
+/**
+ * Accuracy and speed of a model, on one scale for all with turbo q5_0
+ * (recommended) in the middle. Without compression a model was 1.7 to 2
+ * times slower on a CPU and a GTX 1060, a step down on the scale; q8_0 was
+ * not measured.
+ */
+private fun levels(model: CatalogModel): Pair<Int, Int> {
+    val speeds = listOf(
+        R.string.speed_very_slow, R.string.speed_slow, R.string.speed_medium,
+        R.string.speed_fast, R.string.speed_very_fast, R.string.speed_fastest,
+    )
+    val (accuracy, speed) = when (model.family) {
+        "large-v3" -> R.string.accuracy_highest to 1
+        "large-v3-turbo" -> R.string.accuracy_high to 2
+        "small" -> R.string.accuracy_medium to 3
+        "base" -> R.string.accuracy_low to 4
+        else -> R.string.accuracy_very_low to 5
+    }
+    return accuracy to speeds[if (model.quantization == "f16") speed - 1 else speed]
 }
 
 private fun quantizationDescription(quantization: String) = when {

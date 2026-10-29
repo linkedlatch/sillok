@@ -190,10 +190,23 @@ private fun MainScreen(vm: AppViewModel) {
             vm.requestOpen(null)
         }
     }
-    // The running file's page becomes its transcript when it finishes.
+    // The running file's page becomes its transcript when it finishes,
+    // in its place, so that going back does not return to it.
     LaunchedEffect(vm.finished) {
         val (key, id) = vm.finished ?: return@LaunchedEffect
-        if (navigator.currentDestination?.contentKey == key) navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id)
+        if (navigator.currentDestination?.contentKey == key) {
+            navigator.navigateBack()
+            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id)
+        }
+    }
+    // A page whose file is gone (cancelled, removed, deleted) goes back. A
+    // finished file leaves the list for a moment before its transcript
+    // takes its place, so wait for that first.
+    val keys = vm.library.map { it.key }
+    LaunchedEffect(shown, keys) {
+        if (shown == null || shown in keys) return@LaunchedEffect
+        delay(1000)
+        if (navigator.currentDestination?.contentKey == shown && vm.library.none { it.key == shown }) navigator.navigateBack()
     }
     NavigableListDetailPaneScaffold(
         navigator = navigator,
@@ -364,7 +377,7 @@ private fun AddSheet(vm: AppViewModel) {
     }
 }
 
-/** "Automatic · speakers told apart · large-v3 turbo q5_0" */
+/** "Automatic · speakers told apart · large-v3 turbo / q5_0" */
 @Composable
 fun settingsSummary(vm: AppViewModel, settings: JobSettings): String {
     val language = stringResource(languageLabel(settings.language))
@@ -379,8 +392,8 @@ fun languageLabel(code: String) = when (code) {
     else -> R.string.language_auto
 }
 
-/** "large-v3 turbo q5_0" */
-fun modelName(model: CatalogModel): String = model.family.replace("-turbo", " turbo") + " " + model.quantization
+/** "large-v3 turbo / q5_0": the model, then its quantization. */
+fun modelName(model: CatalogModel): String = model.family.replace("-turbo", " turbo") + " / " + model.quantization
 
 /** The settings a job runs with: language, speakers, terms, model and device. */
 @Composable

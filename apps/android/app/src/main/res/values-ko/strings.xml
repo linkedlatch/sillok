@@ -93,13 +93,6 @@
     <string name="model_verifying">확인 중…</string>
     <string name="model_delete">삭제</string>
     <string name="model_in_use">새 파일에 사용</string>
-    <string name="model_family_large_v3_turbo">빠르고 정확함</string>
-    <string name="model_family_large_v3">가장 정확, 가장 느림</string>
-    <string name="model_family_small">빠름, 정확도 낮음</string>
-    <string name="model_family_base">가장 빠름, 빠른 초안용, 정확도 가장 낮음</string>
-    <string name="model_quant_f16">원본 정밀도</string>
-    <string name="model_quant_q8_0">약한 압축</string>
-    <string name="model_quant_q5">압축</string>
     <string name="library_waiting">대기 중 (%1$d번째)</string>
     <string name="library_running">%1$s · %2$d%%</string>
     <string name="library_running_left">%1$s · %2$d%% · 약 %3$s 남음</string>
@@ -132,4 +125,19 @@
     <plurals name="notification_waiting">
         <item quantity="other">%1$d개 대기</item>
     </plurals>
+    <string name="model_summary">정확도 %1$s · 속도 %2$s · %3$s · %4$s</string>
+    <string name="accuracy_highest">최상</string>
+    <string name="accuracy_high">높음</string>
+    <string name="accuracy_medium">보통</string>
+    <string name="accuracy_low">낮음</string>
+    <string name="accuracy_very_low">매우 낮음</string>
+    <string name="speed_very_slow">매우 느림</string>
+    <string name="speed_slow">느림</string>
+    <string name="speed_medium">보통</string>
+    <string name="speed_fast">빠름</string>
+    <string name="speed_very_fast">매우 빠름</string>
+    <string name="speed_fastest">가장 빠름</string>
+    <string name="model_quant_f16">압축 없음</string>
+    <string name="model_quant_q8_0">약한 압축</string>
+    <string name="model_quant_q5">압축</string>
 </resources>
