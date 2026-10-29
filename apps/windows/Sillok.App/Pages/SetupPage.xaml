@@ -7,10 +7,10 @@
         <StackPanel MaxWidth="640" Margin="24" Spacing="16">
             <TextBlock x:Name="Heading" Style="{StaticResource TitleTextBlockStyle}" />
             <TextBlock x:Name="FileName" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
-            <RadioButtons x:Name="Language" />
+            <RadioButtons x:Name="LanguageChoice" />
             <ToggleSwitch x:Name="Diarize" />
             <TextBox x:Name="Glossary" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
-            <RadioButtons x:Name="Device" />
+            <RadioButtons x:Name="DeviceChoice" />
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button x:Name="StartButton" Style="{StaticResource AccentButtonStyle}" Click="OnStart" />
                 <Button x:Name="CancelButton" Click="OnCancel" />
