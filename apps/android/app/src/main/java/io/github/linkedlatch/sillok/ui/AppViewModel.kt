@@ -71,8 +71,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private var download: Job? = null
 
+    /** Why the app ended abnormally last time, to show once and share. */
+    var crashReport by mutableStateOf<String?>(null)
+        private set
+
     init {
         viewModelScope.launch {
+            crashReport = withContext(Dispatchers.IO) { (app as SillokApplication).crashLog.takeReport() }
             refreshHistory()
             checkModels()
         }
@@ -194,6 +199,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissError() {
         error = null
+    }
+
+    fun dismissCrashReport() {
+        crashReport = null
     }
 
     // --- Transcription -------------------------------------------------------

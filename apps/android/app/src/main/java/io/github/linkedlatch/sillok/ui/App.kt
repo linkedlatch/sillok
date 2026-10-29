@@ -1,5 +1,6 @@
 package io.github.linkedlatch.sillok.ui
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -48,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +75,32 @@ fun SillokApp(vm: AppViewModel = viewModel()) {
             is Screen.Result -> ResultScreen(vm, screen.id)
         }
         else -> ModelsScreen(models, vm::startDownload, vm::stopDownload)
+    }
+    vm.crashReport?.let { report ->
+        val context = LocalContext.current
+        val subject = stringResource(R.string.crash_title)
+        AlertDialog(
+            onDismissRequest = vm::dismissCrashReport,
+            title = { Text(subject) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(stringResource(R.string.crash_body))
+                    SelectionContainer {
+                        Text(report, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(Intent.EXTRA_SUBJECT, subject)
+                        .putExtra(Intent.EXTRA_TEXT, vm.version + "\n\n" + report)
+                    context.startActivity(Intent.createChooser(send, subject))
+                    vm.dismissCrashReport()
+                }) { Text(stringResource(R.string.share)) }
+            },
+            dismissButton = { TextButton(onClick = vm::dismissCrashReport) { Text(stringResource(R.string.ok)) } },
+        )
     }
     vm.error?.let { message ->
         AlertDialog(

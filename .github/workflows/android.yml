@@ -37,6 +37,23 @@ jobs:
           name: sillok-android-debug
           path: apps/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Fetch a Korean speech recording for the end-to-end test
+        working-directory: .
+        run: |
+          # FLEURS (google/fleurs, CC BY 4.0), as in scripts/fetch-test-audio.sh:
+          # the first 48 MB of the Korean test audio, pinned and checked.
+          curl -sfL -r 0-47999999 -o fleurs-ko.tar.gz \
+            "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/ko_kr/audio/test.tar.gz"
+          echo "9070bdc110da8ddc03d37e40371209fe117ddc7ea2b10d8b70a5aebcbf2b0a7a  fleurs-ko.tar.gz" | sha256sum -c
+          python3 - <<'PY'
+          import tarfile
+          with tarfile.open("fleurs-ko.tar.gz", "r|gz") as archive:
+              for member in archive:
+                  if member.name.endswith(".wav"):
+                      open("speech.wav", "wb").write(archive.extractfile(member).read())
+                      break
+          PY
+          ls -l speech.wav
       - name: Allow the emulator to use KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -48,8 +65,13 @@ jobs:
           api-level: 36
           arch: x86_64
           target: google_apis
+          # The models need about 0.7 GB of storage and run in memory.
+          ram-size: 4096M
+          disk-size: 6000M
           disable-animations: true
           working-directory: apps/android
           script: |
-            ./gradlew connectedDebugAndroidTest --console=plain
+            adb push ../../speech.wav /data/local/tmp/speech.wav
+            ./gradlew connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.speech=/data/local/tmp/speech.wav || (adb logcat -d -b crash; adb logcat -d | grep -E "AndroidRuntime|DEBUG|sillok|libc" | tail -300; exit 1)
+            adb logcat -d -s sillok-test:I
             grep -ho '<testsuite name="[^"]*" tests="[0-9]*" failures="[0-9]*" errors="[0-9]*" skipped="[0-9]*"' app/build/outputs/androidTest-results/connected/debug/*.xml

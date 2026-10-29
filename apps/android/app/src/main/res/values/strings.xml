@@ -85,4 +85,7 @@
     <string name="error_unsupported_file">Cannot read the audio of this file (%1$s).</string>
     <string name="error_model">A model could not be used: %1$s</string>
     <string name="error_engine">Transcription failed: %1$s</string>
+
+    <string name="crash_title">The app stopped unexpectedly</string>
+    <string name="crash_body">Last time the app ended abnormally. Sharing the details below helps fix it.</string>
 </resources>

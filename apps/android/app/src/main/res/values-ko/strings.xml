@@ -77,4 +77,7 @@
     <string name="error_unsupported_file">이 파일의 소리를 읽을 수 없습니다(%1$s).</string>
     <string name="error_model">모델을 쓸 수 없습니다: %1$s</string>
     <string name="error_engine">전사하지 못했습니다: %1$s</string>
+
+    <string name="crash_title">앱이 비정상 종료됨</string>
+    <string name="crash_body">지난번에 앱이 비정상적으로 종료되었습니다. 아래 내용을 공유해 주시면 원인을 고치는 데 도움이 됩니다.</string>
 </resources>
