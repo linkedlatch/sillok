@@ -12,7 +12,7 @@ public sealed record SegmentRow(string Header, string Text);
 /// The transcript: segments play from a second before them (include/sillok/sillok.h),
 /// the playing one is selected, speakers can be named, and the text exported.
 /// </summary>
-public sealed partial class ResultPage : Page
+public sealed partial class ResultPage : Page, IDisposable
 {
     private static AppState State => App.State;
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromMilliseconds(100) };
@@ -35,12 +35,14 @@ public sealed partial class ResultPage : Page
         InfoButton.Label = Strings.Get("Info");
         _clock.Tick += (_, _) => UpdatePlayback();
         Loaded += (_, _) => Load();
-        Unloaded += (_, _) =>
-        {
-            _clock.Stop();
-            _player?.Dispose();
-            _player = null;
-        };
+        Unloaded += (_, _) => Dispose();
+    }
+
+    public void Dispose()
+    {
+        _clock.Stop();
+        _player?.Dispose();
+        _player = null;
     }
 
     private void Load()

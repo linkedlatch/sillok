@@ -5,11 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace Sillok.App.Pages;
 
 /// <summary>A row of the history list.</summary>
-public sealed record HistoryRow(string Id, string Title, string Detail)
-{
-    public string RenameText => Strings.Get("Rename");
-    public string DeleteText => Strings.Get("Delete");
-}
+public sealed record HistoryRow(string Id, string Title, string Detail, string RenameText, string DeleteText);
 
 /// <summary>The history, the running job and the way to open a file.</summary>
 public sealed partial class HomePage : Page
@@ -47,7 +43,8 @@ public sealed partial class HomePage : Page
     private void UpdateList()
     {
         List.ItemsSource = State.History
-            .Select(e => new HistoryRow(e.Id, e.Title, $"{Strings.Date(e.CreatedMs)} · {Strings.Time(e.DurationMs)}"))
+            .Select(e => new HistoryRow(e.Id, e.Title, $"{Strings.Date(e.CreatedMs)} · {Strings.Time(e.DurationMs)}",
+                Strings.Get("Rename"), Strings.Get("Delete")))
             .ToList();
         Empty.Visibility = State.History.Count == 0 && State.Run is null ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -73,7 +70,7 @@ public sealed partial class HomePage : Page
         {
             XamlRoot = XamlRoot,
             Title = Strings.Get("AppName"),
-            Content = new TextBlock { Text = State.Version, IsTextSelectionEnabled = true },
+            Content = new TextBlock { Text = AppState.Version, IsTextSelectionEnabled = true },
             CloseButtonText = Strings.Get("Ok"),
         }.ShowAsync();
     }

@@ -21,7 +21,7 @@ public sealed record RunInfo(string Name, IReadOnlyList<RunStep> Steps, RunStep 
 /// <see cref="ObservableObject.PropertyChanged"/>. Work runs off the UI
 /// thread and reports back through the window's dispatcher.
 /// </summary>
-public sealed partial class AppState : ObservableObject
+public sealed partial class AppState : ObservableObject, IDisposable
 {
     public static string DataDir { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sillok");
@@ -46,7 +46,7 @@ public sealed partial class AppState : ObservableObject
     public JobStore Store { get; }
     public ObservableCollection<JobEntry> History { get; } = [];
     public IReadOnlyList<ComputeDevice> Gpus { get; private set; } = [];
-    public string Version => $"{typeof(AppState).Assembly.GetName().Version}\n{SillokLibrary.Version}";
+    public static string Version => $"{typeof(AppState).Assembly.GetName().Version}\n{SillokLibrary.Version}";
 
     [ObservableProperty] public partial ModelPhase ModelPhase { get; set; }
     [ObservableProperty] public partial long ModelTotal { get; set; }
@@ -63,6 +63,12 @@ public sealed partial class AppState : ObservableObject
     public (string Path, string Name)? PendingFile { get; private set; }
     /// <summary>The job the result page shows.</summary>
     public string? ResultId { get; private set; }
+
+    public void Dispose()
+    {
+        _download?.Dispose();
+        _http.Dispose();
+    }
 
     public void Attach(Window window)
     {
