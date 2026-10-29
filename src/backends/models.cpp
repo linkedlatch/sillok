@@ -61,6 +61,9 @@ CatalogModel Whisper(const char* family, const char* quantization,
 }
 
 std::vector<CatalogModel> BuildCatalog() {
+  const CatalogFile large_v3_encoder = CoreMlEncoder(
+      "ggml-large-v3-encoder.mlmodelc.zip", 1175711232,
+      "47837be7594a29429ec08620043390c4d6d467f8bd362df09e9390ace76a55a4");
   const CatalogFile turbo_encoder = CoreMlEncoder(
       "ggml-large-v3-turbo-encoder.mlmodelc.zip", 1173393014,
       "84bedfe895bd7b5de6e8e89a0803dfc5addf8c0c5bc4c937451716bf7cf7988a");
@@ -93,8 +96,12 @@ std::vector<CatalogModel> BuildCatalog() {
       Whisper("large-v3", "q5_0",
               WhisperFile("ggml-large-v3-q5_0.bin", 1081140203,
                           "d75795ecff3f83b5faa89d1900604ad8c780abd5739fae406de19f23ecd98ad1"),
-              CoreMlEncoder("ggml-large-v3-encoder.mlmodelc.zip", 1175711232,
-                            "47837be7594a29429ec08620043390c4d6d467f8bd362df09e9390ace76a55a4")),
+              large_v3_encoder),
+      // The repository has no q8_0 of large-v3.
+      Whisper("large-v3", "f16",
+              WhisperFile("ggml-large-v3.bin", 3095033483,
+                          "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"),
+              large_v3_encoder),
       Whisper("medium", "q5_0",
               WhisperFile("ggml-medium-q5_0.bin", 539212467,
                           "19fea4b380c3a618ec4723c3eef2eb785ffba0d0538cf43f8f235e7b3b34220f"),
