@@ -118,6 +118,8 @@
   <data name="SettingsStorageHistory" xml:space="preserve"><value>Transcripts and recordings: {0}</value></data>
   <data name="SetupModel" xml:space="preserve"><value>Transcription model</value></data>
   <data name="SpeakerListen" xml:space="preserve"><value>Listen</value></data>
+  <data name="UnsupportedTitle" xml:space="preserve"><value>This computer is not supported</value></data>
+  <data name="UnsupportedBody" xml:space="preserve"><value>Sillok runs its speech models on this computer's processor, and this processor lacks instructions they need ({0}). Processors without them are too old to transcribe in a useful time.</value></data>
   <data name="WelcomeTitle" xml:space="preserve"><value>Transcribe on this computer</value></data>
   <data name="WelcomeBody" xml:space="preserve"><value>Sillok turns recordings into text with speakers, entirely on this computer: your recordings never leave it. It first needs its speech models, about {0}.</value></data>
 </root>

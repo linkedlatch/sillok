@@ -118,6 +118,8 @@
   <data name="SettingsStorageHistory" xml:space="preserve"><value>결과와 녹음 사본: {0}</value></data>
   <data name="SetupModel" xml:space="preserve"><value>받아쓰기 모델</value></data>
   <data name="SpeakerListen" xml:space="preserve"><value>들어 보기</value></data>
+  <data name="UnsupportedTitle" xml:space="preserve"><value>지원하지 않는 컴퓨터입니다</value></data>
+  <data name="UnsupportedBody" xml:space="preserve"><value>실록은 이 컴퓨터의 프로세서로 음성 모델을 돌리는데, 이 프로세서에는 모델에 필요한 명령({0})이 없습니다. 이런 프로세서는 오래되어 쓸 만한 시간 안에 전사하기 어렵습니다.</value></data>
   <data name="WelcomeTitle" xml:space="preserve"><value>이 컴퓨터에서 전사하기</value></data>
   <data name="WelcomeBody" xml:space="preserve"><value>실록은 녹음을 화자별 텍스트로 바꿉니다. 모든 처리는 이 컴퓨터 안에서 하므로 녹음이 밖으로 나가지 않습니다. 먼저 음성 모델 약 {0}를 받아야 합니다.</value></data>
 </root>

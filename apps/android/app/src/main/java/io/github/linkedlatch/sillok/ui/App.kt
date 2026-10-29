@@ -155,6 +155,18 @@ private fun WelcomeScreen(vm: AppViewModel) {
     }
 }
 
+/** In place of the app on a CPU without the [missing] instructions the library needs. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UnsupportedScreen(missing: List<String>) {
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) }) { padding ->
+        CenteredColumn(padding) {
+            Text(stringResource(R.string.unsupported_title), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.unsupported_body, missing.joinToString(", ")))
+        }
+    }
+}
+
 /** Download progress of [model], or the button to download it. */
 @Composable
 fun ModelDownloadControl(vm: AppViewModel, model: CatalogModel) {

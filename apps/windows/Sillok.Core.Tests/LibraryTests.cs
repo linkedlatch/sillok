@@ -14,6 +14,12 @@ public class LibraryTests
         """;
 
     [Fact]
+    public void ThisComputerRunsTheLibrary()
+    {
+        Assert.Empty(CpuSupport.Missing);
+    }
+
+    [Fact]
     public void CatalogNamesTheModels()
     {
         var roles = SillokLibrary.Catalog().Select(m => m.Role).ToList();

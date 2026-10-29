@@ -83,6 +83,8 @@
 
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="crash_body">Last time the app ended abnormally. Sharing the details below helps fix it.</string>
+    <string name="unsupported_title">This device is not supported</string>
+    <string name="unsupported_body">Sillok runs its speech models on this device\'s processor, and this processor lacks instructions they need (%1$s). Processors without them, mostly older or entry-level ones, are too slow to transcribe in a useful time.</string>
     <string name="welcome_title">Transcribe on this device</string>
     <string name="welcome_body">Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about %1$s. Wi-Fi is recommended.</string>
     <string name="add">Add</string>

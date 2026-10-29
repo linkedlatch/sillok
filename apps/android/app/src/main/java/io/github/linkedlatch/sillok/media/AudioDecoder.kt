@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
+import androidx.annotation.ChecksSdkIntAtLeast
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
@@ -97,7 +98,8 @@ class AudioDecoder(private val context: Context, private val uri: Uri) {
     private class Session(
         val extractor: MediaExtractor,
         val codec: MediaCodec,
-        val batched: Boolean,
+        // True only from Android 15 on (enableBatches), which lint learns from the annotation.
+        @field:ChecksSdkIntAtLeast(api = Build.VERSION_CODES.VANILLA_ICE_CREAM) val batched: Boolean,
         val durationUs: Long,
         val isCancelled: () -> Boolean,
         val onProgress: (Double) -> Unit,
@@ -188,7 +190,7 @@ class AudioDecoder(private val context: Context, private val uri: Uri) {
                     codec.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                     return false
                 }
-                batched && Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM -> codec.queueInputBuffers(index, frames)
+                batched -> codec.queueInputBuffers(index, frames)
                 else -> frames.first.let { codec.queueInputBuffer(index, it.offset, it.size, it.presentationTimeUs, 0) }
             }
             return true

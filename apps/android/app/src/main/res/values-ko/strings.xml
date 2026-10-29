@@ -72,6 +72,8 @@
 
     <string name="crash_title">앱이 비정상 종료됨</string>
     <string name="crash_body">지난번에 앱이 비정상적으로 종료되었습니다. 아래 내용을 공유해 주시면 원인을 고치는 데 도움이 됩니다.</string>
+    <string name="unsupported_title">지원하지 않는 기기입니다</string>
+    <string name="unsupported_body">실록은 이 기기의 프로세서로 음성 모델을 돌리는데, 이 프로세서에는 모델에 필요한 명령(%1$s)이 없습니다. 이런 프로세서는 주로 오래되었거나 보급형이라 쓸 만한 시간 안에 전사하기 어렵습니다.</string>
     <string name="welcome_title">이 기기에서 전사하기</string>
     <string name="welcome_body">실록은 녹음을 화자별 텍스트로 바꿉니다. 모든 처리는 이 기기 안에서 하므로 녹음이 밖으로 나가지 않습니다. 먼저 음성 모델 약 %1$s를 받아야 합니다. Wi-Fi 연결을 권장합니다.</string>
     <string name="add">추가</string>

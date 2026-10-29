@@ -41,8 +41,11 @@ jobs:
       - name: Build the library and the CLI (for the model download)
         run: |
           # The static C runtime spares users the Visual C++ redistributable.
+          # GGML_NATIVE=OFF builds for AVX2 (CpuSupport in the app checks it)
+          # rather than for the runner's CPU, which has AVX-512.
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSILLOK_WERROR=ON \
-            -DSILLOK_VULKAN=ON -DSILLOK_BUILD_TESTS=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+            -DSILLOK_VULKAN=ON -DSILLOK_BUILD_TESTS=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+            -DGGML_NATIVE=OFF
           cmake --build build --target sillok sillok_cli
           ls -l build/sillok.dll
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

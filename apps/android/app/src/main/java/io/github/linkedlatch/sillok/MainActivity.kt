@@ -6,10 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import io.github.linkedlatch.sillok.engine.CpuSupport
 import io.github.linkedlatch.sillok.service.Notifications
 import io.github.linkedlatch.sillok.ui.AppViewModel
 import io.github.linkedlatch.sillok.ui.SillokApp
 import io.github.linkedlatch.sillok.ui.SillokTheme
+import io.github.linkedlatch.sillok.ui.UnsupportedScreen
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -17,6 +19,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Nothing may load the library on a CPU it cannot run on.
+        if (CpuSupport.missing.isNotEmpty()) {
+            setContent { SillokTheme { UnsupportedScreen(CpuSupport.missing) } }
+            return
+        }
         if (savedInstanceState == null) openFrom(intent)
         setContent {
             SillokTheme {
@@ -27,7 +34,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        openFrom(intent)
+        if (CpuSupport.missing.isEmpty()) openFrom(intent)
     }
 
     /** A notification about a finished job opens its result. */
