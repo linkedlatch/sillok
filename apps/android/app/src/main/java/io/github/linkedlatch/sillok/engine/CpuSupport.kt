@@ -17,15 +17,12 @@ object CpuSupport {
 
     /** The features of [arch] that some core in [cpuinfo] lacks. */
     internal fun missing(cpuinfo: String, arch: String): List<String> {
-        val (key, required) = when (arch) {
-            // armv8.2-a+dotprod+fp16
-            "aarch64" -> "Features" to listOf("asimddp", "fphp", "asimdhp")
-            // The emulator build: AVX2 with FMA, F16C and BMI2.
-            "x86_64" -> "flags" to listOf("avx2", "fma", "f16c", "bmi2")
-            else -> return emptyList()
-        }
+        // armv8.2-a+dotprod+fp16. x86_64 is only for the emulator, whose
+        // cpuinfo leaves out AVX2, FMA and BMI2 although it runs them.
+        if (arch != "aarch64") return emptyList()
+        val required = listOf("asimddp", "fphp", "asimdhp")
         val cores = cpuinfo.lineSequence()
-            .filter { it.substringBefore(':').trim() == key }
+            .filter { it.substringBefore(':').trim() == "Features" }
             .map { it.substringAfter(':').trim().split(Regex("\\s+")).toSet() }
             .toList()
         return required.filter { feature -> cores.any { feature !in it } }

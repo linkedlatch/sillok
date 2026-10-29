@@ -24,14 +24,8 @@ class CpuSupportTest {
     }
 
     @Test
-    fun emulatorNeedsAvx2() {
-        assertEquals(listOf("avx2", "fma", "f16c", "bmi2"), CpuSupport.missing("flags\t\t: fpu sse4_2 avx\n", "x86_64"))
-        assertEquals(emptyList<String>(), CpuSupport.missing("flags\t\t: avx avx2 fma f16c bmi2\n", "x86_64"))
-    }
-
-    @Test
     fun unknownFormatsDoNotBlock() {
         assertEquals(emptyList<String>(), CpuSupport.missing("", "aarch64"))
-        assertEquals(emptyList<String>(), CpuSupport.missing("Features\t: fp\n", "riscv64"))
+        assertEquals(emptyList<String>(), CpuSupport.missing("flags\t\t: fpu sse4_2 avx\n", "x86_64"))
     }
 }
