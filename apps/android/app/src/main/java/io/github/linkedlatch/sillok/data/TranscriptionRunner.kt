@@ -41,6 +41,7 @@ class TranscriptionRunner(
         source: String,
         settings: JobSettings,
         onRead: (ReadTimings) -> Unit = {},
+        onSegments: (List<Transcript.Segment>) -> Unit = {},
         onProgress: (Step, Double) -> Unit,
     ): JobEntry? {
         val dir = store.create()
@@ -61,7 +62,7 @@ class TranscriptionRunner(
         }
         val threads = threads()
         try {
-            Engine(modelsDir, context.cacheDir, settings.gpuIndex, threads).use { engine ->
+            Engine(modelsDir, context.cacheDir, settings.gpuIndex, threads, settings.transcriptionModel).use { engine ->
                 Job(engine, settings.language, settings.diarize, settings.terms).use { job ->
                     this.job = job
                     if (cancelled.get()) return null
@@ -70,7 +71,7 @@ class TranscriptionRunner(
                     if (cancelled.get()) return null
                     onRead(read)
                     val transcript = try {
-                        job.run { stage, fraction -> report(stage.step, fraction) }
+                        job.run(onSegments) { stage, fraction -> report(stage.step, fraction) }
                     } catch (e: SillokException) {
                         if (e.status == SillokException.CANCELLED) return null
                         throw e

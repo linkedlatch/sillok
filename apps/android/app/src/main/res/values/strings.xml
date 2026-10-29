@@ -3,14 +3,11 @@
     <string name="app_name">Sillok</string>
 
     <!-- Models -->
-    <string name="models_title">Download the models</string>
-    <string name="models_body">Sillok transcribes on this device. It first needs its speech models, about %1$s. Wi-Fi is recommended.</string>
     <string name="models_download">Download</string>
     <string name="models_resume">Resume download</string>
     <string name="models_stop">Pause</string>
     <string name="models_progress">%1$s of %2$s · %3$s/s</string>
     <string name="models_verifying">Checking the files…</string>
-    <string name="models_checking">Checking the models…</string>
     <string name="models_damaged">A model file was damaged and has been removed. Download it again.</string>
     <string name="models_download_failed">The download stopped: %1$s</string>
     <string name="models_verified">All model files are intact.</string>
@@ -18,7 +15,6 @@
     <string name="menu_about">About</string>
 
     <!-- Home -->
-    <string name="home_open">Open file</string>
     <string name="home_empty">Open an audio or video file to transcribe it.</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
@@ -31,7 +27,6 @@
     <string name="title">Title</string>
 
     <!-- Setup -->
-    <string name="setup_title">New transcription</string>
     <string name="setup_language">Language</string>
     <string name="language_auto">Automatic</string>
     <string name="language_ko">Korean</string>
@@ -41,7 +36,6 @@
     <string name="setup_glossary_hint">Names and terms that occur in the recording, one per line or separated by commas</string>
     <string name="setup_device">Run on</string>
     <string name="device_cpu">CPU</string>
-    <string name="setup_start">Start</string>
 
     <!-- Running -->
     <string name="running_title">Transcribing</string>
@@ -49,7 +43,6 @@
     <string name="step_analyze">Finding speech</string>
     <string name="step_transcribe">Transcribing</string>
     <string name="step_diarize">Telling speakers apart</string>
-    <string name="running_remaining">About %1$s left in this step</string>
     <string name="running_cancelling">Cancelling…</string>
     <string name="running_background">It goes on while you use other apps or the screen is off; the notification shows its progress.</string>
 
@@ -90,4 +83,67 @@
 
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="crash_body">Last time the app ended abnormally. Sharing the details below helps fix it.</string>
+    <string name="welcome_title">Transcribe on this device</string>
+    <string name="welcome_body">Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about %1$s. Wi-Fi is recommended.</string>
+    <string name="add">Add</string>
+    <string name="add_title_one">Transcribe a file</string>
+    <string name="add_options">Options</string>
+    <string name="add_start">Start</string>
+    <string name="add_model_missing">The model %1$s is not on this device. Download it in Settings, or choose another.</string>
+    <string name="settings">Settings</string>
+    <string name="settings_defaults">Defaults for new files</string>
+    <string name="settings_models">Transcription models</string>
+    <string name="settings_models_hint">Larger models are more accurate but slower and need more memory. The recommended model suits most devices.</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_storage_models">Models: %1$s</string>
+    <string name="settings_storage_history">Transcripts and recordings: %1$s</string>
+    <string name="settings_more">More</string>
+    <string name="setup_model">Transcription model</string>
+    <string name="model_recommended">Recommended</string>
+    <string name="model_downloading">%1$s of %2$s</string>
+    <string name="model_verifying">Checking…</string>
+    <string name="model_delete">Delete</string>
+    <string name="model_in_use">Used for new files</string>
+    <string name="model_family_large_v3_turbo">Fast and accurate</string>
+    <string name="model_family_large_v3">Most accurate, slowest</string>
+    <string name="model_family_medium">Medium size</string>
+    <string name="model_family_small">Fast, less accurate</string>
+    <string name="model_family_base">Fastest, for slow devices; least accurate</string>
+    <string name="model_quant_f16">full precision</string>
+    <string name="model_quant_q8_0">light compression</string>
+    <string name="model_quant_q5">compressed</string>
+    <string name="library_waiting">Waiting (%1$d)</string>
+    <string name="library_running">%1$s · %2$d%%</string>
+    <string name="library_running_left">%1$s · %2$d%% · about %3$s left</string>
+    <string name="library_failed">Failed: %1$s</string>
+    <string name="retry">Try again</string>
+    <string name="remove">Remove</string>
+    <string name="detail_none">Choose a transcript.</string>
+    <string name="detail_waiting">Waiting to start: number %1$d in line.</string>
+    <string name="detail_diarize_on">speakers told apart</string>
+    <string name="detail_diarize_off">no speakers</string>
+    <string name="running_overall">%1$s · %2$d%%</string>
+    <string name="running_left">About %1$s left</string>
+    <string name="running_previews">Transcribed so far. Speakers are added when it finishes.</string>
+    <string name="running_details">Details</string>
+    <string name="follow">Follow</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search the transcript</string>
+    <string name="search_none">Nothing matches.</string>
+    <string name="segment_play">Play from here</string>
+    <string name="segment_copy">Copy</string>
+    <string name="segment_info">%1$s – %2$s · %3$s</string>
+    <string name="speaker_listen">Listen</string>
+    <string name="language_name_ko">Korean</string>
+    <string name="language_name_en">English</string>
+    <string name="notification_progress_left">%1$s · %2$d%% · about %3$s left</string>
+    <string name="copied">Copied</string>
+    <plurals name="add_title">
+        <item quantity="one">Transcribe %1$d file</item>
+        <item quantity="other">Transcribe %1$d files</item>
+    </plurals>
+    <plurals name="notification_waiting">
+        <item quantity="one">%1$d more waiting</item>
+        <item quantity="other">%1$d more waiting</item>
+    </plurals>
 </resources>

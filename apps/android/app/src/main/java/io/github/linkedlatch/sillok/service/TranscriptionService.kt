@@ -62,7 +62,8 @@ class TranscriptionService : Service() {
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     } else {
-                        Notifications.update(this@TranscriptionService, current)
+                        val waiting = transcriber.queue.value.count { it.error == null && it.key != current.key }
+                        Notifications.update(this@TranscriptionService, current, waiting)
                         delay(1000)
                     }
                 }

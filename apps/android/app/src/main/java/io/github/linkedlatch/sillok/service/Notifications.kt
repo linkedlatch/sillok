@@ -17,13 +17,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.github.linkedlatch.sillok.MainActivity
 import io.github.linkedlatch.sillok.R
-import io.github.linkedlatch.sillok.data.RunOutcome
 import io.github.linkedlatch.sillok.data.RunState
 import io.github.linkedlatch.sillok.data.Step
 
 object Notifications {
     const val PROGRESS_ID = 1
-    private const val FINISHED_ID = 2
+    private const val FINISHED_BASE_ID = 0x10000
     private const val PROGRESS_CHANNEL = "progress"
     private const val FINISHED_CHANNEL = "finished"
     const val EXTRA_JOB_ID = "io.github.linkedlatch.sillok.extra.JOB_ID"
@@ -43,53 +42,65 @@ object Notifications {
         .setContentTitle(context.getString(R.string.running_title))
         .build()
 
-    fun progress(context: Context, state: RunState) = NotificationCompat.Builder(context, PROGRESS_CHANNEL)
-        .setSmallIcon(R.drawable.ic_notification)
-        .setContentTitle(state.name)
-        .setContentText(
-            if (state.cancelling) context.getString(R.string.running_cancelling)
-            else context.getString(R.string.notification_progress, context.getString(state.step.label), (state.fraction * 100).toInt()),
-        )
-        .setProgress(1000, (state.fraction * 1000).toInt(), false)
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        .setContentIntent(openApp(context, null))
-        .addAction(
-            0, context.getString(R.string.cancel),
-            PendingIntent.getService(
-                context, 0,
-                Intent(context, TranscriptionService::class.java).setAction(TranscriptionService.ACTION_CANCEL),
-                PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
-        .build()
-
-    @SuppressLint("MissingPermission")  // canNotify checks it
-    fun update(context: Context, state: RunState) {
-        if (!canNotify(context)) return
-        NotificationManagerCompat.from(context).notify(PROGRESS_ID, progress(context, state))
+    fun progress(context: Context, state: RunState, waiting: Int = 0): android.app.Notification {
+        val remaining = state.remainingMs(android.os.SystemClock.elapsedRealtime())
+        val text = when {
+            state.cancelling -> context.getString(R.string.running_cancelling)
+            remaining != null -> context.getString(R.string.notification_progress_left, context.getString(state.step.label),
+                (state.overall * 100).toInt(), formatDuration(remaining))
+            else -> context.getString(R.string.notification_progress, context.getString(state.step.label), (state.overall * 100).toInt())
+        }
+        return NotificationCompat.Builder(context, PROGRESS_CHANNEL)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(state.name)
+            .setContentText(text)
+            .setSubText(if (waiting > 0) context.resources.getQuantityString(R.plurals.notification_waiting, waiting, waiting) else null)
+            .setProgress(1000, (state.overall * 1000).toInt(), false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setContentIntent(openApp(context, null))
+            .addAction(
+                0, context.getString(R.string.cancel),
+                PendingIntent.getService(
+                    context, 0,
+                    Intent(context, TranscriptionService::class.java).setAction(TranscriptionService.ACTION_CANCEL),
+                    PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+            .build()
     }
 
-    /** Tells a user who left the app how the job ended; the app shows it itself otherwise. */
+    /** "2:05:00" or "12:30" as the app shows times. */
+    private fun formatDuration(ms: Long): String {
+        val seconds = ms / 1000
+        val h = seconds / 3600
+        val m = seconds % 3600 / 60
+        val sec = seconds % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+    }
+
     @SuppressLint("MissingPermission")  // canNotify checks it
-    fun finished(context: Context, name: String, outcome: RunOutcome) {
+    fun update(context: Context, state: RunState, waiting: Int) {
+        if (!canNotify(context)) return
+        NotificationManagerCompat.from(context).notify(PROGRESS_ID, progress(context, state, waiting))
+    }
+
+    /** Tells a user who left the app how a file ended: its result ([jobId]) or [error]. */
+    @SuppressLint("MissingPermission")  // canNotify checks it
+    fun finished(context: Context, name: String, jobId: String?, error: String?) {
         val inForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-        if (inForeground || outcome == RunOutcome.Cancelled || !canNotify(context)) return
-        val (text, id) = when (outcome) {
-            is RunOutcome.Done -> context.getString(R.string.notification_done) to outcome.id
-            is RunOutcome.Failed -> outcome.message to null
-            RunOutcome.Cancelled -> return
-        }
+        if (inForeground || !canNotify(context)) return
+        val text = error ?: context.getString(R.string.notification_done)
         val notification = NotificationCompat.Builder(context, FINISHED_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(name)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
-            .setContentIntent(openApp(context, id))
+            .setContentIntent(openApp(context, jobId))
             .build()
-        NotificationManagerCompat.from(context).notify(FINISHED_ID, notification)
+        NotificationManagerCompat.from(context).notify(FINISHED_BASE_ID + (jobId ?: name).hashCode().and(0xffff), notification)
     }
 
     private fun openApp(context: Context, jobId: String?): PendingIntent {

@@ -46,18 +46,19 @@ class TranscriptionFlowTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             val before = transcriber.store.list().map { it.id }.toSet()
             instrumentation.runOnMainSync {
-                transcriber.start(Uri.fromFile(file), "speech.wav", JobSettings(language = "ko", diarize = true))
+                transcriber.enqueue(listOf(Uri.fromFile(file) to "speech.wav"), JobSettings(language = "ko", diarize = true))
             }
-            // The screen takes the outcome as soon as it comes, so watch the
-            // state end instead.
             val deadline = System.currentTimeMillis() + 30 * 60_000L
             val steps = mutableSetOf<String>()
-            while (true) {
-                val state = transcriber.state.value ?: break
-                steps += state.step.name
+            var previews = 0
+            while (transcriber.state.value != null || transcriber.queue.value.any { it.error == null }) {
+                transcriber.state.value?.let { steps += it.step.name }
+                previews = maxOf(previews, transcriber.previews.value.size)
                 assertTrue("still running after 30 minutes", System.currentTimeMillis() < deadline)
-                Thread.sleep(200)
+                Thread.sleep(100)
             }
+            assertTrue("failed: ${transcriber.queue.value}", transcriber.queue.value.isEmpty())
+            assertTrue("no preview while transcribing", previews > 0)
 
             val added = transcriber.store.list().filter { it.id !in before }
             assertEquals("a new job in the history (steps seen: $steps)", 1, added.size)

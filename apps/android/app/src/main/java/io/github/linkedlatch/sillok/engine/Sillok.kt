@@ -141,10 +141,19 @@ class Job(engine: Engine, language: String, diarize: Boolean, glossary: List<Str
     /** Up to [count] samples of the job's recording from [start], as 16-bit PCM. */
     fun readAudio(start: Long, count: Int): ShortArray = Native.jobReadAudio(handle, start, count)
 
-    /** Blocks until the transcript document is ready; [onProgress] runs on this thread. */
-    fun run(onProgress: (Stage, Double) -> Unit): String =
-        Native.jobRun(handle) { stage, fraction -> onProgress(Stage.entries[stage], fraction) }
-            .decodeToString()
+    /**
+     * Blocks until the transcript document is ready. [onProgress] and
+     * [onSegments] (segments as the transcription finishes them, previews of
+     * the transcript) run on this thread.
+     */
+    fun run(
+        onSegments: (List<Transcript.Segment>) -> Unit = {},
+        onProgress: (Stage, Double) -> Unit,
+    ): String = Native.jobRun(
+        handle,
+        { stage, fraction -> onProgress(Stage.entries[stage], fraction) },
+        { json -> onSegments(Transcript.segments(org.json.JSONArray(json.decodeToString()))) },
+    ).decodeToString()
 
     fun cancel() = synchronized(lock) {
         if (handle != 0L) Native.jobCancel(handle)

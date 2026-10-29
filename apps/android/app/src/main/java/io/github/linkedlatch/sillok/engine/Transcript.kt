@@ -9,7 +9,7 @@ import org.json.JSONObject
  */
 class Transcript(val json: String) {
     data class Speaker(val id: Int, val name: String?)
-    data class Segment(val startMs: Long, val endMs: Long, val text: String, val speaker: Int?)
+    data class Segment(val startMs: Long, val endMs: Long, val text: String, val speaker: Int?, val language: String = "")
     /** A model the run used: [device] as the library names it, and whether a GPU request fell back to the CPU. */
     data class ModelUse(val name: String, val device: String, val fellBackToCpu: Boolean)
 
@@ -27,18 +27,23 @@ class Transcript(val json: String) {
             val speaker = speakerArray.getJSONObject(it)
             Speaker(speaker.getInt("id"), speaker.optStringOrNull("name"))
         }
-        val segmentArray = root.getJSONArray("segments")
-        segments = List(segmentArray.length()) {
-            val segment = segmentArray.getJSONObject(it)
-            Segment(
-                segment.getLong("start_ms"), segment.getLong("end_ms"), segment.getString("text"),
-                if (segment.has("speaker")) segment.getInt("speaker") else null,
-            )
-        }
+        segments = segments(root.getJSONArray("segments"))
         val modelObject = root.optJSONObject("models") ?: JSONObject()
         models = modelObject.keys().asSequence().associateWith { role ->
             val model = modelObject.getJSONObject(role)
             ModelUse(model.optString("name"), model.optString("device"), model.optBoolean("fell_back_to_cpu"))
+        }
+    }
+
+    companion object {
+        /** Segments of a JSON array as in the document. */
+        fun segments(array: org.json.JSONArray): List<Segment> = List(array.length()) {
+            val segment = array.getJSONObject(it)
+            Segment(
+                segment.getLong("start_ms"), segment.getLong("end_ms"), segment.getString("text"),
+                if (segment.has("speaker")) segment.getInt("speaker") else null,
+                segment.optString("language"),
+            )
         }
     }
 

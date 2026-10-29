@@ -21,6 +21,8 @@ constexpr char kExceptionClass[] =
     "io/github/linkedlatch/sillok/engine/SillokException";
 constexpr char kProgressClass[] =
     "io/github/linkedlatch/sillok/engine/Native$Progress";
+constexpr char kSegmentsClass[] =
+    "io/github/linkedlatch/sillok/engine/Native$Segments";
 
 jbyteArray NewBytes(JNIEnv* env, const char* text, std::size_t size) {
   jbyteArray bytes = env->NewByteArray(static_cast<jsize>(size));
@@ -186,7 +188,8 @@ SILLOK_JNI(void, jobPushAudio)(JNIEnv* env, jobject, jlong job, jobject buffer,
                                    sample_rate, channels));
 }
 
-SILLOK_JNI(jbyteArray, jobRun)(JNIEnv* env, jobject, jlong job, jobject progress) {
+SILLOK_JNI(jbyteArray, jobRun)(JNIEnv* env, jobject, jlong job, jobject progress,
+                               jobject segments) {
   struct Listener {
     JNIEnv* env;
     jobject target;
@@ -196,6 +199,22 @@ SILLOK_JNI(jbyteArray, jobRun)(JNIEnv* env, jobject, jlong job, jobject progress
   if (type == nullptr) return nullptr;
   Listener listener{env, progress, env->GetMethodID(type, "onProgress", "(ID)V")};
   if (listener.method == nullptr) return nullptr;
+  jclass segments_type = env->FindClass(kSegmentsClass);
+  if (segments_type == nullptr) return nullptr;
+  Listener segments_listener{env, segments, env->GetMethodID(segments_type, "onSegments", "([B)V")};
+  if (segments_listener.method == nullptr) return nullptr;
+  const auto on_segments = [](void* user_data, const char* json) {
+    auto* self = static_cast<Listener*>(user_data);
+    if (self->env->ExceptionCheck()) return;
+    jbyteArray bytes = NewBytes(self->env, json, std::strlen(json));
+    if (bytes == nullptr) return;
+    self->env->CallVoidMethod(self->target, self->method, bytes);
+    self->env->DeleteLocalRef(bytes);
+  };
+  if (!Check(env, sillok_job_on_segments(FromHandle<sillok_job>(job), on_segments,
+                                         &segments_listener))) {
+    return nullptr;
+  }
   const auto report = [](void* user_data, sillok_stage stage, double fraction) {
     auto* self = static_cast<Listener*>(user_data);
     // A listener that threw has its exception pending; JNI forbids calling

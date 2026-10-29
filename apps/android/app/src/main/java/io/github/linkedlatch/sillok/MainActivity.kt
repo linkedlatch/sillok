@@ -32,6 +32,6 @@ class MainActivity : ComponentActivity() {
 
     /** A notification about a finished job opens its result. */
     private fun openFrom(intent: Intent) {
-        intent.getStringExtra(Notifications.EXTRA_JOB_ID)?.let(vm::show)
+        intent.getStringExtra(Notifications.EXTRA_JOB_ID)?.let(vm::requestOpen)
     }
 }

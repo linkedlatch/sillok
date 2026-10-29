@@ -16,6 +16,10 @@ internal object Native {
         fun onProgress(stage: Int, fraction: Double)
     }
 
+    fun interface Segments {
+        fun onSegments(json: ByteArray)
+    }
+
     external fun version(): ByteArray
     external fun modelCatalog(): ByteArray
     external fun modelCheck(dir: ByteArray, verifyHash: Boolean): ByteArray
@@ -32,7 +36,7 @@ internal object Native {
     external fun jobEndAudio(job: Long)
     external fun jobAudioLength(job: Long): Long
     external fun jobReadAudio(job: Long, start: Long, count: Int): ShortArray
-    external fun jobRun(job: Long, progress: Progress): ByteArray
+    external fun jobRun(job: Long, progress: Progress, segments: Segments): ByteArray
     external fun jobCancel(job: Long)
     external fun jobDestroy(job: Long)
 
