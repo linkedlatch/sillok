@@ -43,11 +43,11 @@ public class RealModelTests
         TestContext.Current.SendDiagnosticMessage($"transcript: {text}");
     }
 
-    /// <summary>16-bit PCM WAV as floats in [-1, 1].</summary>
+    /// <summary>A WAV of 16-bit integer or 32-bit float samples, as floats in [-1, 1].</summary>
     private static (float[] Samples, int Rate, int Channels) ReadWav(string path)
     {
         var bytes = File.ReadAllBytes(path);
-        int rate = 0, channels = 0, offset = 12;
+        int rate = 0, channels = 0, bits = 0, offset = 12;
         while (offset + 8 <= bytes.Length)
         {
             var id = System.Text.Encoding.ASCII.GetString(bytes, offset, 4);
@@ -57,12 +57,18 @@ public class RealModelTests
             {
                 channels = BinaryPrimitives.ReadInt16LittleEndian(body[2..]);
                 rate = BinaryPrimitives.ReadInt32LittleEndian(body[4..]);
-                Assert.Equal(16, BinaryPrimitives.ReadInt16LittleEndian(body[14..]));
+                bits = BinaryPrimitives.ReadInt16LittleEndian(body[14..]);
+                Assert.True(bits is 16 or 32, $"{bits}-bit samples");  // FLEURS ships 32-bit float
             }
             else if (id == "data")
             {
-                var samples = new float[body.Length / 2];
-                for (var i = 0; i < samples.Length; i++) samples[i] = BinaryPrimitives.ReadInt16LittleEndian(body[(2 * i)..]) / 32768f;
+                var bytesPerSample = bits / 8;
+                var samples = new float[body.Length / bytesPerSample];
+                for (var i = 0; i < samples.Length; i++)
+                {
+                    var at = body[(bytesPerSample * i)..];
+                    samples[i] = bits == 16 ? BinaryPrimitives.ReadInt16LittleEndian(at) / 32768f : BinaryPrimitives.ReadSingleLittleEndian(at);
+                }
                 return (samples, rate, channels);
             }
             offset += 8 + size + (size & 1);
