@@ -10,7 +10,7 @@ namespace Sillok;
 public sealed class Transcript
 {
     public sealed record Speaker(int Id, string? Name);
-    public sealed record Segment(long StartMs, long EndMs, string Text, int? Speaker);
+    public sealed record Segment(long StartMs, long EndMs, string Text, int? Speaker, string Language = "");
     /// <summary>A model the run used: its device as the library names it, and whether a GPU request fell back to the CPU.</summary>
     public sealed record ModelUse(string Name, string Device, bool FellBackToCpu);
 
@@ -29,13 +29,16 @@ public sealed class Transcript
         Speakers = root["speakers"]!.AsArray()
             .Select(s => new Speaker((int)s!["id"]!, (string?)s["name"]))
             .ToList();
-        Segments = root["segments"]!.AsArray()
-            .Select(s => new Segment((long)s!["start_ms"]!, (long)s["end_ms"]!, (string)s["text"]!, (int?)s["speaker"]))
-            .ToList();
+        Segments = ParseSegments(root["segments"]!.AsArray());
         Models = (root["models"]?.AsObject() ?? [])
             .ToDictionary(m => m.Key, m => new ModelUse(
                 (string?)m.Value!["name"] ?? "", (string?)m.Value["device"] ?? "", (bool?)m.Value["fell_back_to_cpu"] ?? false));
     }
+
+    /// <summary>Segments of a JSON array as in the document.</summary>
+    public static IReadOnlyList<Segment> ParseSegments(JsonArray segments) =>
+        segments.Select(s => new Segment((long)s!["start_ms"]!, (long)s["end_ms"]!, (string)s["text"]!, (int?)s["speaker"],
+            (string?)s["language"] ?? "")).ToList();
 
     public string? SpeakerName(int id) => Speakers.FirstOrDefault(s => s.Id == id)?.Name;
 

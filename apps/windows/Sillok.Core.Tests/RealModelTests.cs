@@ -35,7 +35,10 @@ public class RealModelTests
         Assert.Equal(copy.Count, job.AudioLength);
 
         var stages = new List<(Stage, double)>();
-        var transcript = new Transcript(job.Run((stage, fraction) => stages.Add((stage, fraction))));
+        var previews = new List<Transcript.Segment>();
+        var transcript = new Transcript(job.Run((stage, fraction) => stages.Add((stage, fraction)), previews.AddRange));
+        Assert.NotEmpty(previews);
+        Assert.All(previews, s => Assert.Equal("ko", s.Language));
         Assert.Equal((Stage.Analyze, 0.0), stages[0]);
         Assert.Contains((Stage.Transcribe, 0.0), stages);
         var text = string.Join(" ", transcript.Segments.Select(s => s.Text));

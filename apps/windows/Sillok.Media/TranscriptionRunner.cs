@@ -30,7 +30,8 @@ public sealed class TranscriptionRunner(JobStore store, string modelsDir, string
     }
 
     /// <summary>Blocks until done. Returns the stored job, or null if cancelled.</summary>
-    public JobEntry? Run(string path, string source, JobSettings settings, Action<RunStep, double> onProgress)
+    public JobEntry? Run(string path, string source, JobSettings settings, Action<RunStep, double> onProgress,
+        Action<TranscriptionRunner.ReadTimings>? onRead = null, Action<IReadOnlyList<Transcript.Segment>>? onSegments = null)
     {
         var dir = store.Create();
         JobEntry? entry = null;
@@ -56,7 +57,7 @@ public sealed class TranscriptionRunner(JobStore store, string modelsDir, string
 
         try
         {
-            using var engine = new Engine(modelsDir, tempDir, settings.GpuIndex);
+            using var engine = new Engine(modelsDir, tempDir, settings.GpuIndex, transcriptionModel: settings.TranscriptionModel);
             using var job = new Job(engine, settings.Language, settings.Diarize, settings.Terms);
             Volatile.Write(ref _job, job);
             try
@@ -65,10 +66,11 @@ public sealed class TranscriptionRunner(JobStore store, string modelsDir, string
                 Report(RunStep.Read, 0);
                 var read = Read(path, job, Path.Combine(dir, JobStore.AudioFile), Report);
                 if (_cancelled) return null;
+                onRead?.Invoke(read);
                 string transcript;
                 try
                 {
-                    transcript = job.Run((stage, fraction) => Report(JobSettings.ToStep(stage), fraction));
+                    transcript = job.Run((stage, fraction) => Report(JobSettings.ToStep(stage), fraction), onSegments);
                 }
                 catch (SillokException e) when (e.IsCancelled)
                 {

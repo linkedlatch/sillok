@@ -161,13 +161,18 @@ public sealed unsafe class Job : IDisposable
         }
     }
 
-    /// <summary>Blocks until the transcript document is ready; <paramref name="progress"/> runs on this thread.</summary>
-    public string Run(Action<Stage, double>? progress)
+    /// <summary>
+    /// Blocks until the transcript document is ready. <paramref name="progress"/>
+    /// and <paramref name="segments"/> (segments as the transcription finishes
+    /// them, previews of the transcript) run on this thread.
+    /// </summary>
+    public string Run(Action<Stage, double>? progress, Action<IReadOnlyList<Transcript.Segment>>? segments = null)
     {
-        var state = new RunState(progress);
+        var state = new RunState(progress, segments);
         var handle = GCHandle.Alloc(state);
         try
         {
+            if (segments is not null) Native.Check(Native.JobOnSegments(_handle, &ReportSegments, GCHandle.ToIntPtr(handle)));
             var status = Native.JobRun(_handle, &Report, GCHandle.ToIntPtr(handle), out var json);
             state.Failure?.Throw();
             Native.Check(status);
@@ -197,9 +202,10 @@ public sealed unsafe class Job : IDisposable
         }
     }
 
-    private sealed class RunState(Action<Stage, double>? progress)
+    private sealed class RunState(Action<Stage, double>? progress, Action<IReadOnlyList<Transcript.Segment>>? segments)
     {
         public Action<Stage, double>? Progress { get; } = progress;
+        public Action<IReadOnlyList<Transcript.Segment>>? Segments { get; } = segments;
         public System.Runtime.ExceptionServices.ExceptionDispatchInfo? Failure { get; set; }
     }
 
@@ -213,6 +219,21 @@ public sealed unsafe class Job : IDisposable
         try
         {
             state.Progress?.Invoke((Stage)stage, fraction);
+        }
+        catch (Exception e)
+        {
+            state.Failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e);
+        }
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void ReportSegments(nint userData, nint json)
+    {
+        var state = (RunState)GCHandle.FromIntPtr(userData).Target!;
+        if (state.Failure is not null) return;
+        try
+        {
+            state.Segments?.Invoke(Transcript.ParseSegments(JsonNode.Parse(Marshal.PtrToStringUTF8(json) ?? "[]")!.AsArray()));
         }
         catch (Exception e)
         {

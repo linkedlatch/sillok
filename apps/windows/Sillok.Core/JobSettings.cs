@@ -3,8 +3,12 @@ namespace Sillok;
 /// <summary>The steps of a transcription as the apps show them: reading the file, then the library's stages.</summary>
 public enum RunStep { Read, Analyze, Transcribe, Diarize }
 
-/// <summary>Transcription settings. <see cref="GpuIndex"/> null means the CPU.</summary>
-public sealed record JobSettings(string Language = "auto", bool Diarize = true, string Glossary = "", int? GpuIndex = null)
+/// <summary>
+/// Transcription settings. <see cref="GpuIndex"/> null means the CPU,
+/// <see cref="TranscriptionModel"/> null the recommended model.
+/// </summary>
+public sealed record JobSettings(
+    string Language = "auto", bool Diarize = true, string Glossary = "", int? GpuIndex = null, string? TranscriptionModel = null)
 {
     /// <summary>Glossary terms, one per line or separated by commas.</summary>
     public IReadOnlyList<string> Terms =>

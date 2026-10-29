@@ -54,6 +54,9 @@ internal static unsafe partial class Native
     [LibraryImport(Library, EntryPoint = "sillok_job_read_audio")]
     public static partial int JobReadAudio(nint job, ulong start, float* samples, nuint count, out nuint read);
 
+    [LibraryImport(Library, EntryPoint = "sillok_job_on_segments")]
+    public static partial int JobOnSegments(nint job, delegate* unmanaged[Cdecl]<nint, nint, void> callback, nint userData);
+
     [LibraryImport(Library, EntryPoint = "sillok_job_run")]
     public static partial int JobRun(
         nint job, delegate* unmanaged[Cdecl]<nint, int, double, void> progress, nint userData, out nint json);
