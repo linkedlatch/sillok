@@ -1,0 +1,79 @@
+Reuse the encoder output for the same audio (sillok).
+
+Language detection, the transcription and a retry in another language each
+compute the mel of the same window and encode it again; in auto mode that
+doubled the encoder's work. The state now remembers which mel offset its
+encoder output belongs to, and computing an identical mel keeps it.
+
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -940,6 +940,11 @@
+     // [EXPERIMENTAL] speed-up techniques
+     int32_t exp_n_audio_ctx = 0; // 0 - use default
+ 
++    // sillok: the encoder output in this state belongs to the mel at this
++    // offset and audio context; -1 once the mel has changed.
++    int encoded_offset = -1;
++    int encoded_n_ctx  = 0;
++
+     whisper_vad_context * vad_context = nullptr;
+ 
+     struct vad_segment_info {
+@@ -2416,6 +2421,14 @@
+                    void * abort_callback_data) {
+     const int64_t t_start_us = ggml_time_us();
+ 
++    // sillok: language detection, the transcription and a retry in another
++    // language encode the same audio; the first pass serves them all.
++    const int n_ctx_used = wstate.exp_n_audio_ctx > 0 ? wstate.exp_n_audio_ctx : wctx.model.hparams.n_audio_ctx;
++    if (wstate.encoded_offset == mel_offset && wstate.encoded_n_ctx == n_ctx_used) {
++        return true;
++    }
++    wstate.encoded_offset = -1;
++
+     // conv
+     {
+         auto & sched = wstate.sched_conv.sched;
+@@ -2523,7 +2536,12 @@
+     wstate.t_encode_us += ggml_time_us() - t_start_us;
+     wstate.n_encode++;
+ 
+-    return !(abort_callback && abort_callback(abort_callback_data));
++    if (abort_callback && abort_callback(abort_callback_data)) {
++        return false;
++    }
++    wstate.encoded_offset = mel_offset;
++    wstate.encoded_n_ctx  = n_ctx_used;
++    return true;
+ }
+ 
+ static struct ggml_cgraph * whisper_build_graph_decoder(
+@@ -4016,11 +4034,19 @@
+ }
+ 
+ int whisper_pcm_to_mel_with_state(struct whisper_context * ctx, struct whisper_state * state, const float * samples, int n_samples, int n_threads) {
+-    if (!log_mel_spectrogram(*state, samples, n_samples, WHISPER_SAMPLE_RATE, WHISPER_N_FFT, WHISPER_HOP_LENGTH, ctx->model.filters.n_mel, n_threads, ctx->model.filters, false, state->mel)) {
++    whisper_mel mel;
++    if (!log_mel_spectrogram(*state, samples, n_samples, WHISPER_SAMPLE_RATE, WHISPER_N_FFT, WHISPER_HOP_LENGTH, ctx->model.filters.n_mel, n_threads, ctx->model.filters, false, mel)) {
+         WHISPER_LOG_ERROR("%s: failed to compute mel spectrogram\n", __func__);
+         return -1;
+     }
+ 
++    // sillok: the same audio again keeps the encoder output computed for it.
++    if (mel.n_len != state->mel.n_len || mel.n_len_org != state->mel.n_len_org ||
++        mel.n_mel != state->mel.n_mel || mel.data != state->mel.data) {
++        state->mel = std::move(mel);
++        state->encoded_offset = -1;
++    }
++
+     return 0;
+ }
+ 
+@@ -4045,6 +4071,7 @@
+ 
+     state->mel.data.resize(n_len*n_mel);
+     memcpy(state->mel.data.data(), data, n_len*n_mel*sizeof(float));
++    state->encoded_offset = -1;
+ 
+     return 0;
+ }
