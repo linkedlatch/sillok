@@ -8,7 +8,7 @@ import io.github.linkedlatch.sillok.engine.Job
 import io.github.linkedlatch.sillok.engine.SillokException
 import io.github.linkedlatch.sillok.engine.Stage
 import io.github.linkedlatch.sillok.engine.Transcript
-import io.github.linkedlatch.sillok.media.AacWriter
+import io.github.linkedlatch.sillok.media.BackgroundAacWriter
 import io.github.linkedlatch.sillok.media.AudioDecoder
 import io.github.linkedlatch.sillok.media.UnsupportedMediaException
 import java.io.File
@@ -75,6 +75,7 @@ class TranscriptionRunner(
                         timings.mapKeys { it.key.name.lowercase() } +
                             mapOf("read_decode" to read.decodeMs, "read_push" to read.pushMs, "read_copy" to read.copyMs),
                         threads,
+                        read.decoder,
                     )
                     entry = store.complete(dir, transcript, source, Transcript(transcript).durationMs, stats)
                 }
@@ -85,8 +86,11 @@ class TranscriptionRunner(
         return entry
     }
 
-    /** Where the time of the read step goes, in milliseconds. */
-    data class ReadTimings(val totalMs: Long, val pushMs: Long, val copyMs: Long) {
+    /**
+     * Where the time of the read step goes, in milliseconds: [copyMs] is how
+     * long the listening copy held decoding up. [decoder] is the codec used.
+     */
+    data class ReadTimings(val totalMs: Long, val pushMs: Long, val copyMs: Long, val decoder: String?) {
         /** Extracting and decoding: what is left. */
         val decodeMs get() = totalMs - pushMs - copyMs
     }
@@ -102,7 +106,8 @@ class TranscriptionRunner(
         var copyNs = 0L
         var format: Pair<Int, Int>? = null
         var copied = 0L
-        AacWriter(copy, Job.SAMPLE_RATE).use { writer ->
+        val decoder = AudioDecoder(context, uri)
+        BackgroundAacWriter(copy, Job.SAMPLE_RATE).use { writer ->
             // Copies once at least [COPY_BLOCK] samples are new, or everything when
             // [all]; small writes would cost a codec round trip each.
             fun copyNewAudio(all: Boolean = false) {
@@ -116,7 +121,7 @@ class TranscriptionRunner(
                 }
                 copyNs += System.nanoTime() - begin
             }
-            AudioDecoder(context, uri).decode(cancelled::get, { onProgress(Step.READ, it) }) { pcm ->
+            decoder.decode(cancelled::get, { onProgress(Step.READ, it) }) { pcm ->
                 val chunkFormat = pcm.sampleRate to pcm.channels
                 if (format == null) {
                     format = chunkFormat
@@ -137,7 +142,7 @@ class TranscriptionRunner(
                 copyNs += System.nanoTime() - begin
             }
         }
-        return ReadTimings((System.nanoTime() - start) / 1_000_000, pushNs / 1_000_000, copyNs / 1_000_000)
+        return ReadTimings((System.nanoTime() - start) / 1_000_000, pushNs / 1_000_000, copyNs / 1_000_000, decoder.codecName)
     }
 
     private val Stage.step

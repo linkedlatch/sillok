@@ -272,6 +272,7 @@ private fun RunDetailsDialog(entry: JobEntry, transcript: Transcript, onDismiss:
             add(stringResource(R.string.info_device, device))
         }
         entry.stats?.let { add(stringResource(R.string.info_threads, it.threads)) }
+        entry.stats?.decoder?.let { add(stringResource(R.string.info_decoder, it)) }
     }
     AlertDialog(
         onDismissRequest = onDismiss,

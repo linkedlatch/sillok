@@ -72,6 +72,7 @@
     <string name="info_total">합계: %1$s (원본의 %2$.2f배)</string>
     <string name="info_device">전사 장치: %1$s</string>
     <string name="info_fell_back">%1$s (GPU를 쓸 수 없어 대체)</string>
+    <string name="info_decoder">오디오 디코더: %1$s</string>
     <string name="info_threads">CPU 스레드: %1$d</string>
 
     <string name="error_time_limit">Android가 전사를 중단했습니다: 앱이 백그라운드에서 일할 수 있는 시간은 24시간 중 6시간입니다. 앱을 열면 다시 6시간이 주어집니다.</string>

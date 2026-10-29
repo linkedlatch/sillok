@@ -79,6 +79,7 @@
     <string name="info_total">Total: %1$s (%2$.2f× the recording)</string>
     <string name="info_device">Transcribed on: %1$s</string>
     <string name="info_fell_back">%1$s (the GPU was unavailable)</string>
+    <string name="info_decoder">Audio decoder: %1$s</string>
     <string name="info_threads">CPU threads: %1$d</string>
 
     <!-- Errors -->

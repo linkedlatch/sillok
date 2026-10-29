@@ -63,7 +63,7 @@ class ReadSpeedTest {
                 val samples = job.audioLength
                 val summary = "read $seconds s of 48 kHz stereo AAC in ${timings.totalMs} ms " +
                     "(${seconds * 1000 / timings.totalMs.coerceAtLeast(1)}x real time): decode ${timings.decodeMs}, " +
-                    "push ${timings.pushMs}, copy ${timings.copyMs}; writing the test file took $encodeMs ms"
+                    "push ${timings.pushMs}, copy ${timings.copyMs}, decoder ${timings.decoder}; writing the test file took $encodeMs ms"
                 Log.i("sillok-test", summary)
                 assertTrue(summary, abs(samples - seconds * 16_000L) < 16_000)
             }

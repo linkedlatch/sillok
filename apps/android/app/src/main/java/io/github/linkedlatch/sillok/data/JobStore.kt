@@ -6,8 +6,8 @@ import java.util.Date
 import java.util.Locale
 import org.json.JSONObject
 
-/** How a job ran: wall time per step ("read", "analyze", ...) and the CPU threads. */
-data class JobStats(val timingsMs: Map<String, Long>, val threads: Int)
+/** How a job ran: wall time per step ("read", "analyze", ...), the CPU threads and the audio decoder. */
+data class JobStats(val timingsMs: Map<String, Long>, val threads: Int, val decoder: String? = null)
 
 /** A finished transcription in the history. */
 data class JobEntry(
@@ -74,7 +74,8 @@ class JobStore(private val root: File) {
         val json = JSONObject(File(dir, META).readText())
         val stats = json.optJSONObject("stats")?.let { stats ->
             val timings = stats.getJSONObject("timings_ms")
-            JobStats(timings.keys().asSequence().associateWith { timings.getLong(it) }, stats.getInt("threads"))
+            JobStats(timings.keys().asSequence().associateWith { timings.getLong(it) }, stats.getInt("threads"),
+                stats.optString("decoder").ifEmpty { null })
         }
         return JobEntry(dir.name, json.getString("title"), json.getString("source"),
             json.getLong("created_ms"), json.getLong("duration_ms"), stats)
@@ -87,7 +88,8 @@ class JobStore(private val root: File) {
             .put("created_ms", entry.createdMs)
             .put("duration_ms", entry.durationMs)
         entry.stats?.let { stats ->
-            json.put("stats", JSONObject().put("timings_ms", JSONObject(stats.timingsMs)).put("threads", stats.threads))
+            json.put("stats", JSONObject().put("timings_ms", JSONObject(stats.timingsMs)).put("threads", stats.threads)
+                .put("decoder", stats.decoder))
         }
         writeAtomically(File(File(root, entry.id), META), json.toString(2))
     }
