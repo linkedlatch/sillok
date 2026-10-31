@@ -50,10 +50,7 @@ std::unique_ptr<ModelProvider> OpenModels(const EngineConfig& config) {
   if (!std::filesystem::is_directory(config.models_dir)) {
     throw ModelError("models directory not found");
   }
-  if (!config.transcription_model.empty() && config.transcription_model != "fake-transcriber" &&
-      config.transcription_model != "fake-small") {
-    throw std::invalid_argument("unknown transcription model: " + config.transcription_model);
-  }
+  EngineModels(ModelCatalog(), config.transcription_model);  // throws for an unknown id
   return std::make_unique<testing::FakeModels>(testing::FakeBackendOptions());
 }
 

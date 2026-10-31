@@ -42,7 +42,10 @@ std::vector<float> ScriptPcm(int words, int first_id = 0) {
 class CapiTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    models_dir_ = std::filesystem::temp_directory_path() / PathFromUtf8("sillok 모델 capi");
+    // One directory per test: ctest runs the tests in parallel processes.
+    models_dir_ = std::filesystem::temp_directory_path() /
+                  PathFromUtf8(std::string("sillok 모델 capi ") +
+                               ::testing::UnitTest::GetInstance()->current_test_info()->name());
     std::filesystem::create_directories(models_dir_);
     FakeBackendOptions() = FakeOptions{};
   }
@@ -356,6 +359,22 @@ TEST_F(CapiTest, EngineTakesACatalogTranscriptionModel) {
   EXPECT_EQ(create("fake-small"), SILLOK_OK);
   EXPECT_EQ(create("no-such-model"), SILLOK_INVALID_ARGUMENT);
   EXPECT_NE(std::string(sillok_last_error()).find("no-such-model"), std::string::npos);
+}
+
+TEST_F(CapiTest, EngineModelsFollowTheTranscriptionModel) {
+  const auto ids = [](const char* model) {
+    char* out = nullptr;
+    EXPECT_EQ(sillok_engine_models(model, &out), SILLOK_OK);
+    std::vector<std::string> result;
+    for (const Json& entry : Json::parse(Take(out))) result.push_back(entry["id"]);
+    return result;
+  };
+  EXPECT_EQ(ids(nullptr), std::vector<std::string>{"fake-transcriber"});
+  EXPECT_EQ(ids(""), std::vector<std::string>{"fake-transcriber"});
+  EXPECT_EQ(ids("fake-small"), std::vector<std::string>{"fake-small"});
+  char* out = nullptr;
+  EXPECT_EQ(sillok_engine_models("no-such-model", &out), SILLOK_INVALID_ARGUMENT);
+  EXPECT_EQ(out, nullptr);
 }
 
 TEST_F(CapiTest, VersionAndDevices) {

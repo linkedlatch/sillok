@@ -207,21 +207,16 @@ void Extract(const std::filesystem::path& archive, const std::filesystem::path& 
   if (unzip.Wait() != 0) throw std::runtime_error("cannot extract " + PathToUtf8(archive));
 }
 
-// The models an engine with transcription model `id` uses: each role's
-// recommended one, with `id` (if not empty) for transcription.
-std::vector<Json> EngineModels(const Json& catalog, const std::string& id) {
-  std::vector<Json> models;
-  for (const Json& model : catalog) {
-    const bool transcription = model["role"] == "transcription";
-    if (transcription && !id.empty() ? model["id"] == id : model["recommended"].get<bool>()) {
-      models.push_back(model);
-    }
-  }
-  if (!id.empty() && std::none_of(models.begin(), models.end(),
-                                  [&](const Json& m) { return m["id"] == id; })) {
+// The models an engine with transcription model `id` uses (empty for the
+// recommended one).
+Json EngineModels(const std::string& id) {
+  char* out = nullptr;
+  const sillok_status status = sillok_engine_models(id.c_str(), &out);
+  if (status == SILLOK_INVALID_ARGUMENT) {
     throw UsageError("unknown model: " + id + " (see sillok models list)");
   }
-  return models;
+  Check(status, "models");
+  return Json::parse(Take(out));
 }
 
 int RunModels(const std::vector<std::string>& all_args) {
@@ -258,7 +253,7 @@ int RunModels(const std::vector<std::string>& all_args) {
 
   std::filesystem::create_directories(dir);
   std::vector<std::string> done;  // files are shared between models
-  for (const Json& model : EngineModels(catalog, args.Get("model").value_or(""))) {
+  for (const Json& model : EngineModels(args.Get("model").value_or(""))) {
     for (const Json& entry : model["files"]) {
       const std::string file = entry["file"];
       if (std::find(done.begin(), done.end(), file) != done.end()) continue;

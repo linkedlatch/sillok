@@ -140,14 +140,12 @@ const std::vector<CatalogModel>& Catalog() {
   return catalog;
 }
 
-// The model of `role` with `id`, or the role's recommended one for an empty id.
-const CatalogModel& FindModel(std::string_view role, std::string_view id) {
+// The model of `role` an engine with `transcription_model` uses (UsedByEngine).
+const CatalogModel& FindModel(std::string_view role, std::string_view transcription_model) {
   for (const CatalogModel& model : Catalog()) {
-    if (model.role == role && (id.empty() ? model.recommended : model.id == id)) {
-      return model;
-    }
+    if (model.role == role && UsedByEngine(model, transcription_model)) return model;
   }
-  throw std::invalid_argument("unknown " + std::string(role) + " model: " + std::string(id));
+  throw std::invalid_argument("unknown transcription model: " + std::string(transcription_model));
 }
 
 // The library is quiet unless SILLOK_LOG is set; failures reach the app
@@ -178,9 +176,9 @@ class Models final : public ModelProvider {
       : dir_(config.models_dir),
         device_(ChooseDevice(config.device, config.gpu_index)),
         threads_(config.threads > 0 ? config.threads : DefaultThreads()),
-        voice_detector_(FindModel("voice_detection", "")),
+        voice_detector_(FindModel("voice_detection", config.transcription_model)),
         transcriber_(FindModel("transcription", config.transcription_model)),
-        diarizer_(FindModel("diarization", "")) {}
+        diarizer_(FindModel("diarization", config.transcription_model)) {}
 
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
     return OpenSilero({.model = Path(voice_detector_),
@@ -244,11 +242,8 @@ std::unique_ptr<ModelProvider> OpenModels(const EngineConfig& config) {
   // Catch missing or partial downloads now rather than in the middle of a
   // run. Archives are optional: without them the model runs without the
   // accelerator they provide.
-  for (const CatalogModel* model :
-       {&FindModel("voice_detection", ""),
-        &FindModel("transcription", config.transcription_model),
-        &FindModel("diarization", "")}) {
-    for (const CatalogFile& file : model->files) {
+  for (const CatalogModel& model : EngineModels(Catalog(), config.transcription_model)) {
+    for (const CatalogFile& file : model.files) {
       if (file.zip) continue;
       const auto path = config.models_dir / PathFromUtf8(file.file);
       if (CheckFile(path, file.size, file.sha256, false) != FileCheck::kOk) {

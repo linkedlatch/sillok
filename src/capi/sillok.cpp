@@ -264,6 +264,17 @@ sillok_status sillok_model_catalog(char** out_json) {
   });
 }
 
+sillok_status sillok_engine_models(const char* transcription_model,
+                                   char** out_json) {
+  return Guard([&] {
+    RequireArgument(out_json != nullptr, "out_json is NULL");
+    *out_json = sillok::CopyString(sillok::CatalogToJson(sillok::EngineModels(
+        sillok::ModelCatalog(),
+        transcription_model != nullptr ? transcription_model : "")));
+    return SILLOK_OK;
+  });
+}
+
 sillok_status sillok_model_check(const char* models_dir, int verify_hash,
                                  char** out_json) {
   return Guard([&] {

@@ -81,6 +81,14 @@ SILLOK_API void sillok_free_string(char* text);
  * directory. Files may be shared between models. */
 SILLOK_API sillok_status sillok_model_catalog(char** out_json);
 
+/* The catalog entries an engine uses, one per role, for the app to download
+ * and check: each role's recommended model, except `transcription_model`
+ * (a catalog id; NULL or "" for the recommended one), as in the engine
+ * config. SILLOK_INVALID_ARGUMENT when no transcription model has that
+ * id. */
+SILLOK_API sillok_status sillok_engine_models(const char* transcription_model,
+                                              char** out_json);
+
 /* State of every catalog file in `models_dir`:
  * [{"model": "...", "role": "...", "file": "...", "status": "ok"}, ...] with
  * "ok", "missing", "wrong_size", "wrong_hash" or, for archives, "extract".
