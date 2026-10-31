@@ -11,3 +11,7 @@
 	path = third_party/googletest
 	url = https://github.com/google/googletest.git
 	shallow = true
+[submodule "third_party/ffmpeg"]
+	path = third_party/ffmpeg
+	url = https://github.com/FFmpeg/FFmpeg.git
+	shallow = true

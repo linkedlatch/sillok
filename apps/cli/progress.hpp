@@ -12,10 +12,14 @@ class ProgressPrinter {
   explicit ProgressPrinter(bool quiet);
 
   void Update(sillok_stage stage, double fraction);
+  // Reading the recording, before the stages.
+  void Reading(double fraction);
   // Ends the current line.
   void Finish();
 
  private:
+  void Show(int stage, double fraction);
+
   bool quiet_;
   bool terminal_;
   int stage_ = -1;

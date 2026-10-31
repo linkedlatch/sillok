@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -37,6 +39,39 @@ std::vector<float> ScriptPcm(int words, int first_id = 0) {
   }
   const AudioBuffer audio = RenderScript(script, Millis{1000 + 400 * words});
   return audio.Read({0, audio.size()});
+}
+
+// The committed media files (tests/data/media); SILLOK_TEST_MEDIA overrides
+// the directory where the tests run elsewhere, such as on a device.
+std::filesystem::path MediaFile(const char* name) {
+  const char* dir = std::getenv("SILLOK_TEST_MEDIA");
+  return std::filesystem::path(dir != nullptr ? dir : SILLOK_TEST_MEDIA_DIR) / name;
+}
+
+// Writes `seconds` of a 440 Hz tone as 16-bit PCM WAV.
+void WriteWav(const std::filesystem::path& path, int rate, int channels, double seconds) {
+  const auto frames = static_cast<std::uint32_t>(rate * seconds);
+  const auto bytes = frames * static_cast<std::uint32_t>(channels) * 2;
+  std::ofstream out(path, std::ios::binary);
+  const auto u32 = [&](std::uint32_t v) { out.write(reinterpret_cast<const char*>(&v), 4); };
+  const auto u16 = [&](std::uint16_t v) { out.write(reinterpret_cast<const char*>(&v), 2); };
+  out.write("RIFF", 4);
+  u32(36 + bytes);
+  out.write("WAVEfmt ", 8);
+  u32(16);
+  u16(1);
+  u16(static_cast<std::uint16_t>(channels));
+  u32(static_cast<std::uint32_t>(rate));
+  u32(static_cast<std::uint32_t>(rate * channels * 2));
+  u16(static_cast<std::uint16_t>(channels * 2));
+  u16(16);
+  out.write("data", 4);
+  u32(bytes);
+  for (std::uint32_t i = 0; i < frames; ++i) {
+    const auto value = static_cast<std::int16_t>(
+        8000 * std::sin(2 * 3.14159265 * 440 * static_cast<double>(i) / rate));
+    for (int c = 0; c < channels; ++c) u16(static_cast<std::uint16_t>(value));
+  }
 }
 
 class CapiTest : public ::testing::Test {
@@ -375,6 +410,64 @@ TEST_F(CapiTest, EngineModelsFollowTheTranscriptionModel) {
   char* out = nullptr;
   EXPECT_EQ(sillok_engine_models("no-such-model", &out), SILLOK_INVALID_ARGUMENT);
   EXPECT_EQ(out, nullptr);
+}
+
+TEST_F(CapiTest, ReadsAudioAndVideoFiles) {
+  for (const char* name : {"tone.m4a", "tone.mp3", "tone.opus", "tone.flac", "tone.webm",
+                           "lecture.mp4"}) {
+    SCOPED_TRACE(name);
+    sillok_job* job = Job(Engine());
+    double last = -1;
+    const auto progress = [](void* user, double fraction) {
+      *static_cast<double*>(user) = fraction;
+    };
+    ASSERT_EQ(sillok_job_push_file(job, PathToUtf8(MediaFile(name)).c_str(), progress, &last),
+              SILLOK_OK)
+        << sillok_last_error();
+    EXPECT_EQ(last, 1.0);
+    ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
+    // One second, without the encoders' priming and padding.
+    uint64_t length = 0;
+    ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
+    EXPECT_NEAR(static_cast<double>(length), 16000, 100);
+    std::vector<float> pcm(static_cast<std::size_t>(length));
+    std::size_t read = 0;
+    ASSERT_EQ(sillok_job_read_audio(job, 0, pcm.data(), pcm.size(), &read), SILLOK_OK);
+    double energy = 0;
+    for (const float sample : pcm) energy += static_cast<double>(sample) * static_cast<double>(sample);
+    EXPECT_NEAR(std::sqrt(energy / static_cast<double>(pcm.size())), 0.0625, 0.01);  // -24 dBFS
+  }
+}
+
+TEST_F(CapiTest, ReadsWavFilesWithUnicodeNames) {
+  const auto path = models_dir_ / PathFromUtf8("녹음 1.wav");
+  WriteWav(path, 22050, 2, 0.5);
+  sillok_job* job = Job(Engine());
+  ASSERT_EQ(sillok_job_push_file(job, PathToUtf8(path).c_str(), nullptr, nullptr), SILLOK_OK)
+      << sillok_last_error();
+  ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
+  uint64_t length = 0;
+  ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
+  EXPECT_EQ(length, 8000u);
+}
+
+TEST_F(CapiTest, RefusesFilesWithoutAudio) {
+  sillok_job* job = Job(Engine());
+  const auto missing = PathToUtf8(models_dir_ / "missing.m4a");
+  EXPECT_EQ(sillok_job_push_file(job, missing.c_str(), nullptr, nullptr), SILLOK_MEDIA_ERROR);
+  EXPECT_NE(std::string(sillok_last_error()).find("missing.m4a"), std::string::npos);
+  const auto text = models_dir_ / "notes.txt";
+  std::ofstream(text) << "not audio\n";
+  EXPECT_EQ(sillok_job_push_file(job, PathToUtf8(text).c_str(), nullptr, nullptr),
+            SILLOK_MEDIA_ERROR);
+  EXPECT_EQ(sillok_job_push_file(job, nullptr, nullptr, nullptr), SILLOK_INVALID_ARGUMENT);
+}
+
+TEST_F(CapiTest, CancelStopsReadingAFile) {
+  sillok_job* job = Job(Engine());
+  sillok_job_cancel(job);
+  EXPECT_EQ(sillok_job_push_file(job, PathToUtf8(MediaFile("tone.m4a")).c_str(), nullptr, nullptr),
+            SILLOK_CANCELLED);
 }
 
 TEST_F(CapiTest, VersionAndDevices) {

@@ -40,7 +40,8 @@ typedef enum sillok_status {
   SILLOK_MODEL_ERROR = 2,      /* a model is missing, corrupt or failed */
   SILLOK_CANCELLED = 3,        /* the job was cancelled */
   SILLOK_BUSY = 4,             /* the engine is already running a job */
-  SILLOK_INTERNAL_ERROR = 5
+  SILLOK_INTERNAL_ERROR = 5,
+  SILLOK_MEDIA_ERROR = 6       /* a file cannot be opened or has no audio to decode */
 } sillok_status;
 
 typedef enum sillok_stage {
@@ -136,6 +137,23 @@ SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
                                                size_t frames,
                                                int32_t sample_rate,
                                                int32_t channels);
+
+/* Fraction in [0, 1] of a file read by sillok_job_push_file(), on its thread. */
+typedef void (*sillok_read_progress_fn)(void* user_data, double fraction);
+
+/* Decodes the audio of the file at `path` and pushes it as
+ * sillok_job_push_audio() would, from the start of the file and without
+ * encoder priming. Audio and video files alike: MP4/M4A/MOV, MP3, WAV, FLAC,
+ * Ogg/Opus/Vorbis, WebM/MKV, AAC, AMR, WMA/ASF, AVI, MPEG-TS, AIFF, CAF; the
+ * first audio stream is read. Blocks until the file is read; `progress` may
+ * be NULL, and sillok_job_cancel() stops the read (SILLOK_CANCELLED). The
+ * recording stays open: end it with sillok_job_end_audio() or run the job.
+ * SILLOK_MEDIA_ERROR when the file cannot be opened or decoded.
+ * On Android, a document from a content URI can be read as
+ * "/proc/self/fd/<n>" of a file descriptor the app opened for it. */
+SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
+                                              sillok_read_progress_fn progress,
+                                              void* user_data);
 
 /* --- The job's recording ---------------------------------------------------
  * A job converts the pushed audio to mono at SILLOK_SAMPLE_RATE: the

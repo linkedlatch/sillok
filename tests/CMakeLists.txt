@@ -27,7 +27,10 @@ gtest_discover_tests(sillok_unit_tests)
 add_executable(sillok_capi_tests unit/capi_test.cpp fakes/fake_backend.cpp)
 target_link_libraries(sillok_capi_tests PRIVATE
     sillok_capi sillok_fakes nlohmann_json::nlohmann_json GTest::gtest_main)
+target_compile_definitions(sillok_capi_tests PRIVATE
+    SILLOK_TEST_MEDIA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/media")
 sillok_set_warnings(sillok_capi_tests)
+sillok_copy_runtime_dlls(sillok_capi_tests)
 gtest_discover_tests(sillok_capi_tests)
 
 # src/core may include only the standard library and other core headers.
@@ -40,20 +43,23 @@ add_test(NAME core_includes_only_std
 if(TARGET sillok_models)
     set(SILLOK_TEST_MODELS_DIR "${PROJECT_SOURCE_DIR}/models" CACHE PATH "Models for integration tests")
     set(SILLOK_TEST_AUDIO_DIR "${PROJECT_SOURCE_DIR}/tests/data/audio" CACHE PATH "Recordings for integration tests")
-    add_executable(sillok_integration_tests integration/models_test.cpp "${PROJECT_SOURCE_DIR}/apps/cli/wav_reader.cpp")
-    target_include_directories(sillok_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/apps/cli")
+    add_executable(sillok_integration_tests integration/models_test.cpp)
     target_compile_definitions(sillok_integration_tests PRIVATE
         SILLOK_TEST_MODELS_DIR="${SILLOK_TEST_MODELS_DIR}"
         SILLOK_TEST_AUDIO_DIR="${SILLOK_TEST_AUDIO_DIR}")
-    target_link_libraries(sillok_integration_tests PRIVATE sillok_models GTest::gtest_main)
+    target_link_libraries(sillok_integration_tests PRIVATE sillok_models sillok_media GTest::gtest_main)
     sillok_set_warnings(sillok_integration_tests)
+    sillok_copy_runtime_dlls(sillok_integration_tests)
     gtest_discover_tests(sillok_integration_tests DISCOVERY_TIMEOUT 60 PROPERTIES LABELS integration TIMEOUT 1800)
 endif()
 
 # Measurements with the real models (scripts/eval), on the shared library.
 if(TARGET sillok)
-    add_executable(sillok_probe integration/probe.cpp "${PROJECT_SOURCE_DIR}/apps/cli/wav_reader.cpp")
-    target_include_directories(sillok_probe PRIVATE "${PROJECT_SOURCE_DIR}/apps/cli")
+    add_executable(sillok_probe integration/probe.cpp)
     target_link_libraries(sillok_probe PRIVATE sillok nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_compile_definitions(sillok_probe PRIVATE SILLOK_USE_SHARED)
+    endif()
     sillok_set_warnings(sillok_probe)
+    sillok_copy_runtime_dlls(sillok_probe)
 endif()

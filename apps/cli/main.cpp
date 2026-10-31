@@ -23,7 +23,6 @@
 #include "process.hpp"
 #include "progress.hpp"
 #include "sillok/sillok.h"
-#include "wav_reader.hpp"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -62,7 +61,7 @@ constexpr const char* kUsage = R"(usage:
   sillok --version
 
 Models are looked up in --models, else $SILLOK_MODELS, else {models}.
-WAV files at 16 kHz mono are read directly; other formats need ffmpeg.
+Audio and video files are read with the FFmpeg libraries beside sillok.
 SILLOK_LOG=1 prints the model libraries' logs.
 )";
 
@@ -153,15 +152,6 @@ std::filesystem::path ModelsDir(const Arguments& args) {
     return PathFromUtf8(env);
   }
   return DefaultModelsDir();
-}
-
-std::FILE* OpenFile(const std::filesystem::path& path, const char* mode) {
-#ifdef _WIN32
-  const std::wstring wide_mode(mode, mode + std::strlen(mode));
-  return _wfopen(path.c_str(), wide_mode.c_str());
-#else
-  return std::fopen(path.c_str(), mode);
-#endif
 }
 
 void WriteOutput(const std::string& text, const std::optional<std::string>& output) {
@@ -337,54 +327,6 @@ int RunExport(const std::vector<std::string>& all_args) {
 
 // --- transcribe --------------------------------------------------------------
 
-// Feeds a WAV stream into `job` in one-second pieces.
-void PushWav(WavReader& wav, sillok_job* job) {
-  const auto frames = static_cast<std::size_t>(wav.sample_rate());
-  while (true) {
-    if (interrupted) return;
-    const std::vector<float> samples = wav.Read(frames);
-    if (samples.empty()) return;
-    Check(sillok_job_push_audio(job, samples.data(),
-                                samples.size() / static_cast<std::size_t>(wav.channels()),
-                                wav.sample_rate(), wav.channels()),
-          "audio");
-  }
-}
-
-// 16 kHz mono WAV is read here; anything else is decoded by ffmpeg, which
-// keeps the original rate and channels (the library resamples).
-void PushRecording(const std::filesystem::path& path, sillok_job* job) {
-  if (std::FILE* file = OpenFile(path, "rb")) {
-    const std::unique_ptr<std::FILE, int (*)(std::FILE*)> closer(file, std::fclose);
-    std::optional<WavReader> wav;
-    try {
-      wav.emplace(file);
-    } catch (const std::runtime_error&) {
-    }
-    if (wav && wav->sample_rate() == 16000 && wav->channels() == 1) {
-      PushWav(*wav, job);
-      return;
-    }
-  } else {
-    throw std::runtime_error("cannot open " + PathToUtf8(path));
-  }
-  std::optional<Process> ffmpeg;
-  try {
-    ffmpeg.emplace(std::vector<std::string>{"ffmpeg", "-nostdin", "-hide_banner", "-loglevel",
-                                            "error", "-i", PathToUtf8(path), "-vn", "-f", "wav",
-                                            "-acodec", "pcm_f32le", "-"},
-                   true);
-  } catch (const std::runtime_error&) {
-    throw std::runtime_error("ffmpeg is needed to read " + PathToUtf8(path) +
-                             " (only 16 kHz mono WAV is read without it)");
-  }
-  WavReader wav(ffmpeg->output());
-  PushWav(wav, job);
-  if (!interrupted && ffmpeg->Wait() != 0) {
-    throw std::runtime_error("ffmpeg could not decode " + PathToUtf8(path));
-  }
-}
-
 std::vector<std::string> GlossaryTerms(const Arguments& args) {
   std::vector<std::string> terms = args.All("term");
   if (const auto file = args.Get("glossary")) {
@@ -447,7 +389,21 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
   char* out = nullptr;
   sillok_status status = SILLOK_OK;
   try {
-    PushRecording(*input, job.get());
+    status = sillok_job_push_file(
+        job.get(), PathToUtf8(*input).c_str(),
+        [](void* user, double fraction) {
+          static_cast<ProgressPrinter*>(user)->Reading(fraction);
+        },
+        &progress);
+    if (status != SILLOK_OK) {
+      stop_watcher();
+      progress.Finish();
+      if (status == SILLOK_CANCELLED || interrupted) {
+        std::fprintf(stderr, "cancelled\n");
+        return kExitInterrupted;
+      }
+      Check(status, "reading the recording");
+    }
     status = sillok_job_run(
         job.get(),
         [](void* user, sillok_stage stage, double fraction) {

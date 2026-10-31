@@ -18,7 +18,7 @@
 #include "backends/models.hpp"
 #include "core/cancel.hpp"
 #include "core/level.hpp"
-#include "wav_reader.hpp"
+#include "media/audio_file.hpp"
 
 namespace sillok {
 namespace {
@@ -26,18 +26,13 @@ namespace {
 const std::filesystem::path kModels = SILLOK_TEST_MODELS_DIR;
 const std::filesystem::path kAudio = SILLOK_TEST_AUDIO_DIR;
 
+// The first `seconds` of a recording at 16 kHz mono; empty if it is missing.
 std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1e9) {
-  std::FILE* file = std::fopen(path.string().c_str(), "rb");
-  if (file == nullptr) return {};
-  cli::WavReader reader(file);
-  std::vector<float> pcm;
-  while (static_cast<double>(pcm.size()) < seconds * 16000) {
-    const auto block = reader.Read(16000);
-    if (block.empty()) break;
-    pcm.insert(pcm.end(), block.begin(), block.end());
-  }
-  std::fclose(file);
-  return pcm;
+  if (!std::filesystem::exists(path)) return {};
+  AudioBuffer audio;
+  DecodeAudioFile(path, audio, {}, StopToken());
+  audio.Finish();
+  return audio.Read({0, std::min(audio.size(), static_cast<SampleIndex>(seconds * 16000))});
 }
 
 // Runs `work` and requests a stop after `delay`. Returns the time from the

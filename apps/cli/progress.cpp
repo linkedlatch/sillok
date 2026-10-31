@@ -11,8 +11,11 @@
 namespace sillok::cli {
 namespace {
 
+constexpr int kReading = 100;  // after sillok_stage's values
+
 const char* StageName(int stage) {
   switch (stage) {
+    case kReading: return "reading";
     case SILLOK_STAGE_ANALYZE: return "analyzing";
     case SILLOK_STAGE_TRANSCRIBE: return "transcribing";
     case SILLOK_STAGE_DIARIZE: return "diarizing";
@@ -34,6 +37,12 @@ ProgressPrinter::ProgressPrinter(bool quiet)
     : quiet_(quiet), terminal_(StderrIsTerminal()) {}
 
 void ProgressPrinter::Update(sillok_stage stage, double fraction) {
+  Show(stage, fraction);
+}
+
+void ProgressPrinter::Reading(double fraction) { Show(kReading, fraction); }
+
+void ProgressPrinter::Show(int stage, double fraction) {
   if (quiet_) return;
   const int percent = static_cast<int>(fraction * 100.0 + 0.5);
   if (stage != stage_) {

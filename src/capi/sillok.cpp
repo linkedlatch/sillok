@@ -25,7 +25,9 @@
 #include "capi/json_io.hpp"
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
+#include "core/files.hpp"
 #include "core/pipeline.hpp"
+#include "media/audio_file.hpp"
 
 namespace sillok {
 namespace {
@@ -46,6 +48,8 @@ sillok_status Guard(Body&& body) noexcept {
     return Fail(SILLOK_CANCELLED, "cancelled");
   } catch (const ModelError& error) {
     return Fail(SILLOK_MODEL_ERROR, error.what());
+  } catch (const MediaError& error) {
+    return Fail(SILLOK_MEDIA_ERROR, error.what());
   } catch (const std::invalid_argument& error) {
     return Fail(SILLOK_INVALID_ARGUMENT, error.what());
   } catch (const std::logic_error& error) {
@@ -362,6 +366,24 @@ sillok_status sillok_job_push_audio(sillok_job* job, const float* samples,
                     "audio cannot be added after sillok_job_end_audio");
     job->audio.Push({samples, frames * static_cast<size_t>(channels)},
                     sample_rate, channels);
+    return SILLOK_OK;
+  });
+}
+
+sillok_status sillok_job_push_file(sillok_job* job, const char* path,
+                                   sillok_read_progress_fn progress,
+                                   void* user_data) {
+  return Guard([&] {
+    RequireArgument(job != nullptr && path != nullptr, "job and path are required");
+    RequireArgument(!job->ran, "audio cannot be added after the job ran");
+    RequireArgument(!job->audio.finished(),
+                    "audio cannot be added after sillok_job_end_audio");
+    sillok::DecodeAudioFile(
+        sillok::PathFromUtf8(path), job->audio,
+        [&](double fraction) {
+          if (progress != nullptr) progress(user_data, fraction);
+        },
+        job->stop.Token());
     return SILLOK_OK;
   });
 }

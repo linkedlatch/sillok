@@ -24,8 +24,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/warnings.cmake)
 include(cmake/third_party.cmake)
+include(cmake/ffmpeg.cmake)
 
 add_subdirectory(src/core)
+add_subdirectory(src/media)
 add_subdirectory(src/capi)
 if(SILLOK_WITH_MODELS)
     add_subdirectory(src/backends)

@@ -17,7 +17,6 @@
 #include <nlohmann/json.hpp>
 
 #include "sillok/sillok.h"
-#include "wav_reader.hpp"
 
 namespace {
 
@@ -33,15 +32,10 @@ sillok_job* StartJob(const char* models, const char* device, const char* wav) {
   sillok_job* job = nullptr;
   sillok_job_create(engine, R"({"language": "auto", "diarize": true})", &job);
   sillok_engine_destroy(engine);  // the job keeps it alive
-  std::FILE* file = std::fopen(wav, "rb");
-  if (file == nullptr) std::exit(2);
-  sillok::cli::WavReader reader(file);
-  while (true) {
-    const auto samples = reader.Read(16000);
-    if (samples.empty()) break;
-    sillok_job_push_audio(job, samples.data(), samples.size(), 16000, 1);
+  if (sillok_job_push_file(job, wav, nullptr, nullptr) != SILLOK_OK) {
+    std::fprintf(stderr, "%s\n", sillok_last_error());
+    std::exit(2);
   }
-  std::fclose(file);
   return job;
 }
 

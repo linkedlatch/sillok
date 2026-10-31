@@ -54,6 +54,13 @@ jobs:
           arch: ${{ matrix.msvc_arch }}
       - name: Install CMake and Ninja
         run: scripts/ci/install-cmake.sh
+      - name: Install make for FFmpeg's build (MSYS2)
+        if: runner.os == 'Windows'
+        run: |
+          if [[ ! -x /c/msys64/usr/bin/pacman ]]; then
+            choco install msys2 --no-progress -y --params "/NoUpdate /InstallDir:C:\msys64"
+          fi
+          /c/msys64/usr/bin/pacman -S --noconfirm --needed make diffutils
       - name: Configure
         run: |
           if [[ -n "${{ matrix.compiler }}" ]]; then
@@ -117,6 +124,7 @@ jobs:
           target: google_apis
           disable-animations: true
           script: |
-            adb push build/x86_64/tests/sillok_unit_tests build/x86_64/tests/sillok_capi_tests /data/local/tmp/
-            adb shell 'cd /data/local/tmp && TMPDIR=/data/local/tmp ./sillok_unit_tests && TMPDIR=/data/local/tmp ./sillok_capi_tests; echo "exit=$?"' | tee android-tests.log
+            adb push build/x86_64/tests/sillok_unit_tests build/x86_64/tests/sillok_capi_tests build/x86_64/third_party/ffmpeg/install/lib/*.so /data/local/tmp/
+            adb push tests/data/media /data/local/tmp/
+            adb shell 'cd /data/local/tmp && export TMPDIR=/data/local/tmp LD_LIBRARY_PATH=/data/local/tmp SILLOK_TEST_MEDIA=/data/local/tmp/media && ./sillok_unit_tests && ./sillok_capi_tests; echo "exit=$?"' | tee android-tests.log
             grep -q '^exit=0' android-tests.log
