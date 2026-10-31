@@ -149,9 +149,14 @@ foreach(lib IN LISTS ffmpeg_libs)
         INTERFACE_INCLUDE_DIRECTORIES "${ffmpeg_install}/include")
     list(APPEND byproducts "${runtime}")
     if(WIN32)
+        # FFmpeg installs the import library next to the DLL.
         set_target_properties(ffmpeg::${lib} PROPERTIES
-            IMPORTED_IMPLIB "${ffmpeg_install}/lib/${lib}.lib")
-        list(APPEND byproducts "${ffmpeg_install}/lib/${lib}.lib")
+            IMPORTED_IMPLIB "${ffmpeg_install}/bin/${lib}.lib")
+        list(APPEND byproducts "${ffmpeg_install}/bin/${lib}.lib")
+    elseif(APPLE)
+        # Tells CMake to give the binaries linking it a search path for @rpath.
+        set_target_properties(ffmpeg::${lib} PROPERTIES
+            IMPORTED_SONAME "@rpath/lib${lib}.${major}.dylib")
     endif()
     list(APPEND SILLOK_FFMPEG_RUNTIME "${runtime}")
     target_link_libraries(sillok_ffmpeg INTERFACE ffmpeg::${lib})
