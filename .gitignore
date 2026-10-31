@@ -39,16 +39,4 @@ __pycache__/
 # Evaluation outputs
 /eval/
 
-# Android (apps/android)
-/apps/android/.gradle/
-/apps/android/.kotlin/
-/apps/android/build/
-/apps/android/app/build/
-/apps/android/app/.cxx/
-/apps/android/local.properties
-
-# Windows app (apps/windows)
-/apps/windows/**/bin/
-/apps/windows/**/obj/
-/apps/windows/**/.vs/
 *.user

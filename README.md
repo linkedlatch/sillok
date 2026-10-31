@@ -19,7 +19,6 @@ src/core/                 model-independent logic, C++ standard library only
 src/backends/             one directory per model; models.cpp picks the models
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
-apps/android/             the Android app (Kotlin, Jetpack Compose, JNI)
 tests/                    unit tests with fake models, integration probe
 third_party/              whisper.cpp, NeMo-Speech.cpp, googletest (submodules); nlohmann/json header
 scripts/                  fetching test audio, evaluation
@@ -68,23 +67,6 @@ sillok export lecture.json --format txt --speaker-label "화자 {n}"
 
 16 kHz mono WAV is read directly; other formats are decoded by `ffmpeg`.
 `SILLOK_LOG=1` shows the model libraries' logs.
-
-## Android app
-
-Requirements: JDK 17+, the Android SDK (`ANDROID_HOME`) with NDK
-30.0.16248370 and CMake 4.1.2; Gradle installs missing SDK parts when their
-licences are accepted. Open `apps/android` in Android Studio, or:
-
-```
-cd apps/android
-./gradlew assembleDebug               # app/build/outputs/apk/debug/app-debug.apk
-./gradlew connectedDebugAndroidTest   # instrumented tests on a device or emulator
-```
-
-The app downloads the models on first start. It decodes files with the
-platform decoders and keeps an AAC copy of the job's 16 kHz recording for
-listening back. `app/debug.keystore` is a fixed debug key, so that builds from any
-machine install over each other; it is not a release key.
 
 ## Library use
 

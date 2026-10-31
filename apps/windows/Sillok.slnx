@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="Sillok.Core/Sillok.Core.csproj" />
-  <Project Path="Sillok.Core.Tests/Sillok.Core.Tests.csproj" />
-  <Project Path="Sillok.Media/Sillok.Media.csproj" />
-  <Project Path="Sillok.Media.Tests/Sillok.Media.Tests.csproj" />
-  <Project Path="Sillok.App/Sillok.App.csproj" />
-</Solution>
