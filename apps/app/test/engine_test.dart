@@ -1,6 +1,6 @@
-// The library through FFI. Needs SILLOK_LIBRARY (the built libsillok); the
-// full run also needs the models in SILLOK_TEST_MODELS and a recording in
-// SILLOK_TEST_AUDIO, and is skipped without them.
+// The library through FFI, as the build hook built it for this machine. The
+// runs with the real models need them in SILLOK_TEST_MODELS and a recording
+// in SILLOK_TEST_AUDIO, and are skipped without them.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -10,11 +10,10 @@ import 'package:sillok/engine/native.dart';
 import 'package:sillok/engine/sillok.dart';
 
 void main() {
-  final library = Platform.environment['SILLOK_LIBRARY'];
   final models = Platform.environment['SILLOK_TEST_MODELS'];
   final audio = Platform.environment['SILLOK_TEST_AUDIO'];
 
-  group('library', skip: library == null ? 'SILLOK_LIBRARY is not set' : null, () {
+  group('library', () {
     test('catalog, engine models and devices', () {
       expect(Sillok.version, startsWith('sillok '));
       final catalog = Sillok.catalog();

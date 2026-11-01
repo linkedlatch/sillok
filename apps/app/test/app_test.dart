@@ -1,5 +1,5 @@
 // The app on the real library and models: first start, a file through the
-// queue into the library, and the settings. Skipped without SILLOK_LIBRARY,
+// queue into the library, and the settings. The run is skipped without
 // SILLOK_TEST_MODELS and SILLOK_TEST_AUDIO (see engine_test.dart).
 import 'dart:io';
 
@@ -37,10 +37,9 @@ Future<void> _waitFor(WidgetTester tester, bool Function() done, {Duration limit
 void main() {
   final models = Platform.environment['SILLOK_TEST_MODELS'];
   final audio = Platform.environment['SILLOK_TEST_AUDIO'];
-  final library = Platform.environment['SILLOK_LIBRARY'] != null;
-  final skip = !library || models == null || audio == null;
+  final skip = models == null || audio == null;
 
-  testWidgets('welcome without models', skip: !library, (tester) async {
+  testWidgets('welcome without models', (tester) async {
     final root = await tester.runAsync(() => Directory.systemTemp.createTemp('sillok app '));
     addTearDown(() => root!.delete(recursive: true));
     PathProviderPlatform.instance = _Paths(root!);

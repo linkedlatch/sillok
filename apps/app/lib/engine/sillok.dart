@@ -82,7 +82,7 @@ class FileStatus {
 }
 
 abstract final class Sillok {
-  static Native get _native => Native.instance;
+  static NativeApi get _native => NativeApi.instance;
 
   static String get version => _native.version().toDartString();
 

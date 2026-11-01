@@ -111,7 +111,7 @@ class JobRun {
           run._release = release;
         case final int job:
           run._job = job;
-          if (run._cancelled) Native.instance.jobCancel(Pointer.fromAddress(job));
+          if (run._cancelled) NativeApi.instance.jobCancel(Pointer.fromAddress(job));
         case final JobDone done:
           finish(done);
         case final JobFailed failed:
@@ -132,13 +132,13 @@ class JobRun {
   /// Stops the run; its events end with [JobFailed] and [Status.cancelled].
   void cancel() {
     _cancelled = true;
-    if (_job != 0) Native.instance.jobCancel(Pointer.fromAddress(_job));
+    if (_job != 0) NativeApi.instance.jobCancel(Pointer.fromAddress(_job));
   }
 }
 
 Future<void> _work((SendPort, JobRequest) start) async {
   final (out, request) = start;
-  final native = Native.instance;
+  final native = NativeApi.instance;
   final clock = Stopwatch()..start();
   final timings = <String, int>{};
   RunStep? current;

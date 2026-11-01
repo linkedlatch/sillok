@@ -84,16 +84,20 @@ FFmpeg's logs.
 ## App
 
 `apps/app` is one Flutter app for every platform except Linux, over the C ABI
-through `dart:ffi`. It loads the library from `SILLOK_LIBRARY` when set and
-from beside the app otherwise; packaging the library with each platform's
-app is still to come. The tests run against a built library; the ones that
-transcribe also need the models and a recording:
+through `dart:ffi`. Its build hook (`apps/app/hook/build.dart`) builds the
+library with this repository's CMake project for the target and bundles it
+with FFmpeg's libraries, so a plain `flutter run` or `flutter build` is
+enough once the library's own requirements are met (see Build; on Windows,
+the Vulkan SDK in `C:\VulkanSDK` adds the GPU). The first build of each
+target compiles the library and takes a few minutes.
 
 ```
 cd apps/app
-flutter test                                   # without the library: data tests only
-SILLOK_LIBRARY=../../build/libsillok.so SILLOK_TEST_MODELS=../../models \
+flutter test                                    # the hook builds the library for this machine
+SILLOK_TEST_MODELS=../../models \
     SILLOK_TEST_AUDIO=../../tests/data/audio/fleurs/en_us/1003119935936341070.wav flutter test
+flutter build apk --target-platform android-arm64,android-x64
+flutter test integration_test -d <device>      # the built app on a device or desktop
 ```
 
 ## Library use
