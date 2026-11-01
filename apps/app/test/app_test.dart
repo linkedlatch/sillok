@@ -37,11 +37,10 @@ Future<void> _waitFor(WidgetTester tester, bool Function() done, {Duration limit
 void main() {
   final models = Platform.environment['SILLOK_TEST_MODELS'];
   final audio = Platform.environment['SILLOK_TEST_AUDIO'];
-  final skip = Platform.environment['SILLOK_LIBRARY'] == null || models == null || audio == null
-      ? 'needs SILLOK_LIBRARY, SILLOK_TEST_MODELS and SILLOK_TEST_AUDIO'
-      : null;
+  final library = Platform.environment['SILLOK_LIBRARY'] != null;
+  final skip = !library || models == null || audio == null;
 
-  testWidgets('welcome without models', skip: skip != null, (tester) async {
+  testWidgets('welcome without models', skip: !library, (tester) async {
     final root = await tester.runAsync(() => Directory.systemTemp.createTemp('sillok app '));
     addTearDown(() => root!.delete(recursive: true));
     PathProviderPlatform.instance = _Paths(root!);
@@ -53,7 +52,7 @@ void main() {
     expect(find.text('Download'), findsOneWidget);
   });
 
-  testWidgets('a file goes through the queue into the library', skip: skip != null, (tester) async {
+  testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {
     final root = await tester.runAsync(() => Directory.systemTemp.createTemp('sillok app '));
     addTearDown(() => root!.delete(recursive: true));
     PathProviderPlatform.instance = _Paths(root!);
