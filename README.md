@@ -21,6 +21,7 @@ src/backends/             one directory per model; models.cpp picks the models
 src/media/                 reading audio and video files with FFmpeg
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
+apps/app/                 the Flutter app (Android, iOS, iPadOS, macOS, Windows)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest (submodules); nlohmann/json header
 scripts/                  fetching test audio, evaluation
@@ -79,6 +80,21 @@ sillok export lecture.json --format txt --speaker-label "화자 {n}"
 Audio and video files (M4A/MP4, MP3, WAV, FLAC, Ogg, Opus, WebM, AMR, WMA,
 ...) are read by the library. `SILLOK_LOG=1` shows the model libraries' and
 FFmpeg's logs.
+
+## App
+
+`apps/app` is one Flutter app for every platform except Linux, over the C ABI
+through `dart:ffi`. It loads the library from `SILLOK_LIBRARY` when set and
+from beside the app otherwise; packaging the library with each platform's
+app is still to come. The tests run against a built library; the ones that
+transcribe also need the models and a recording:
+
+```
+cd apps/app
+flutter test                                   # without the library: data tests only
+SILLOK_LIBRARY=../../build/libsillok.so SILLOK_TEST_MODELS=../../models \
+    SILLOK_TEST_AUDIO=../../tests/data/audio/fleurs/en_us/1003119935936341070.wav flutter test
+```
 
 ## Library use
 

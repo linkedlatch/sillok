@@ -1,0 +1,348 @@
+{
+  "@@locale": "en",
+  "appName": "Sillok",
+  "ok": "OK",
+  "cancel": "Cancel",
+  "save": "Save",
+  "close": "Close",
+  "delete": "Delete",
+  "rename": "Rename",
+  "retry": "Retry",
+  "remove": "Remove from the list",
+  "settings": "Settings",
+  "add": "Add files",
+  "title": "Title",
+  "welcomeTitle": "Transcribe on this device",
+  "welcomeBody": "Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about {size}.",
+  "@welcomeBody": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsDownload": "Download",
+  "modelsResume": "Resume",
+  "modelsStop": "Pause",
+  "modelsProgress": "{done} of {total} · {speed}/s",
+  "@modelsProgress": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsVerifying": "Checking the files…",
+  "modelsDamaged": "Damaged model files were removed. Download them again.",
+  "modelsDownloadFailed": "The download stopped: {message}",
+  "@modelsDownloadFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsVerified": "All model files are intact.",
+  "modelsCheckFailed": "Could not check the model files: {message}",
+  "@modelsCheckFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEmpty": "Open an audio or video file to transcribe it.",
+  "detailNone": "Choose a result.",
+  "libraryWaiting": "Waiting ({position})",
+  "@libraryWaiting": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryRunning": "{step} · {percent}%",
+  "@libraryRunning": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryRunningLeft": "{step} · {percent}% · about {left} left",
+  "@libraryRunningLeft": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      },
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryFailed": "Failed: {message}",
+  "@libraryFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "stepRead": "Reading the file",
+  "stepCopy": "Saving a copy for listening",
+  "stepAnalyze": "Finding speech",
+  "stepTranscribe": "Transcribing",
+  "stepDiarize": "Telling speakers apart",
+  "addTitle": "{count, plural, =1{Transcribe a file} other{Transcribe {count} files}}",
+  "@addTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addOptions": "Options",
+  "addStart": "Start",
+  "addModelMissing": "{model} is not on this device. Download it in Settings or choose another model.",
+  "@addModelMissing": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Language",
+  "languageAuto": "Automatic",
+  "languageKo": "Korean",
+  "languageEn": "English",
+  "diarize": "Tell speakers apart",
+  "diarizeOff": "No speakers",
+  "glossary": "Terms",
+  "glossaryHint": "Names and terms in the recording, one a line or separated by commas",
+  "device": "Compute device",
+  "deviceCpu": "CPU",
+  "transcriptionModel": "Transcription model",
+  "runningCancel": "Cancel",
+  "runningCancelling": "Cancelling…",
+  "runningOverall": "{step} · {percent}%",
+  "@runningOverall": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "runningLeft": "About {left} left",
+  "@runningLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "runningPreviews": "Sentences so far. When done, they are arranged with speakers.",
+  "runningDetails": "Details",
+  "stepTime": "{step}: {time}",
+  "@stepTime": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "detailWaiting": "Waiting to start: number {position} in line.",
+  "@detailWaiting": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "follow": "Follow",
+  "search": "Search",
+  "searchHint": "Search the result",
+  "searchNone": "No sentence matches.",
+  "segmentPlay": "Play from here",
+  "segmentCopy": "Copy",
+  "segmentInfo": "{start} – {end} · {language}",
+  "@segmentInfo": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "copied": "Copied",
+  "copyText": "Copy the text",
+  "speakers": "Speakers",
+  "speakerName": "Speaker {n}",
+  "@speakerName": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "speakerListen": "Listen",
+  "play": "Play",
+  "pause": "Pause",
+  "info": "Details",
+  "infoLength": "Recording: {time}",
+  "@infoLength": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "infoTotal": "Total: {time} ({ratio}× the recording)",
+  "@infoTotal": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "ratio": {
+        "type": "String"
+      }
+    }
+  },
+  "infoDevice": "Transcribed on: {device}",
+  "@infoDevice": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "infoFellBack": "{device} (the GPU could not be used)",
+  "@infoFellBack": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "resultMissing": "This result cannot be read.",
+  "resultEmpty": "No speech was found.",
+  "deleteConfirm": "Delete “{title}”?",
+  "@deleteConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "errorUnsupportedFile": "Cannot read the audio of this file ({message}).",
+  "@errorUnsupportedFile": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "errorModel": "A model cannot be used: {message}",
+  "@errorModel": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "errorEngine": "Could not transcribe: {message}",
+  "@errorEngine": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDefaults": "Defaults for new files",
+  "settingsModels": "Transcription models",
+  "settingsModelsHint": "Larger models are more accurate but slower and use more memory. The recommended model suits most devices.",
+  "modelRecommended": "Recommended",
+  "modelInUse": "Used for new files",
+  "modelUse": "Use for new files",
+  "modelSummary": "Accuracy {accuracy} · speed {speed} · {quantization} · {size}",
+  "@modelSummary": {
+    "placeholders": {
+      "accuracy": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
+      },
+      "quantization": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "accuracyHighest": "highest",
+  "accuracyHigh": "high",
+  "accuracyMedium": "medium",
+  "accuracyLow": "low",
+  "accuracyVeryLow": "very low",
+  "speedVerySlow": "very slow",
+  "speedSlow": "slow",
+  "speedMedium": "medium",
+  "speedFast": "fast",
+  "speedVeryFast": "very fast",
+  "speedFastest": "fastest",
+  "quantF16": "uncompressed",
+  "quantQ8": "lightly compressed",
+  "quantQ5": "compressed",
+  "settingsStorage": "Storage",
+  "storageModels": "Models: {size}",
+  "@storageModels": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "storageHistory": "Results and recordings: {size}",
+  "@storageHistory": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsMore": "More",
+  "verifyModels": "Check the model files",
+  "about": "About",
+  "version": "Version: {version}",
+  "@version": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  }
+}

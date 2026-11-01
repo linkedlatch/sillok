@@ -1,0 +1,43 @@
+# The Flutter app's common code: analysis, and the tests against the library
+# built for Linux. The tests that need the real models skip here.
+name: app
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "4.4.4"
+  NINJA_VERSION: "1.13.2"
+  FLUTTER_VERSION: "3.47.9"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - name: Install CMake and Ninja
+        run: scripts/ci/install-cmake.sh
+      - name: Build the library
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSILLOK_BUILD_TESTS=OFF -DSILLOK_BUILD_CLI=OFF
+          cmake --build build --target sillok
+      - name: Install Flutter
+        run: |
+          curl -sSfL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - name: Analyze
+        working-directory: apps/app
+        run: |
+          flutter --disable-analytics
+          flutter pub get
+          flutter analyze
+      - name: Test
+        working-directory: apps/app
+        run: SILLOK_LIBRARY="$GITHUB_WORKSPACE/build/libsillok.so" flutter test
