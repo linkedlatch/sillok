@@ -463,6 +463,52 @@ TEST_F(CapiTest, RefusesFilesWithoutAudio) {
   EXPECT_EQ(sillok_job_push_file(job, nullptr, nullptr, nullptr), SILLOK_INVALID_ARGUMENT);
 }
 
+TEST_F(CapiTest, SavesTheRecordingForListeningBack) {
+  sillok_job* job = Job(Engine());
+  ASSERT_EQ(sillok_job_push_file(job, PathToUtf8(MediaFile("tone.flac")).c_str(), nullptr,
+                                 nullptr),
+            SILLOK_OK);
+  const auto copy = models_dir_ / PathFromUtf8("사본.m4a");
+  EXPECT_EQ(sillok_job_save_audio(job, PathToUtf8(copy).c_str(), nullptr, nullptr),
+            SILLOK_INVALID_ARGUMENT);  // the recording has not ended
+  ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
+  double last = -1;
+  const auto progress = [](void* user, double fraction) { *static_cast<double*>(user) = fraction; };
+  ASSERT_EQ(sillok_job_save_audio(job, PathToUtf8(copy).c_str(), progress, &last), SILLOK_OK)
+      << sillok_last_error();
+  EXPECT_EQ(last, 1.0);
+  EXPECT_LT(std::filesystem::file_size(copy), 8000u);  // 32 kbit/s
+
+  // Read back, the copy lines up with the recording: same length, same tone.
+  sillok_job* again = Job(Engine());
+  ASSERT_EQ(sillok_job_push_file(again, PathToUtf8(copy).c_str(), nullptr, nullptr), SILLOK_OK)
+      << sillok_last_error();
+  ASSERT_EQ(sillok_job_end_audio(again), SILLOK_OK);
+  const auto samples = [](sillok_job* of) {
+    uint64_t length = 0;
+    EXPECT_EQ(sillok_job_audio_length(of, &length), SILLOK_OK);
+    std::vector<float> pcm(static_cast<std::size_t>(length));
+    std::size_t read = 0;
+    EXPECT_EQ(sillok_job_read_audio(of, 0, pcm.data(), pcm.size(), &read), SILLOK_OK);
+    return pcm;
+  };
+  const std::vector<float> original = samples(job);
+  const std::vector<float> decoded = samples(again);
+  ASSERT_EQ(decoded.size(), original.size());
+  double difference = 0;
+  double energy = 0;
+  for (std::size_t i = 2000; i < 14000; ++i) {
+    const double d = static_cast<double>(decoded[i]) - static_cast<double>(original[i]);
+    difference += d * d;
+    energy += static_cast<double>(original[i]) * static_cast<double>(original[i]);
+  }
+  EXPECT_LT(difference / energy, 0.05);  // aligned: a shifted tone would differ fully
+
+  const auto missing_dir = models_dir_ / "no such dir" / "copy.m4a";
+  EXPECT_EQ(sillok_job_save_audio(job, PathToUtf8(missing_dir).c_str(), nullptr, nullptr),
+            SILLOK_MEDIA_ERROR);
+}
+
 TEST_F(CapiTest, CancelStopsReadingAFile) {
   sillok_job* job = Job(Engine());
   sillok_job_cancel(job);

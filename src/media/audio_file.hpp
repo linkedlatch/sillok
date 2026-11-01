@@ -24,6 +24,14 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioBuffer& audio,
                      const std::function<void(double)>& progress,
                      const StopToken& stop);
 
+// Writes `audio` (16 kHz mono, finished) to `path` as AAC-LC at 32 kbit/s in
+// an M4A file, whose edit list hides the encoder's priming so that positions
+// in it match the recording's. `progress` receives the fraction written. A
+// partly written file is removed.
+void WriteAacFile(const AudioBuffer& audio, const std::filesystem::path& path,
+                  const std::function<void(double)>& progress,
+                  const StopToken& stop);
+
 }  // namespace sillok
 
 #endif  // SILLOK_MEDIA_AUDIO_FILE_HPP_

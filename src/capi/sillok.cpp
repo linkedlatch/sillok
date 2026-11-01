@@ -371,7 +371,7 @@ sillok_status sillok_job_push_audio(sillok_job* job, const float* samples,
 }
 
 sillok_status sillok_job_push_file(sillok_job* job, const char* path,
-                                   sillok_read_progress_fn progress,
+                                   sillok_file_progress_fn progress,
                                    void* user_data) {
   return Guard([&] {
     RequireArgument(job != nullptr && path != nullptr, "job and path are required");
@@ -380,6 +380,23 @@ sillok_status sillok_job_push_file(sillok_job* job, const char* path,
                     "audio cannot be added after sillok_job_end_audio");
     sillok::DecodeAudioFile(
         sillok::PathFromUtf8(path), job->audio,
+        [&](double fraction) {
+          if (progress != nullptr) progress(user_data, fraction);
+        },
+        job->stop.Token());
+    return SILLOK_OK;
+  });
+}
+
+sillok_status sillok_job_save_audio(sillok_job* job, const char* path,
+                                    sillok_file_progress_fn progress,
+                                    void* user_data) {
+  return Guard([&] {
+    RequireArgument(job != nullptr && path != nullptr, "job and path are required");
+    RequireArgument(job->audio.finished(),
+                    "the recording has not ended (sillok_job_end_audio)");
+    sillok::WriteAacFile(
+        job->audio, sillok::PathFromUtf8(path),
         [&](double fraction) {
           if (progress != nullptr) progress(user_data, fraction);
         },

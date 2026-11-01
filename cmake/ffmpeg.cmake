@@ -1,6 +1,7 @@
 # FFmpeg (third_party/ffmpeg, release n9.0.2) reads the apps' audio and video
-# files: only its demuxers, audio decoders and parsers, without GPL or nonfree
-# parts. It is built as shared libraries next to sillok, which keeps the LGPL
+# files and writes the AAC copy of a job's recording: only its demuxers, audio
+# decoders and parsers, and its AAC encoder and M4A muxer, without GPL or
+# nonfree parts. It is built as shared libraries next to sillok, which keeps the LGPL
 # simple: users can replace them. FFmpeg builds with its own configure script
 # and make, so this needs a POSIX shell: on Windows, MSYS2's (with make and
 # diffutils installed), run from an MSVC developer environment.
@@ -50,7 +51,8 @@ set(ffmpeg_args
     --enable-protocol=file
     --enable-demuxer=${ffmpeg_demuxers}
     --enable-decoder=${ffmpeg_decoders}
-    --enable-parser=${ffmpeg_parsers})
+    --enable-parser=${ffmpeg_parsers}
+    --enable-encoder=aac --enable-muxer=ipod)
 
 if(APPLE)
     list(APPEND ffmpeg_args --install-name-dir=@rpath)

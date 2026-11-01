@@ -138,8 +138,8 @@ SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
                                                int32_t sample_rate,
                                                int32_t channels);
 
-/* Fraction in [0, 1] of a file read by sillok_job_push_file(), on its thread. */
-typedef void (*sillok_read_progress_fn)(void* user_data, double fraction);
+/* Fraction in [0, 1] of a file read or written, on the calling thread. */
+typedef void (*sillok_file_progress_fn)(void* user_data, double fraction);
 
 /* Decodes the audio of the file at `path` and pushes it as
  * sillok_job_push_audio() would, from the start of the file and without
@@ -152,7 +152,7 @@ typedef void (*sillok_read_progress_fn)(void* user_data, double fraction);
  * On Android, a document from a content URI can be read as
  * "/proc/self/fd/<n>" of a file descriptor the app opened for it. */
 SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
-                                              sillok_read_progress_fn progress,
+                                              sillok_file_progress_fn progress,
                                               void* user_data);
 
 /* --- The job's recording ---------------------------------------------------
@@ -181,6 +181,16 @@ SILLOK_API sillok_status sillok_job_audio_length(const sillok_job* job,
 SILLOK_API sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
                                                float* samples, size_t count,
                                                size_t* out_read);
+
+/* Writes the recording to `path` as AAC in an M4A file (16 kHz mono,
+ * 32 kbit/s, about 14 MB an hour) for the app to keep for listening back:
+ * transcript times are positions in it. Call after the recording ended.
+ * Blocks until written; `progress` may be NULL, and sillok_job_cancel() stops
+ * it (SILLOK_CANCELLED). An unfinished file is removed. SILLOK_MEDIA_ERROR
+ * when the file cannot be written. */
+SILLOK_API sillok_status sillok_job_save_audio(sillok_job* job, const char* path,
+                                               sillok_file_progress_fn progress,
+                                               void* user_data);
 
 /* Segments of the transcript as the transcription stage finishes them, for
  * the app to show while the job runs: `segments_json` is an array of
