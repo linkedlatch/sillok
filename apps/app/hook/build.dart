@@ -17,7 +17,15 @@ import 'package:native_toolchain_cmake/native_toolchain_cmake.dart';
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
-    final logger = Logger('sillok')..onRecord.listen((record) => stderr.writeln(record.message));
+    // Warnings show; the whole log (compiler output included) only when the
+    // build fails, since the hook runner shows little else.
+    final log = <String>[];
+    final logger = Logger.detached('sillok')
+      ..level = Level.ALL
+      ..onRecord.listen((record) {
+        log.add(record.message);
+        if (record.level >= Level.WARNING) stderr.writeln(record.message);
+      });
     final code = input.config.code;
     final os = code.targetOS;
     final root = input.packageRoot.resolve('../../');
@@ -42,7 +50,7 @@ void main(List<String> args) async {
       },
     };
 
-    await CMakeBuilder.create(
+    final builder = CMakeBuilder.create(
       name: 'sillok',
       sourceDir: root,
       outDir: buildDir,
@@ -51,7 +59,13 @@ void main(List<String> args) async {
       generator: Generator.ninja,
       parallelUseAllProcessors: true,
       logger: logger,
-    ).run(input: input, output: output, logger: logger);
+    );
+    try {
+      await builder.run(input: input, output: output, logger: logger);
+    } on Object {
+      log.forEach(stderr.writeln);
+      rethrow;
+    }
 
     final dir = Directory.fromUri(buildDir);
     final ffmpeg = Directory.fromUri(buildDir.resolve('third_party/ffmpeg/install/'));

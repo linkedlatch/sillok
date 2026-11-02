@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# The fixed debug key (app/build.gradle.kts) is shared on purpose.
+!app/debug.keystore

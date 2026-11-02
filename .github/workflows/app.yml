@@ -93,8 +93,7 @@ jobs:
           scripts/ci/install-cmake.sh
           /c/msys64/usr/bin/pacman -S --noconfirm --needed make diffutils
           # The build hook looks for the Vulkan SDK where its installer puts it.
-          mkdir -p /c/VulkanSDK
-          cmd //c "mklink /J C:\\VulkanSDK\\${VULKAN_SDK_VERSION} $(cygpath -w "$VULKAN_SDK")"
+          test -d "/c/VulkanSDK/${VULKAN_SDK_VERSION}"
           curl -sSfL -o "$RUNNER_TEMP/flutter.zip" "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_${FLUTTER_VERSION}-stable.zip"
           unzip -q "$RUNNER_TEMP/flutter.zip" -d "$RUNNER_TEMP"
           echo "$(cygpath -w "$RUNNER_TEMP/flutter/bin")" >> "$GITHUB_PATH"
