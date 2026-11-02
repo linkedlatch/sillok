@@ -96,6 +96,8 @@ class _ModelTile extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final ready = state.models[model.id] is ModelReady;
     final inUse = (state.defaults.transcriptionModel ?? state.recommendedTranscription.id) == model.id;
+    // Apple builds offer the Neural Engine encoder for a model that is here.
+    final accelerator = ready ? state.accelerators[model.id] : null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -109,6 +111,7 @@ class _ModelTile extends StatelessWidget {
             ],
           ),
           Text(modelSummary(l, model), style: Theme.of(context).textTheme.bodySmall),
+          if (accelerator != null) _AcceleratorControl(state: state, model: model, status: accelerator),
           if (ready)
             Wrap(
               spacing: 8,
@@ -135,5 +138,48 @@ class _ModelTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// The Neural Engine encoder of a ready model: in use, being fetched, or
+/// the button to fetch it.
+class _AcceleratorControl extends StatelessWidget {
+  const _AcceleratorControl({required this.state, required this.model, required this.status});
+
+  final AppState state;
+  final CatalogModel model;
+  final ModelStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final style = Theme.of(context).textTheme.bodySmall;
+    final size = model.files.where((f) => f.zip).fold(0, (sum, f) => sum + f.size);
+    return switch (status) {
+      ModelReady() => Row(spacing: 4, children: [const Icon(Icons.memory, size: 16), Text(l.neuralEngineInUse, style: style)]),
+      ModelDownloading(:final progress) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 4,
+          children: [
+            LinearProgressIndicator(value: progress.total > 0 ? progress.done / progress.total : null),
+            Text(l.modelsProgress(formatBytes(progress.done), formatBytes(progress.total),
+                formatBytes(progress.bytesPerSecond)), style: style),
+            TextButton(onPressed: state.stopDownload, child: Text(l.modelsStop)),
+          ],
+        ),
+      ModelVerifying() => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 4,
+          children: [const LinearProgressIndicator(), Text(l.neuralEngineUnpacking, style: style)],
+        ),
+      _ => Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: () => state.downloadAccelerator(model.id),
+            icon: const Icon(Icons.memory),
+            label: Text(l.neuralEngineDownload(formatBytes(size))),
+          ),
+        ),
+    };
   }
 }

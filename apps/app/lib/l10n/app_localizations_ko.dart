@@ -405,4 +405,20 @@ class AppLocalizationsKo extends AppLocalizations {
   String version(String version) {
     return '버전: $version';
   }
+
+  @override
+  String deviceWithNeuralEngine(String device) {
+    return '$device + Neural Engine';
+  }
+
+  @override
+  String get neuralEngineInUse => 'GPU로 전사할 때 인코더를 Neural Engine에서 실행합니다';
+
+  @override
+  String get neuralEngineUnpacking => '확인하고 압축을 푸는 중…';
+
+  @override
+  String neuralEngineDownload(String size) {
+    return 'Neural Engine용 인코더 받기($size)';
+  }
 }

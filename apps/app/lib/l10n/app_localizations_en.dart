@@ -409,4 +409,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String version(String version) {
     return 'Version: $version';
   }
+
+  @override
+  String deviceWithNeuralEngine(String device) {
+    return '$device + Neural Engine';
+  }
+
+  @override
+  String get neuralEngineInUse =>
+      'The encoder runs on the Neural Engine on GPU runs';
+
+  @override
+  String get neuralEngineUnpacking => 'Checking and unpacking…';
+
+  @override
+  String neuralEngineDownload(String size) {
+    return 'Download the Neural Engine encoder ($size)';
+  }
 }

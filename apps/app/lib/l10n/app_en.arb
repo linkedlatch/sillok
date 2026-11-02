@@ -344,5 +344,23 @@
         "type": "String"
       }
     }
+  },
+  "deviceWithNeuralEngine": "{device} + Neural Engine",
+  "neuralEngineInUse": "The encoder runs on the Neural Engine on GPU runs",
+  "neuralEngineUnpacking": "Checking and unpacking…",
+  "neuralEngineDownload": "Download the Neural Engine encoder ({size})",
+  "@deviceWithNeuralEngine": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@neuralEngineDownload": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
   }
 }

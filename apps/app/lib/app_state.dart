@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -73,6 +74,11 @@ class AppState extends ChangeNotifier {
   List<CatalogModel> catalog = const [];
   List<ComputeDevice> gpus = const [];
   Map<String, ModelStatus> models = const {};
+
+  /// Per transcription model with an accelerator (the Core ML encoder on
+  /// Apple, as zip files in the catalog): ModelReady once unpacked,
+  /// ModelVerifying while unpacking.
+  Map<String, ModelStatus> accelerators = const {};
   bool modelsChecked = false;
   String? modelsError;
   JobSettings defaults = const JobSettings();
@@ -158,7 +164,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether [model] runs its encoder on the Neural Engine (on a GPU run).
+  bool usesAccelerator(String? modelId) =>
+      accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
+
   void _setStatuses(List<FileStatus> statuses) {
+    accelerators = {
+      for (final model in catalog)
+        if (model.files.any((f) => f.zip))
+          model.id: _acceleratorBusy == model.id
+              ? accelerators[model.id] ?? const ModelMissing(0)
+              : statuses.where((s) => s.model == model.id && _isZip(model, s.file)).every((s) => s.status == 'ok')
+                  ? const ModelReady()
+                  : ModelMissing(ModelDownloader.downloaded(modelsDir, model.files.where((f) => f.zip).toList())),
+    };
     models = {
       for (final model in catalog)
         model.id: _downloading == model.id && models[model.id] is! ModelReady
@@ -218,6 +237,45 @@ class AppState extends ChangeNotifier {
 
   void stopDownload() => _downloader.stop();
 
+  String? _acceleratorBusy;
+
+  /// Downloads and unpacks [modelId]'s accelerator, then removes the archive.
+  Future<void> downloadAccelerator(String modelId) async {
+    if (_downloading != null || _acceleratorBusy != null) return;
+    final model = catalog.firstWhere((m) => m.id == modelId);
+    final files = model.files.where((f) => f.zip).toList();
+    _acceleratorBusy = modelId;
+    void show(ModelStatus status) {
+      accelerators = {...accelerators, modelId: status};
+      notifyListeners();
+    }
+
+    show(ModelDownloading(DownloadProgress(
+        ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0)));
+    try {
+      await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
+      show(const ModelVerifying());
+      final dir = modelsDir.path;
+      final statuses = await Isolate.run(() => Sillok.check(dir, verifyHash: true));
+      for (final file in files) {
+        final status = statuses.firstWhere((s) => s.file == file.file).status;
+        final archive = '$dir${Platform.pathSeparator}${file.file}';
+        if (status == 'extract') {
+          await Isolate.run(() => extractFileToDisk(archive, dir));
+        } else if (status != 'ok') {
+          notice = const DamagedModels();
+        }
+        if (File(archive).existsSync()) await File(archive).delete();
+      }
+    } on DownloadStopped {
+      // What was received stays for a resume.
+    } on Object catch (error) {
+      notice = DownloadFailed('$error');
+    }
+    _acceleratorBusy = null;
+    await checkModels();
+  }
+
   /// Deletes a transcription model's files that no other ready model uses.
   Future<void> deleteModel(String modelId) async {
     final model = catalog.firstWhere((m) => m.id == modelId);
@@ -227,6 +285,9 @@ class AppState extends ChangeNotifier {
     };
     for (final file in model.files) {
       if (shared.contains(file.file)) continue;
+      // An unpacked accelerator is a folder named after its archive.
+      final unpacked = Directory('${modelsDir.path}${Platform.pathSeparator}${file.file.replaceFirst(RegExp(r'\.zip$'), '')}');
+      if (file.zip && unpacked.existsSync()) await unpacked.delete(recursive: true);
       for (final path in ['${modelsDir.path}${Platform.pathSeparator}${file.file}', '${modelsDir.path}${Platform.pathSeparator}${file.file}.part']) {
         final f = File(path);
         if (f.existsSync()) await f.delete();
@@ -264,8 +325,9 @@ class AppState extends ChangeNotifier {
     try {
       defaults = JobSettings.fromJson(jsonDecode(await _settingsFile.readAsString()) as Map<String, dynamic>);
     } on Object {
-      // A GPU when there is one (docs/DESIGN.md D15: the app chooses).
-      defaults = JobSettings(gpuIndex: gpus.isEmpty ? null : 0);
+      // A GPU when there is one (docs/DESIGN.md D15: the app chooses), except
+      // on phones, whose GPUs are often no faster than their CPUs with ggml.
+      defaults = JobSettings(gpuIndex: gpus.isEmpty || Platform.isAndroid ? null : 0);
     }
     if ((defaults.gpuIndex ?? -1) >= gpus.length) defaults = defaults.copyWith(gpuIndex: () => null);
   }

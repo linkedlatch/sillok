@@ -762,6 +762,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Version: {version}'**
   String version(String version);
+
+  /// No description provided for @deviceWithNeuralEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} + Neural Engine'**
+  String deviceWithNeuralEngine(String device);
+
+  /// No description provided for @neuralEngineInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'The encoder runs on the Neural Engine on GPU runs'**
+  String get neuralEngineInUse;
+
+  /// No description provided for @neuralEngineUnpacking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking and unpacking…'**
+  String get neuralEngineUnpacking;
+
+  /// No description provided for @neuralEngineDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download the Neural Engine encoder ({size})'**
+  String neuralEngineDownload(String size);
 }
 
 class _AppLocalizationsDelegate

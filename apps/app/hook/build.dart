@@ -44,6 +44,8 @@ void main(List<String> args) async {
       // x86_64 Android is only the emulator, which runs the host's AVX2.
       if (os == OS.android && code.targetArchitecture == Architecture.arm64)
         'GGML_CPU_ARM_ARCH': 'armv8.2-a+dotprod+fp16',
+      // The GPU through Vulkan; the app keeps the CPU as Android's default.
+      if (os == OS.android) 'SILLOK_VULKAN': 'ON',
       if (os == OS.android && code.targetArchitecture == Architecture.x64)
         for (final feature in ['GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_FMA', 'GGML_F16C', 'GGML_BMI2']) feature: 'ON',
       // Windows: AVX2 rather than the build machine's CPU, and the C runtime

@@ -74,7 +74,15 @@ class _SettingsFieldsState extends State<SettingsFields> {
             items: [
               DropdownMenuItem(value: -1, child: Text(l.deviceCpu)),
               for (final (i, gpu) in state.gpus.indexed)
-                DropdownMenuItem(value: i, child: Text(gpu.description, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                  value: i,
+                  child: Text(
+                    state.usesAccelerator(settings.transcriptionModel)
+                        ? l.deviceWithNeuralEngine(gpu.description)
+                        : gpu.description,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
             onChanged: (index) =>
                 widget.onChanged(settings.copyWith(gpuIndex: () => index == null || index < 0 ? null : index)),
