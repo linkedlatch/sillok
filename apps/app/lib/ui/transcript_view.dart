@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +12,7 @@ import '../engine/sillok.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
 import 'home.dart';
+import 'playback.dart';
 
 /// A result: paragraphs by speaker over a player. Choosing a sentence plays
 /// it from a second before and shows what is otherwise hidden: its exact
@@ -28,7 +28,7 @@ class TranscriptView extends StatefulWidget {
 }
 
 class _TranscriptViewState extends State<TranscriptView> {
-  final _player = AudioPlayer();
+  late final Playback _player = widget.state.newPlayback();
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _recognizers = <TapGestureRecognizer>[];
   final _paragraphKeys = <GlobalKey>[];
@@ -50,16 +50,16 @@ class _TranscriptViewState extends State<TranscriptView> {
   void initState() {
     super.initState();
     _subscriptions
-      ..add(_player.onPositionChanged.listen(_onPosition))
-      ..add(_player.onDurationChanged.listen((d) => setState(() => _duration = d)))
-      ..add(_player.onPlayerStateChanged.listen((s) => setState(() => _playing = s == PlayerState.playing)));
+      ..add(_player.position.listen(_onPosition))
+      ..add(_player.duration.listen((d) => setState(() => _duration = d)))
+      ..add(_player.playing.listen((playing) => setState(() => _playing = playing)));
     _load();
   }
 
   Future<void> _load() async {
     final transcript = await widget.state.store.readTranscript(_id);
     final audio = widget.state.store.audioOf(_id);
-    if (audio.existsSync()) await _player.setSource(DeviceFileSource(audio.path));
+    if (audio.existsSync()) await _player.open(audio.path);
     if (!mounted) return;
     setState(() {
       _setTranscript(transcript);
@@ -116,7 +116,7 @@ class _TranscriptViewState extends State<TranscriptView> {
   /// later than its first word.
   Future<void> _playFrom(int startMs) async {
     await _player.seek(Duration(milliseconds: startMs > 1000 ? startMs - 1000 : 0));
-    await _player.resume();
+    await _player.play();
   }
 
   void _choose(int segment) {
@@ -199,6 +199,15 @@ class _TranscriptViewState extends State<TranscriptView> {
         if (query.isEmpty || p.segments.any((s) => transcript.segments[s].text.toLowerCase().contains(query))) i,
     ];
     final selected = _selected;
+    return LayoutBuilder(builder: (context, constraints) {
+      // The pane's own width: a narrow pane beside the list counts too.
+      final narrow = constraints.maxWidth < 560;
+      return _page(l, theme, transcript, shown, query, selected, narrow);
+    });
+  }
+
+  Widget _page(AppLocalizations l, ThemeData theme, Transcript transcript, List<int> shown, String query,
+      int? selected, bool narrow) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -219,11 +228,25 @@ class _TranscriptViewState extends State<TranscriptView> {
                   if (!_searching) _search.clear();
                 }),
               ),
-              if (transcript.speakers.isNotEmpty)
-                IconButton(tooltip: l.speakers, icon: const Icon(Icons.people_outline), onPressed: () => _renameSpeakers(l)),
-              IconButton(tooltip: l.copyText, icon: const Icon(Icons.copy_all_outlined), onPressed: () => _copyText(l)),
-              IconButton(tooltip: l.info, icon: const Icon(Icons.info_outline), onPressed: () => _showInfo(l)),
-              ResultMenu(state: widget.state, id: _id, title: widget.entry.meta.title),
+              // Narrow screens keep only search as a button.
+              if (!narrow) ...[
+                if (transcript.speakers.isNotEmpty)
+                  IconButton(tooltip: l.speakers, icon: const Icon(Icons.people_outline), onPressed: () => _renameSpeakers(l)),
+                IconButton(tooltip: l.copyText, icon: const Icon(Icons.copy_all_outlined), onPressed: () => _copyText(l)),
+                IconButton(tooltip: l.info, icon: const Icon(Icons.info_outline), onPressed: () => _showInfo(l)),
+              ],
+              ResultMenu(
+                state: widget.state,
+                id: _id,
+                title: widget.entry.meta.title,
+                extra: narrow
+                    ? [
+                        if (transcript.speakers.isNotEmpty) (l.speakers, () => _renameSpeakers(l)),
+                        (l.copyText, () => _copyText(l)),
+                        (l.info, () => _showInfo(l)),
+                      ]
+                    : const [],
+              ),
             ],
           ),
         ),
@@ -251,7 +274,7 @@ class _TranscriptViewState extends State<TranscriptView> {
                     ),
         ),
         if (selected != null) _selectedCard(l, theme, transcript.segments[selected]),
-        _playerBar(l),
+        _playerBar(l, narrow),
       ],
     );
   }
@@ -345,31 +368,36 @@ class _TranscriptViewState extends State<TranscriptView> {
         ),
       );
 
-  Widget _playerBar(AppLocalizations l) {
+  /// One row on wide screens; on narrow ones the slider gets its own.
+  Widget _playerBar(AppLocalizations l, bool narrow) {
     final total = _duration.inMilliseconds > 0 ? _duration.inMilliseconds : widget.entry.meta.durationMs;
+    final play = IconButton(
+      tooltip: _playing ? l.pause : l.play,
+      icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
+      onPressed: () => _playing ? _player.pause() : _player.play(),
+    );
+    final slider = Slider(
+      value: _position.inMilliseconds.clamp(0, total > 0 ? total : 1).toDouble(),
+      max: (total > 0 ? total : 1).toDouble(),
+      onChanged: (value) => _player.seek(Duration(milliseconds: value.round())),
+    );
+    final time = Text('${formatTime(_position.inMilliseconds)} / ${formatTime(total)}',
+        maxLines: 1, overflow: TextOverflow.ellipsis);
+    final follow =
+        FilterChip(label: Text(l.follow), selected: _follow, onSelected: (v) => setState(() => _follow = v));
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 0, 16, 8),
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: _playing ? l.pause : l.play,
-              icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
-              onPressed: () => _playing ? _player.pause() : _player.resume(),
-            ),
-            Expanded(
-              child: Slider(
-                value: _position.inMilliseconds.clamp(0, total > 0 ? total : 1).toDouble(),
-                max: (total > 0 ? total : 1).toDouble(),
-                onChanged: (value) => _player.seek(Duration(milliseconds: value.round())),
-              ),
-            ),
-            Text('${formatTime(_position.inMilliseconds)} / ${formatTime(total)}'),
-            const SizedBox(width: 8),
-            FilterChip(label: Text(l.follow), selected: _follow, onSelected: (v) => setState(() => _follow = v)),
-          ],
-        ),
+        child: narrow
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  slider,
+                  Row(children: [play, Expanded(child: time), follow]),
+                ],
+              )
+            : Row(children: [play, Expanded(child: slider), time, const SizedBox(width: 8), follow]),
       ),
     );
   }

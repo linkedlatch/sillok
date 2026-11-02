@@ -14,6 +14,7 @@ import 'data/store.dart';
 import 'data/transcriber.dart';
 import 'engine/job_run.dart';
 import 'engine/sillok.dart';
+import 'ui/playback.dart';
 
 sealed class ModelStatus {
   const ModelStatus();
@@ -77,6 +78,9 @@ class AppState extends ChangeNotifier {
   JobSettings defaults = const JobSettings();
   List<LibraryEntry> library = const [];
   Notice? notice;
+
+  /// A player for a result's copy; tests stand in for the platform's.
+  Playback Function() newPlayback = AudioPlayback.new;
   String? _downloading;
   final _finished = StreamController<(String key, String id)>.broadcast();
 

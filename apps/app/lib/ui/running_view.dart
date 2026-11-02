@@ -47,67 +47,89 @@ class _RunningViewState extends State<RunningView> {
         if (run == null) return const SizedBox.shrink();
         final previews = widget.state.transcriber.previews;
         _followNew(previews.length);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
+        final header = Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 8,
+            children: [
+              Text(run.name, style: theme.textTheme.titleLarge, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(settingsSummary(l, widget.state, run.settings), style: theme.textTheme.bodySmall),
+              LinearProgressIndicator(value: run.overall),
+              Text(l.runningOverall(stepName(l, run.step), (run.overall * 100).round())),
+              if (run.remaining != null) Text(l.runningLeft(formatTime(run.remaining!.inMilliseconds))),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(l.runningDetails),
                 children: [
-                  Text(run.name, style: theme.textTheme.titleLarge, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  Text(settingsSummary(l, widget.state, run.settings), style: theme.textTheme.bodySmall),
-                  LinearProgressIndicator(value: run.overall),
-                  Text(l.runningOverall(stepName(l, run.step), (run.overall * 100).round())),
-                  if (run.remaining != null) Text(l.runningLeft(formatTime(run.remaining!.inMilliseconds))),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    title: Text(l.runningDetails),
-                    children: [
-                      for (final MapEntry(:key, :value) in run.timingsMs.entries)
-                        ListTile(dense: true, title: Text(l.stepTime(stepName(l, key), formatTime(value)))),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(child: Text(l.runningPreviews, style: theme.textTheme.bodySmall)),
-                      FilterChip(
-                        label: Text(l.follow),
-                        selected: _follow,
-                        onSelected: (value) => setState(() => _follow = value),
-                      ),
-                    ],
+                  for (final MapEntry(:key, :value) in run.timingsMs.entries)
+                    ListTile(dense: true, title: Text(l.stepTime(stepName(l, key), formatTime(value)))),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(child: Text(l.runningPreviews, style: theme.textTheme.bodySmall)),
+                  FilterChip(
+                    label: Text(l.follow),
+                    selected: _follow,
+                    onSelected: (value) => setState(() => _follow = value),
                   ),
                 ],
               ),
+            ],
+          ),
+        );
+        Widget preview(int i) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text.rich(TextSpan(children: [
+                TextSpan(text: '${formatTime(previews[i].startMs)}  ', style: theme.textTheme.bodySmall),
+                TextSpan(text: previews[i].text),
+              ])),
+            );
+        final cancel = Padding(
+          padding: const EdgeInsets.all(16),
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: OutlinedButton(
+              onPressed: run.cancelling ? null : widget.state.transcriber.cancel,
+              child: Text(run.cancelling ? l.runningCancelling : l.runningCancel),
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
+          ),
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // A short screen (a phone held sideways) scrolls the header away
+            // with the sentences; a tall one keeps it in view.
+            if (constraints.maxHeight < 560) {
+              return ListView.builder(
                 controller: _scroll,
-                padding: const EdgeInsets.all(16),
-                itemCount: previews.length,
-                itemBuilder: (context, i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text.rich(TextSpan(children: [
-                    TextSpan(text: '${formatTime(previews[i].startMs)}  ', style: theme.textTheme.bodySmall),
-                    TextSpan(text: previews[i].text),
-                  ])),
+                itemCount: previews.length + 3,
+                itemBuilder: (context, i) => i == 0
+                    ? header
+                    : i == 1
+                        ? const Divider(height: 1)
+                        : i == previews.length + 2
+                            ? cancel
+                            : preview(i - 2),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.only(top: 16),
+                    itemCount: previews.length,
+                    itemBuilder: (context, i) => preview(i),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: OutlinedButton(
-                  onPressed: run.cancelling ? null : widget.state.transcriber.cancel,
-                  child: Text(run.cancelling ? l.runningCancelling : l.runningCancel),
-                ),
-              ),
-            ),
-          ],
+                cancel,
+              ],
+            );
+          },
         );
       },
     );

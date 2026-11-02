@@ -100,7 +100,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return LayoutBuilder(builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 840;
+      // Two panes from Material's medium width on; the list narrower below
+      // the expanded width.
+      final wide = constraints.maxWidth >= 600;
       final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
       return Scaffold(
         appBar: AppBar(
@@ -123,7 +125,7 @@ class _HomePageState extends State<HomePage> {
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(width: 380, child: list),
+                  SizedBox(width: constraints.maxWidth >= 840 ? 380 : 320, child: list),
                   const VerticalDivider(width: 1),
                   Expanded(child: DetailPane(state: widget.state, selection: _selection)),
                 ],
@@ -228,20 +230,24 @@ class _QueueTile extends StatelessWidget {
   }
 }
 
-/// Rename and delete for a result.
+/// Rename and delete for a result, after [extra] actions (label, action)
+/// that a narrow screen has no room to show as buttons.
 class ResultMenu extends StatelessWidget {
-  const ResultMenu({super.key, required this.state, required this.id, required this.title});
+  const ResultMenu({super.key, required this.state, required this.id, required this.title, this.extra = const []});
 
   final AppState state;
   final String id;
   final String title;
+  final List<(String, VoidCallback)> extra;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return PopupMenuButton<String>(
-      onSelected: (action) async {
-        if (action == 'rename') {
+    return PopupMenuButton<int>(
+      onSelected: (index) async {
+        if (index < extra.length) {
+          extra[index].$2();
+        } else if (index == extra.length) {
           final name = await askText(context, l.rename, l.title, title);
           if (name != null) await state.rename(id, name);
         } else if (await confirm(context, l.deleteConfirm(title), l.delete)) {
@@ -249,8 +255,9 @@ class ResultMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(value: 'rename', child: Text(l.rename)),
-        PopupMenuItem(value: 'delete', child: Text(l.delete)),
+        for (final (i, (label, _)) in extra.indexed) PopupMenuItem(value: i, child: Text(label)),
+        PopupMenuItem(value: extra.length, child: Text(l.rename)),
+        PopupMenuItem(value: extra.length + 1, child: Text(l.delete)),
       ],
     );
   }

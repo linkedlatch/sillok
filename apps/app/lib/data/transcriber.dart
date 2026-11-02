@@ -165,6 +165,16 @@ class Transcriber extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Shows [item] as running with [run] and [previews], for tests of the
+  /// screens; nothing runs.
+  @visibleForTesting
+  void showRunning(QueueItem item, RunState run, List<Segment> previews) {
+    _queue = [item, ..._queue.where((i) => i.key != item.key)];
+    _run = run;
+    _previews = previews;
+    notifyListeners();
+  }
+
   /// Position of a waiting file among the waiting ones, from 1.
   int waitingPosition(String key) {
     var position = 0;

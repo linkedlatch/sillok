@@ -60,6 +60,7 @@ class _SettingsFieldsState extends State<SettingsFields> {
         ),
         if (models.isNotEmpty)
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: models.any((m) => m.id == model) ? model : null,
             decoration: InputDecoration(labelText: l.transcriptionModel),
             items: [for (final m in models) DropdownMenuItem(value: m.id, child: Text(modelName(m)))],
@@ -67,6 +68,7 @@ class _SettingsFieldsState extends State<SettingsFields> {
           ),
         if (state.gpus.isNotEmpty)
           DropdownButtonFormField<int>(
+            isExpanded: true,
             initialValue: settings.gpuIndex ?? -1,
             decoration: InputDecoration(labelText: l.device),
             items: [
