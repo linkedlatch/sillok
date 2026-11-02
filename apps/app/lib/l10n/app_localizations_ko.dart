@@ -129,11 +129,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String addTitle(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '파일 $count개 전사',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '파일 $count개 전사');
     return '$_temp0';
   }
 
@@ -315,8 +311,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsModels => '받아쓰기 모델';
 
   @override
-  String get settingsModelsHint =>
-      '큰 모델은 정확하지만 느리고 메모리를 더 씁니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
+  String get settingsModelsHint => '큰 모델은 정확하지만 느리고 메모리를 더 씁니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
 
   @override
   String get modelRecommended => '권장';
@@ -328,12 +323,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get modelUse => '새 파일에 사용하기';
 
   @override
-  String modelSummary(
-    String accuracy,
-    String speed,
-    String quantization,
-    String size,
-  ) {
+  String modelSummary(String accuracy, String speed, String quantization, String size) {
     return '정확도 $accuracy · 속도 $speed · $quantization · $size';
   }
 

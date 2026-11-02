@@ -71,8 +71,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelsVerifying => 'Checking the files…';
 
   @override
-  String get modelsDamaged =>
-      'Damaged model files were removed. Download them again.';
+  String get modelsDamaged => 'Damaged model files were removed. Download them again.';
 
   @override
   String modelsDownloadFailed(String message) {
@@ -172,8 +171,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get glossary => 'Terms';
 
   @override
-  String get glossaryHint =>
-      'Names and terms in the recording, one a line or separated by commas';
+  String get glossaryHint => 'Names and terms in the recording, one a line or separated by commas';
 
   @override
   String get device => 'Compute device';
@@ -201,8 +199,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get runningPreviews =>
-      'Sentences so far. When done, they are arranged with speakers.';
+  String get runningPreviews => 'Sentences so far. When done, they are arranged with speakers.';
 
   @override
   String get runningDetails => 'Details';
@@ -332,12 +329,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelUse => 'Use for new files';
 
   @override
-  String modelSummary(
-    String accuracy,
-    String speed,
-    String quantization,
-    String size,
-  ) {
+  String modelSummary(String accuracy, String speed, String quantization, String size) {
     return 'Accuracy $accuracy · speed $speed · $quantization · $size';
   }
 
@@ -416,8 +408,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get neuralEngineInUse =>
-      'The encoder runs on the Neural Engine on GPU runs';
+  String get neuralEngineInUse => 'The encoder runs on the Neural Engine on GPU runs';
 
   @override
   String get neuralEngineUnpacking => 'Checking and unpacking…';
