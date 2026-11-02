@@ -29,7 +29,12 @@ void main(List<String> args) async {
     final code = input.config.code;
     final os = code.targetOS;
     final root = input.packageRoot.resolve('../../');
-    final buildDir = input.outputDirectory.resolve('cmake/');
+    // Windows paths stop at 260 characters, which the nested builds inside
+    // the hook's own directory pass; there the build goes to a short one.
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    final buildDir = os == OS.windows && Platform.isWindows && localAppData != null
+        ? Directory('$localAppData\\sillok\\build\\${input.outputDirectory.pathSegments.lastWhere((s) => s.isNotEmpty)}\\').uri
+        : input.outputDirectory.resolve('cmake/');
 
     final defines = <String, String?>{
       'SILLOK_BUILD_CLI': 'OFF',
@@ -80,13 +85,19 @@ void main(List<String> args) async {
     }
 
     // The library the app binds to (lib/engine/native.dart), then FFmpeg's,
-    // which it loads. Windows looks for those next to sillok.dll, so they
-    // are copied there.
-    add('engine/native.dart', _library(dir, 'sillok', os));
+    // which it loads. On Windows all go into one folder of the hook's own,
+    // since Windows looks for FFmpeg's DLLs next to sillok.dll and the build
+    // folder is elsewhere.
+    final bin = Directory.fromUri(input.outputDirectory.resolve('bin/'));
+    File place(File file) {
+      if (os != OS.windows) return file;
+      bin.createSync(recursive: true);
+      return file.copySync('${bin.path}${file.uri.pathSegments.last}');
+    }
+
+    add('engine/native.dart', place(_library(dir, 'sillok', os)));
     for (final lib in ['avformat', 'avcodec', 'swresample', 'avutil']) {
-      var file = _library(Directory('${ffmpeg.path}${os == OS.windows ? 'bin' : 'lib'}'), lib, os);
-      if (os == OS.windows) file = file.copySync('${dir.path}${file.uri.pathSegments.last}');
-      add('ffmpeg/$lib', file);
+      add('ffmpeg/$lib', place(_library(Directory('${ffmpeg.path}${os == OS.windows ? 'bin' : 'lib'}'), lib, os)));
     }
 
     // Rebuild when the library's sources change.
