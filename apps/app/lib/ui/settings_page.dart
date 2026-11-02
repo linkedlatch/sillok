@@ -32,48 +32,58 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(title: Text(l.settings)),
       body: ListenableBuilder(
         listenable: state,
-        builder: (context, _) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(l.settingsDefaults, style: heading),
-                const SizedBox(height: 8),
-                SettingsFields(state: state, settings: state.defaults, onChanged: state.setDefaults),
-                const SizedBox(height: 24),
-                Text(l.settingsModels, style: heading),
-                const SizedBox(height: 4),
-                Text(l.settingsModelsHint, style: Theme.of(context).textTheme.bodySmall),
-                for (final model in state.transcriptionModels) _ModelTile(state: state, model: model, onChanged: _refresh),
-                const SizedBox(height: 24),
-                Text(l.settingsStorage, style: heading),
-                FutureBuilder(
-                  future: _sizes,
-                  builder: (context, sizes) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(contentPadding: EdgeInsets.zero, title: Text(l.storageModels(formatBytes(sizes.data?.$1 ?? 0)))),
-                      ListTile(contentPadding: EdgeInsets.zero, title: Text(l.storageHistory(formatBytes(sizes.data?.$2 ?? 0)))),
-                    ],
+        builder: (context, _) => SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(l.settingsDefaults, style: heading),
+                  const SizedBox(height: 8),
+                  SettingsFields(state: state, settings: state.defaults, onChanged: state.setDefaults),
+                  const SizedBox(height: 24),
+                  Text(l.settingsModels, style: heading),
+                  const SizedBox(height: 4),
+                  Text(l.settingsModelsHint, style: Theme.of(context).textTheme.bodySmall),
+                  for (final model in state.transcriptionModels)
+                    _ModelTile(state: state, model: model, onChanged: _refresh),
+                  const SizedBox(height: 24),
+                  Text(l.settingsStorage, style: heading),
+                  FutureBuilder(
+                    future: _sizes,
+                    builder: (context, sizes) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l.storageModels(formatBytes(sizes.data?.$1 ?? 0))),
+                        ),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l.storageHistory(formatBytes(sizes.data?.$2 ?? 0))),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(l.settingsMore, style: heading),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l.verifyModels),
-                  onTap: () async {
-                    await state.verifyModels();
-                    _refresh();
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l.about),
-                  subtitle: Text(l.version(Sillok.version)),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Text(l.settingsMore, style: heading),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.verifyModels),
+                    onTap: () async {
+                      await state.verifyModels();
+                      _refresh();
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.about),
+                    subtitle: Text(l.version(Sillok.version)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -156,30 +166,45 @@ class _AcceleratorControl extends StatelessWidget {
     final style = Theme.of(context).textTheme.bodySmall;
     final size = model.files.where((f) => f.zip).fold(0, (sum, f) => sum + f.size);
     return switch (status) {
-      ModelReady() => Row(spacing: 4, children: [const Icon(Icons.memory, size: 16), Text(l.neuralEngineInUse, style: style)]),
+      ModelReady() => Row(
+        spacing: 4,
+        children: [
+          const Icon(Icons.memory, size: 16),
+          Text(l.neuralEngineInUse, style: style),
+        ],
+      ),
       ModelDownloading(:final progress) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 4,
-          children: [
-            LinearProgressIndicator(value: progress.total > 0 ? progress.done / progress.total : null),
-            Text(l.modelsProgress(formatBytes(progress.done), formatBytes(progress.total),
-                formatBytes(progress.bytesPerSecond)), style: style),
-            TextButton(onPressed: state.stopDownload, child: Text(l.modelsStop)),
-          ],
-        ),
-      ModelVerifying() => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 4,
-          children: [const LinearProgressIndicator(), Text(l.neuralEngineUnpacking, style: style)],
-        ),
-      _ => Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
-            onPressed: () => state.downloadAccelerator(model.id),
-            icon: const Icon(Icons.memory),
-            label: Text(l.neuralEngineDownload(formatBytes(size))),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: [
+          LinearProgressIndicator(value: progress.total > 0 ? progress.done / progress.total : null),
+          Text(
+            l.modelsProgress(
+              formatBytes(progress.done),
+              formatBytes(progress.total),
+              formatBytes(progress.bytesPerSecond),
+            ),
+            style: style,
           ),
+          TextButton(onPressed: state.stopDownload, child: Text(l.modelsStop)),
+        ],
+      ),
+      ModelVerifying() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: [
+          const LinearProgressIndicator(),
+          Text(l.neuralEngineUnpacking, style: style),
+        ],
+      ),
+      _ => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
+          onPressed: () => state.downloadAccelerator(model.id),
+          icon: const Icon(Icons.memory),
+          label: Text(l.neuralEngineDownload(formatBytes(size))),
         ),
+      ),
     };
   }
 }

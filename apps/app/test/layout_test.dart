@@ -75,20 +75,34 @@ Future<void> _writeResult(Directory support) async {
         'words': <Object>[],
       },
   ];
-  await File('${dir.path}/transcript.json').writeAsString(jsonEncode({
-    'version': 1,
-    'duration_ms': 300000,
-    'speakers': [for (var i = 0; i < 3; i++) {'id': i, 'name': null}],
-    'segments': segments,
-    'models': {'transcription': {'name': 'whisper-large-v3-turbo-q5_0', 'device': 'Vulkan0 (NVIDIA GeForce RTX 5060 Ti)', 'fell_back_to_cpu': false}},
-  }));
-  await File('${dir.path}/meta.json').writeAsString(jsonEncode({
-    'title': '분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용',
-    'source': 'lecture.m4a',
-    'created_ms': DateTime(2026, 11, 1, 9).millisecondsSinceEpoch,
-    'duration_ms': 300000,
-    'stats': {'timings_ms': {'read': 1200, 'copy': 300, 'analyze': 900, 'transcribe': 40000, 'diarize': 5000}},
-  }));
+  await File('${dir.path}/transcript.json').writeAsString(
+    jsonEncode({
+      'version': 1,
+      'duration_ms': 300000,
+      'speakers': [
+        for (var i = 0; i < 3; i++) {'id': i, 'name': null},
+      ],
+      'segments': segments,
+      'models': {
+        'transcription': {
+          'name': 'whisper-large-v3-turbo-q5_0',
+          'device': 'Vulkan0 (NVIDIA GeForce RTX 5060 Ti)',
+          'fell_back_to_cpu': false,
+        },
+      },
+    }),
+  );
+  await File('${dir.path}/meta.json').writeAsString(
+    jsonEncode({
+      'title': '분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용',
+      'source': 'lecture.m4a',
+      'created_ms': DateTime(2026, 11, 1, 9).millisecondsSinceEpoch,
+      'duration_ms': 300000,
+      'stats': {
+        'timings_ms': {'read': 1200, 'copy': 300, 'analyze': 900, 'transcribe': 40000, 'diarize': 5000},
+      },
+    }),
+  );
 }
 
 /// Lets real file reads finish, then lets the widgets settle.
@@ -104,10 +118,12 @@ void main() {
   late Directory root;
   late AppState state;
 
-  Future<void> start(WidgetTester tester, Size size, {required bool result}) async {
+  Future<void> start(WidgetTester tester, Size size, {required bool result, double navigationBar = 0}) async {
     tester.view
       ..physicalSize = size
-      ..devicePixelRatio = 1;
+      ..devicePixelRatio = 1
+      ..padding = FakeViewPadding(bottom: navigationBar)
+      ..viewPadding = FakeViewPadding(bottom: navigationBar);
     addTearDown(tester.view.reset);
     root = (await tester.runAsync(() => Directory.systemTemp.createTemp('sillok layout ')))!;
     addTearDown(() => root.delete(recursive: true));
@@ -129,7 +145,12 @@ void main() {
       testWidgets('library, running file and result', (tester) async {
         await start(tester, size, result: true);
         state.transcriber.showRunning(
-          const QueueItem(key: 'k', path: '/x/meeting.m4a', name: '팀 회의 녹음 2026-11-01 오후 세션 전체.m4a', settings: JobSettings()),
+          const QueueItem(
+            key: 'k',
+            path: '/x/meeting.m4a',
+            name: '팀 회의 녹음 2026-11-01 오후 세션 전체.m4a',
+            settings: JobSettings(),
+          ),
           const RunState(
             key: 'k',
             name: '팀 회의 녹음 2026-11-01 오후 세션 전체.m4a',
@@ -140,7 +161,10 @@ void main() {
             remaining: Duration(minutes: 42),
             timingsMs: {RunStep.read: 1200, RunStep.copy: 300, RunStep.analyze: 900},
           ),
-          [for (var i = 0; i < 30; i++) Segment(startMs: i * 4000, endMs: i * 4000 + 3500, text: _sentence, language: 'ko')],
+          [
+            for (var i = 0; i < 30; i++)
+              Segment(startMs: i * 4000, endMs: i * 4000 + 3500, text: _sentence, language: 'ko'),
+          ],
         );
         await tester.pumpAndSettle();
 
@@ -173,11 +197,16 @@ void main() {
       testWidgets('adding files', (tester) async {
         await start(tester, size, result: true);
         final context = tester.element(find.byType(HomePage));
-        unawaited(showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          builder: (context) => AddSheet(state: state, files: const [('/x/a.m4a', '아주 긴 파일 이름을 가진 강의 녹음 파일.m4a'), ('/x/b.mp4', 'b.mp4')]),
-        ));
+        unawaited(
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            builder: (context) => AddSheet(
+              state: state,
+              files: const [('/x/a.m4a', '아주 긴 파일 이름을 가진 강의 녹음 파일.m4a'), ('/x/b.mp4', 'b.mp4')],
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         await tester.tap(find.text(AppLocalizations.of(context).addOptions));
         await tester.pumpAndSettle();
@@ -185,4 +214,52 @@ void main() {
       });
     });
   }
+
+  // Android draws apps under its navigation bar (edge to edge); nothing the
+  // user taps may sit there.
+  group('phone with a navigation bar', () {
+    const size = Size(360, 780);
+    const bar = 48.0;
+    void clear(WidgetTester tester, Finder finder) =>
+        expect(tester.getRect(finder.first).bottom, lessThanOrEqualTo(size.height - bar));
+
+    testWidgets('library, running file and result', (tester) async {
+      await start(tester, size, result: true, navigationBar: bar);
+      clear(tester, find.byType(FloatingActionButton));
+      state.transcriber.showRunning(
+        const QueueItem(key: 'k', path: '/x/a.m4a', name: 'a.m4a', settings: JobSettings()),
+        const RunState(
+          key: 'k',
+          name: 'a.m4a',
+          settings: JobSettings(),
+          step: RunStep.transcribe,
+          stepFraction: 0.4,
+          overall: 0.38,
+          remaining: null,
+          timingsMs: {},
+        ),
+        const [],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('a.m4a').first);
+      await tester.pumpAndSettle();
+      clear(tester, find.text('Cancel'));
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용').first);
+      await _settle(tester);
+      clear(tester, find.byTooltip('Play'));
+      clear(tester, find.byType(Slider));
+    });
+
+    testWidgets('settings', (tester) async {
+      await start(tester, size, result: true, navigationBar: bar);
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(find.text('About'), find.byType(ListView).last, const Offset(0, -300));
+      await tester.drag(find.byType(ListView).last, const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      clear(tester, find.text('About'));
+    });
+  });
 }

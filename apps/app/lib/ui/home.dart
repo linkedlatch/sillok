@@ -88,51 +88,66 @@ class _HomePageState extends State<HomePage> {
   void _open(Selection selection, bool wide) {
     _selection.value = selection;
     if (wide) return;
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (context) => Scaffold(
-        appBar: AppBar(),
-        body: DetailPane(state: widget.state, selection: _selection, closeWhenGone: true),
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          appBar: AppBar(),
+          body: SafeArea(
+            top: false,
+            child: DetailPane(state: widget.state, selection: _selection, closeWhenGone: true),
+          ),
+        ),
       ),
-    ));
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return LayoutBuilder(builder: (context, constraints) {
-      // Two panes from Material's medium width on; the list narrower below
-      // the expanded width.
-      final wide = constraints.maxWidth >= 600;
-      final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l.appName),
-          actions: [
-            IconButton(
-              tooltip: l.settings,
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute<void>(builder: (context) => SettingsPage(state: widget.state))),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _add,
-          icon: const Icon(Icons.add),
-          label: Text(l.add),
-        ),
-        body: wide
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(width: constraints.maxWidth >= 840 ? 380 : 320, child: list),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: DetailPane(state: widget.state, selection: _selection)),
-                ],
-              )
-            : list,
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Two panes from Material's medium width on; the list narrower below
+        // the expanded width.
+        final wide = constraints.maxWidth >= 600;
+        final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(l.appName),
+            actions: [
+              IconButton(
+                tooltip: l.settings,
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () =>
+                    Navigator.of(context)
+                        .push(MaterialPageRoute<void>(builder: (context) => SettingsPage(state: widget.state))),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _add,
+            icon: const Icon(Icons.add),
+            label: Text(l.add),
+          ),
+          // Clear of the system's navigation bar and cutouts; the app bar
+          // already keeps clear of the status bar.
+          body: SafeArea(
+            top: false,
+            child: wide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: constraints.maxWidth >= 840 ? 380 : 320, child: list),
+                      const VerticalDivider(width: 1),
+                      Expanded(
+                        child: DetailPane(state: widget.state, selection: _selection),
+                      ),
+                    ],
+                  )
+                : list,
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -153,7 +168,9 @@ class LibraryList extends StatelessWidget {
         final queue = state.transcriber.queue;
         final run = state.transcriber.run;
         if (queue.isEmpty && state.library.isEmpty) {
-          return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(l.homeEmpty)));
+          return Center(
+            child: Padding(padding: const EdgeInsets.all(24), child: Text(l.homeEmpty)),
+          );
         }
         return ListView(
           padding: const EdgeInsets.only(bottom: 88),
@@ -182,7 +199,13 @@ class LibraryList extends StatelessWidget {
 }
 
 class _QueueTile extends StatelessWidget {
-  const _QueueTile({required this.state, required this.item, required this.run, required this.selected, required this.onTap});
+  const _QueueTile({
+    required this.state,
+    required this.item,
+    required this.run,
+    required this.selected,
+    required this.onTap,
+  });
 
   final AppState state;
   final QueueItem item;
@@ -200,19 +223,34 @@ class _QueueTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 4,
             children: [
-              Text(run.remaining == null
-                  ? l.libraryRunning(stepName(l, run.step), (run.overall * 100).round())
-                  : l.libraryRunningLeft(
-                      stepName(l, run.step), (run.overall * 100).round(), formatTime(run.remaining!.inMilliseconds))),
+              Text(
+                run.remaining == null
+                    ? l.libraryRunning(stepName(l, run.step), (run.overall * 100).round())
+                    : l.libraryRunningLeft(
+                        stepName(l, run.step),
+                        (run.overall * 100).round(),
+                        formatTime(run.remaining!.inMilliseconds),
+                      ),
+              ),
               LinearProgressIndicator(value: run.overall),
             ],
           )
-        : Text(error != null
-            ? l.libraryFailed(errorText(l, error))
-            : l.libraryWaiting(state.transcriber.waitingPosition(item.key)), maxLines: 2, overflow: TextOverflow.ellipsis);
+        : Text(
+            error != null
+                ? l.libraryFailed(errorText(l, error))
+                : l.libraryWaiting(state.transcriber.waitingPosition(item.key)),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          );
     return ListTile(
       selected: selected,
-      leading: Icon(error != null ? Icons.error_outline : run != null ? Icons.graphic_eq : Icons.schedule),
+      leading: Icon(
+        error != null
+            ? Icons.error_outline
+            : run != null
+            ? Icons.graphic_eq
+            : Icons.schedule,
+      ),
       title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: subtitle,
       onTap: onTap,
@@ -312,14 +350,19 @@ class DetailPane extends StatelessWidget {
                   spacing: 16,
                   children: [
                     Text(item.name, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
-                    Text(error != null
-                        ? errorText(l, error)
-                        : l.detailWaiting(state.transcriber.waitingPosition(key)), textAlign: TextAlign.center),
+                    Text(
+                      error != null ? errorText(l, error) : l.detailWaiting(state.transcriber.waitingPosition(key)),
+                      textAlign: TextAlign.center,
+                    ),
                     Text(settingsSummary(l, state, item.settings), textAlign: TextAlign.center),
-                    Wrap(spacing: 8, children: [
-                      if (error != null) FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry)),
-                      OutlinedButton(onPressed: () => state.transcriber.remove(key), child: Text(l.remove)),
-                    ]),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        if (error != null)
+                          FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry)),
+                        OutlinedButton(onPressed: () => state.transcriber.remove(key), child: Text(l.remove)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -354,7 +397,9 @@ class _AddSheetState extends State<AddSheet> {
     final l = AppLocalizations.of(context);
     final state = widget.state;
     final ready = state.canRun(_settings);
-    final missing = state.catalog.where((m) => m.id == (_settings.transcriptionModel ?? state.recommendedTranscription.id));
+    final missing = state.catalog.where(
+      (m) => m.id == (_settings.transcriptionModel ?? state.recommendedTranscription.id),
+    );
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(24, 0, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
@@ -370,9 +415,13 @@ class _AddSheetState extends State<AddSheet> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(onPressed: () => setState(() => _options = !_options), child: Text(l.addOptions)),
             ),
-            if (_options) SettingsFields(state: state, settings: _settings, onChanged: (s) => setState(() => _settings = s)),
+            if (_options)
+              SettingsFields(state: state, settings: _settings, onChanged: (s) => setState(() => _settings = s)),
             if (!ready && missing.isNotEmpty)
-              Text(l.addModelMissing(modelName(missing.first)), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                l.addModelMissing(modelName(missing.first)),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             FilledButton(
               onPressed: ready
                   ? () {
@@ -389,8 +438,10 @@ class _AddSheetState extends State<AddSheet> {
   }
 }
 
-Future<String?> askText(BuildContext context, String title, String label, String initial) =>
-    showDialog<String>(context: context, builder: (context) => _TextDialog(title: title, label: label, initial: initial));
+Future<String?> askText(BuildContext context, String title, String label, String initial) => showDialog<String>(
+  context: context,
+  builder: (context) => _TextDialog(title: title, label: label, initial: initial),
+);
 
 class _TextDialog extends StatefulWidget {
   const _TextDialog({required this.title, required this.label, required this.initial});

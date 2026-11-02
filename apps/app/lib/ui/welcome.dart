@@ -19,18 +19,21 @@ class WelcomePage extends StatelessWidget {
       appBar: AppBar(title: Text(l.appName)),
       body: ListenableBuilder(
         listenable: state,
-        builder: (context, _) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                Text(l.welcomeTitle, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 16),
-                Text(l.welcomeBody(formatBytes(size))),
-                const SizedBox(height: 24),
-                ModelDownloadControl(state: state, model: state.recommendedTranscription),
-              ],
+        builder: (context, _) => SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  Text(l.welcomeTitle, style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 16),
+                  Text(l.welcomeBody(formatBytes(size))),
+                  const SizedBox(height: 24),
+                  ModelDownloadControl(state: state, model: state.recommendedTranscription),
+                ],
+              ),
             ),
           ),
         ),
@@ -52,27 +55,36 @@ class ModelDownloadControl extends StatelessWidget {
     final style = Theme.of(context).textTheme.bodySmall;
     return switch (state.models[model.id]) {
       ModelDownloading(:final progress) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [
-            LinearProgressIndicator(value: progress.total > 0 ? progress.done / progress.total : null),
-            Text(l.modelsProgress(formatBytes(progress.done), formatBytes(progress.total),
-                formatBytes(progress.bytesPerSecond)), style: style),
-            OutlinedButton(onPressed: state.stopDownload, child: Text(l.modelsStop)),
-          ],
-        ),
-      ModelVerifying() => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [const LinearProgressIndicator(), Text(l.modelsVerifying, style: style)],
-        ),
-      ModelMissing(:final downloaded) => Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: FilledButton(
-            onPressed: () => state.downloadModel(model.id),
-            child: Text(downloaded > 0 ? l.modelsResume : l.modelsDownload),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          LinearProgressIndicator(value: progress.total > 0 ? progress.done / progress.total : null),
+          Text(
+            l.modelsProgress(
+              formatBytes(progress.done),
+              formatBytes(progress.total),
+              formatBytes(progress.bytesPerSecond),
+            ),
+            style: style,
           ),
+          OutlinedButton(onPressed: state.stopDownload, child: Text(l.modelsStop)),
+        ],
+      ),
+      ModelVerifying() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          const LinearProgressIndicator(),
+          Text(l.modelsVerifying, style: style),
+        ],
+      ),
+      ModelMissing(:final downloaded) => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FilledButton(
+          onPressed: () => state.downloadModel(model.id),
+          child: Text(downloaded > 0 ? l.modelsResume : l.modelsDownload),
         ),
+      ),
       _ => const SizedBox.shrink(),
     };
   }

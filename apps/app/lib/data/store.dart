@@ -42,21 +42,21 @@ class JobMeta {
   final String device;
 
   JobMeta copyWith({String? title}) => JobMeta(
-        title: title ?? this.title,
-        source: source,
-        createdMs: createdMs,
-        durationMs: durationMs,
-        timingsMs: timingsMs,
-        device: device,
-      );
+    title: title ?? this.title,
+    source: source,
+    createdMs: createdMs,
+    durationMs: durationMs,
+    timingsMs: timingsMs,
+    device: device,
+  );
 
   Map<String, Object?> toJson() => {
-        'title': title,
-        'source': source,
-        'created_ms': createdMs,
-        'duration_ms': durationMs,
-        'stats': {'timings_ms': timingsMs, 'device': device},
-      };
+    'title': title,
+    'source': source,
+    'created_ms': createdMs,
+    'duration_ms': durationMs,
+    'stats': {'timings_ms': timingsMs, 'device': device},
+  };
 }
 
 class LibraryEntry {
@@ -80,8 +80,9 @@ class JobStore {
   /// A new, empty folder named after [time].
   Future<String> create(DateTime time) async {
     String two(int n) => n.toString().padLeft(2, '0');
-    final base = '${time.year}${two(time.month)}${two(time.day)}-${two(time.hour)}${two(time.minute)}${two(time.second)}';
-    for (var n = 0;; n++) {
+    final base =
+        '${time.year}${two(time.month)}${two(time.day)}-${two(time.hour)}${two(time.minute)}${two(time.second)}';
+    for (var n = 0; ; n++) {
       final id = n == 0 ? base : '$base-$n';
       final dir = dirOf(id);
       if (!dir.existsSync()) {

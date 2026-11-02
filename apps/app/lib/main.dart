@@ -55,24 +55,24 @@ class _SillokAppState extends State<SillokApp> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        scaffoldMessengerKey: _messenger,
-        onGenerateTitle: (context) => AppLocalizations.of(context).appName,
-        // The platform's look as Material 3 offers it, without a theme of our own.
-        theme: ThemeData(),
-        darkTheme: ThemeData(brightness: Brightness.dark),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: ListenableBuilder(
-          listenable: state,
-          builder: (context, _) {
-            if (!state.started || (!state.modelsChecked && state.modelsError == null)) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            }
-            if (state.modelsError != null && !state.modelsChecked) return _ModelCheckFailed(state: state);
-            return state.needsWelcome ? WelcomePage(state: state) : HomePage(state: state);
-          },
-        ),
-      );
+    scaffoldMessengerKey: _messenger,
+    onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+    // The platform's look as Material 3 offers it, without a theme of our own.
+    theme: ThemeData(),
+    darkTheme: ThemeData(brightness: Brightness.dark),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: ListenableBuilder(
+      listenable: state,
+      builder: (context, _) {
+        if (!state.started || (!state.modelsChecked && state.modelsError == null)) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (state.modelsError != null && !state.modelsChecked) return _ModelCheckFailed(state: state);
+        return state.needsWelcome ? WelcomePage(state: state) : HomePage(state: state);
+      },
+    ),
+  );
 }
 
 class _ModelCheckFailed extends StatelessWidget {
@@ -84,16 +84,18 @@ class _ModelCheckFailed extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 16,
-            children: [
-              Text(l.modelsCheckFailed(state.modelsError ?? ''), textAlign: TextAlign.center),
-              FilledButton(onPressed: state.checkModels, child: Text(l.retry)),
-            ],
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 16,
+              children: [
+                Text(l.modelsCheckFailed(state.modelsError ?? ''), textAlign: TextAlign.center),
+                FilledButton(onPressed: state.checkModels, child: Text(l.retry)),
+              ],
+            ),
           ),
         ),
       ),

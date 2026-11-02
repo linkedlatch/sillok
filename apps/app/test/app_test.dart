@@ -68,8 +68,11 @@ void main() {
     await tester.pump();
     expect(find.text('Open an audio or video file to transcribe it.'), findsOneWidget);
 
-    await tester.runAsync(() => state.enqueue([(audio!, 'fleurs.wav')],
-        const JobSettings(language: 'en', diarize: false, transcriptionModel: 'whisper-base-q5_1')));
+    await tester.runAsync(
+      () => state.enqueue([
+        (audio!, 'fleurs.wav'),
+      ], const JobSettings(language: 'en', diarize: false, transcriptionModel: 'whisper-base-q5_1')),
+    );
     await _waitFor(tester, () => state.transcriber.run != null);
     expect(find.text('fleurs.wav'), findsOneWidget);
     await _waitFor(tester, () => state.library.isNotEmpty);

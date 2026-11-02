@@ -145,7 +145,8 @@ class AppState extends ChangeNotifier {
   List<CatalogModel> engineModels(String? transcriptionModel) => Sillok.engineModels(transcriptionModel);
 
   /// Whether every model a run with [settings] needs is here.
-  bool canRun(JobSettings settings) => engineModels(settings.transcriptionModel).every((m) => models[m.id] is ModelReady);
+  bool canRun(JobSettings settings) =>
+      engineModels(settings.transcriptionModel).every((m) => models[m.id] is ModelReady);
 
   /// The first start: no transcription model and nothing transcribed yet.
   bool get needsWelcome => modelsChecked && readyTranscriptionModels.isEmpty && library.isEmpty;
@@ -165,8 +166,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// Whether [model] runs its encoder on the Neural Engine (on a GPU run).
-  bool usesAccelerator(String? modelId) =>
-      accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
+  bool usesAccelerator(String? modelId) => accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
 
   void _setStatuses(List<FileStatus> statuses) {
     accelerators = {
@@ -175,16 +175,16 @@ class AppState extends ChangeNotifier {
           model.id: _acceleratorBusy == model.id
               ? accelerators[model.id] ?? const ModelMissing(0)
               : statuses.where((s) => s.model == model.id && _isZip(model, s.file)).every((s) => s.status == 'ok')
-                  ? const ModelReady()
-                  : ModelMissing(ModelDownloader.downloaded(modelsDir, model.files.where((f) => f.zip).toList())),
+              ? const ModelReady()
+              : ModelMissing(ModelDownloader.downloaded(modelsDir, model.files.where((f) => f.zip).toList())),
     };
     models = {
       for (final model in catalog)
         model.id: _downloading == model.id && models[model.id] is! ModelReady
             ? models[model.id]!
             : statuses.where((s) => s.model == model.id && !_isZip(model, s.file)).every((s) => s.status == 'ok')
-                ? const ModelReady()
-                : ModelMissing(ModelDownloader.downloaded(modelsDir, model.files.where((f) => !f.zip).toList())),
+            ? const ModelReady()
+            : ModelMissing(ModelDownloader.downloaded(modelsDir, model.files.where((f) => !f.zip).toList())),
     };
   }
 
@@ -194,9 +194,7 @@ class AppState extends ChangeNotifier {
   /// models an engine needs; checks their hashes once all are here.
   Future<void> downloadModel(String modelId) async {
     if (_downloading != null) return;
-    final wanted = {
-      for (final model in engineModels(modelId)) model.id: model,
-    };
+    final wanted = {for (final model in engineModels(modelId)) model.id: model};
     final files = <String, ModelFile>{
       for (final model in wanted.values)
         if (models[model.id] is! ModelReady)
@@ -205,12 +203,19 @@ class AppState extends ChangeNotifier {
     }.values.toList();
     _downloading = modelId;
     void show(ModelStatus status) {
-      models = {...models, for (final id in wanted.keys) if (models[id] is! ModelReady) id: status};
+      models = {
+        ...models,
+        for (final id in wanted.keys)
+          if (models[id] is! ModelReady) id: status,
+      };
       notifyListeners();
     }
 
-    show(ModelDownloading(DownloadProgress(ModelDownloader.downloaded(modelsDir, files),
-        files.fold(0, (sum, f) => sum + f.size), 0)));
+    show(
+      ModelDownloading(
+        DownloadProgress(ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0),
+      ),
+    );
     try {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
@@ -250,8 +255,11 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
 
-    show(ModelDownloading(DownloadProgress(
-        ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0)));
+    show(
+      ModelDownloading(
+        DownloadProgress(ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0),
+      ),
+    );
     try {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
@@ -286,9 +294,14 @@ class AppState extends ChangeNotifier {
     for (final file in model.files) {
       if (shared.contains(file.file)) continue;
       // An unpacked accelerator is a folder named after its archive.
-      final unpacked = Directory('${modelsDir.path}${Platform.pathSeparator}${file.file.replaceFirst(RegExp(r'\.zip$'), '')}');
+      final unpacked = Directory(
+        '${modelsDir.path}${Platform.pathSeparator}${file.file.replaceFirst(RegExp(r'\.zip$'), '')}',
+      );
       if (file.zip && unpacked.existsSync()) await unpacked.delete(recursive: true);
-      for (final path in ['${modelsDir.path}${Platform.pathSeparator}${file.file}', '${modelsDir.path}${Platform.pathSeparator}${file.file}.part']) {
+      for (final path in [
+        '${modelsDir.path}${Platform.pathSeparator}${file.file}',
+        '${modelsDir.path}${Platform.pathSeparator}${file.file}.part',
+      ]) {
         final f = File(path);
         if (f.existsSync()) await f.delete();
       }

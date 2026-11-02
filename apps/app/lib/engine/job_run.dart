@@ -34,12 +34,12 @@ class JobRequest {
   final String copyPath;
 
   String get engineConfig => jsonEncode({
-        'models_dir': modelsDir,
-        'temp_dir': tempDir,
-        'device': gpuIndex == null ? 'cpu' : 'gpu',
-        'gpu_index': gpuIndex ?? 0,
-        if (transcriptionModel != null) 'transcription_model': transcriptionModel,
-      });
+    'models_dir': modelsDir,
+    'temp_dir': tempDir,
+    'device': gpuIndex == null ? 'cpu' : 'gpu',
+    'gpu_index': gpuIndex ?? 0,
+    if (transcriptionModel != null) 'transcription_model': transcriptionModel,
+  });
 }
 
 /// The steps of a run, in order. The last three are the library's stages.
@@ -156,12 +156,15 @@ Future<void> _work((SendPort, JobRequest) start) async {
   }
 
   var fileStep = RunStep.read;
-  final fileProgress =
-      NativeCallable<FileProgressFn>.isolateLocal((Pointer<Void> _, double fraction) => report(fileStep, fraction));
+  final fileProgress = NativeCallable<FileProgressFn>.isolateLocal(
+    (Pointer<Void> _, double fraction) => report(fileStep, fraction),
+  );
   final stageProgress = NativeCallable<ProgressFn>.isolateLocal(
-      (Pointer<Void> _, int stage, double fraction) => report(RunStep.values[RunStep.analyze.index + stage], fraction));
+    (Pointer<Void> _, int stage, double fraction) => report(RunStep.values[RunStep.analyze.index + stage], fraction),
+  );
   final segments = NativeCallable<SegmentsFn>.isolateLocal(
-      (Pointer<Void> _, Pointer<Utf8> json) => out.send(Previews(json.toDartString())));
+    (Pointer<Void> _, Pointer<Utf8> json) => out.send(Previews(json.toDartString())),
+  );
 
   var engine = nullptr.cast<SillokEngine>();
   var job = nullptr.cast<SillokJob>();
@@ -184,12 +187,15 @@ Future<void> _work((SendPort, JobRequest) start) async {
     out.send(job.address);
 
     native.check(native.jobOnSegments(job, segments.nativeFunction, nullptr));
-    native.check(withUtf8(request.source, (path) => native.jobPushFile(job, path, fileProgress.nativeFunction, nullptr)));
+    native.check(
+      withUtf8(request.source, (path) => native.jobPushFile(job, path, fileProgress.nativeFunction, nullptr)),
+    );
     native.check(native.jobEndAudio(job));
     fileStep = RunStep.copy;
     report(RunStep.copy, 0);
     native.check(
-        withUtf8(request.copyPath, (path) => native.jobSaveAudio(job, path, fileProgress.nativeFunction, nullptr)));
+      withUtf8(request.copyPath, (path) => native.jobSaveAudio(job, path, fileProgress.nativeFunction, nullptr)),
+    );
     final transcript = native.takeString((json) => native.jobRun(job, stageProgress.nativeFunction, nullptr, json));
     enter(null);
     out.send(JobDone(transcript, timings));

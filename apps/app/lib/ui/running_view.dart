@@ -80,12 +80,16 @@ class _RunningViewState extends State<RunningView> {
           ),
         );
         Widget preview(int i) => Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text.rich(TextSpan(children: [
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text.rich(
+            TextSpan(
+              children: [
                 TextSpan(text: '${formatTime(previews[i].startMs)}  ', style: theme.textTheme.bodySmall),
                 TextSpan(text: previews[i].text),
-              ])),
-            );
+              ],
+            ),
+          ),
+        );
         final cancel = Padding(
           padding: const EdgeInsets.all(16),
           child: Align(
@@ -107,10 +111,10 @@ class _RunningViewState extends State<RunningView> {
                 itemBuilder: (context, i) => i == 0
                     ? header
                     : i == 1
-                        ? const Divider(height: 1)
-                        : i == previews.length + 2
-                            ? cancel
-                            : preview(i - 2),
+                    ? const Divider(height: 1)
+                    : i == previews.length + 2
+                    ? cancel
+                    : preview(i - 2),
               );
             }
             return Column(

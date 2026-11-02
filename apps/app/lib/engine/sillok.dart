@@ -11,12 +11,12 @@ class ModelFile {
   const ModelFile({required this.file, required this.url, required this.size, required this.sha256, required this.zip});
 
   factory ModelFile.fromJson(Map<String, dynamic> json) => ModelFile(
-        file: json['file'] as String,
-        url: json['url'] as String,
-        size: (json['size'] as num).toInt(),
-        sha256: json['sha256'] as String,
-        zip: json['zip'] as bool,
-      );
+    file: json['file'] as String,
+    url: json['url'] as String,
+    size: (json['size'] as num).toInt(),
+    sha256: json['sha256'] as String,
+    zip: json['zip'] as bool,
+  );
 
   final String file;
   final String url;
@@ -38,13 +38,13 @@ class CatalogModel {
   });
 
   factory CatalogModel.fromJson(Map<String, dynamic> json) => CatalogModel(
-        id: json['id'] as String,
-        role: json['role'] as String,
-        family: json['family'] as String,
-        quantization: json['quantization'] as String,
-        recommended: json['recommended'] as bool,
-        files: [for (final file in json['files'] as List) ModelFile.fromJson(file as Map<String, dynamic>)],
-      );
+    id: json['id'] as String,
+    role: json['role'] as String,
+    family: json['family'] as String,
+    quantization: json['quantization'] as String,
+    recommended: json['recommended'] as bool,
+    files: [for (final file in json['files'] as List) ModelFile.fromJson(file as Map<String, dynamic>)],
+  );
 
   final String id;
   final String role;
@@ -87,45 +87,50 @@ abstract final class Sillok {
   static String get version => _native.version().toDartString();
 
   static List<CatalogModel> catalog() => [
-        for (final model in jsonDecode(_native.takeString(_native.modelCatalog)) as List)
-          CatalogModel.fromJson(model as Map<String, dynamic>),
-      ];
+    for (final model in jsonDecode(_native.takeString(_native.modelCatalog)) as List)
+      CatalogModel.fromJson(model as Map<String, dynamic>),
+  ];
 
   /// The models an engine with [transcriptionModel] (null: the recommended
   /// one) uses, one per role.
-  static List<CatalogModel> engineModels(String? transcriptionModel) =>
-      withUtf8(transcriptionModel ?? '', (id) => [
-            for (final model in jsonDecode(_native.takeString((out) => _native.engineModels(id, out))) as List)
-              CatalogModel.fromJson(model as Map<String, dynamic>),
-          ]);
+  static List<CatalogModel> engineModels(String? transcriptionModel) => withUtf8(
+    transcriptionModel ?? '',
+    (id) => [
+      for (final model in jsonDecode(_native.takeString((out) => _native.engineModels(id, out))) as List)
+        CatalogModel.fromJson(model as Map<String, dynamic>),
+    ],
+  );
 
   /// Checks the files in [modelsDir]; [verifyHash] reads every file.
-  static List<FileStatus> check(String modelsDir, {required bool verifyHash}) =>
-      withUtf8(modelsDir, (dir) => [
-            for (final entry
-                in jsonDecode(_native.takeString((out) => _native.modelCheck(dir, verifyHash ? 1 : 0, out))) as List)
-              FileStatus(
-                model: entry['model'] as String,
-                file: entry['file'] as String,
-                status: entry['status'] as String,
-              ),
-          ]);
+  static List<FileStatus> check(String modelsDir, {required bool verifyHash}) => withUtf8(
+    modelsDir,
+    (dir) => [
+      for (final entry
+          in jsonDecode(_native.takeString((out) => _native.modelCheck(dir, verifyHash ? 1 : 0, out))) as List)
+        FileStatus(model: entry['model'] as String, file: entry['file'] as String, status: entry['status'] as String),
+    ],
+  );
 
   static List<ComputeDevice> devices() => [
-        for (final device in jsonDecode(_native.takeString(_native.devices)) as List)
-          ComputeDevice(
-            name: device['name'] as String,
-            description: device['description'] as String,
-            type: device['type'] as String,
-            memoryTotal: (device['memory_total'] as num).toInt(),
-          ),
-      ];
+    for (final device in jsonDecode(_native.takeString(_native.devices)) as List)
+      ComputeDevice(
+        name: device['name'] as String,
+        description: device['description'] as String,
+        type: device['type'] as String,
+        memoryTotal: (device['memory_total'] as num).toInt(),
+      ),
+  ];
 
   /// The transcript as "txt", "srt" or "json"; [speakerLabel] names unnamed
   /// speakers, with {n} for the number.
-  static String export(String transcriptJson, String format, String speakerLabel) =>
-      withUtf8(transcriptJson, (transcript) => withUtf8(format, (kind) => withUtf8(
-            jsonEncode({'speaker_label': speakerLabel}),
-            (options) => _native.takeString((out) => _native.export(transcript, kind, options, out)),
-          )));
+  static String export(String transcriptJson, String format, String speakerLabel) => withUtf8(
+    transcriptJson,
+    (transcript) => withUtf8(
+      format,
+      (kind) => withUtf8(
+        jsonEncode({'speaker_label': speakerLabel}),
+        (options) => _native.takeString((out) => _native.export(transcript, kind, options, out)),
+      ),
+    ),
+  );
 }

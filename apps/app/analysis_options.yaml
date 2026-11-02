@@ -7,3 +7,6 @@ analyzer:
     - ios/**
     - windows/**
     - macos/**
+
+formatter:
+  page_width: 120

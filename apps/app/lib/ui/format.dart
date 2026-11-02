@@ -34,25 +34,25 @@ String formatDate(int ms) {
 }
 
 String stepName(AppLocalizations l, RunStep step) => switch (step) {
-      RunStep.read => l.stepRead,
-      RunStep.copy => l.stepCopy,
-      RunStep.analyze => l.stepAnalyze,
-      RunStep.transcribe => l.stepTranscribe,
-      RunStep.diarize => l.stepDiarize,
-    };
+  RunStep.read => l.stepRead,
+  RunStep.copy => l.stepCopy,
+  RunStep.analyze => l.stepAnalyze,
+  RunStep.transcribe => l.stepTranscribe,
+  RunStep.diarize => l.stepDiarize,
+};
 
 String languageName(AppLocalizations l, String code) => switch (code) {
-      'auto' => l.languageAuto,
-      'ko' => l.languageKo,
-      'en' => l.languageEn,
-      _ => code,
-    };
+  'auto' => l.languageAuto,
+  'ko' => l.languageKo,
+  'en' => l.languageEn,
+  _ => code,
+};
 
 String errorText(AppLocalizations l, RunError error) => switch (error.status) {
-      Status.mediaError => l.errorUnsupportedFile(error.message),
-      Status.modelError => l.errorModel(error.message),
-      _ => l.errorEngine(error.message),
-    };
+  Status.mediaError => l.errorUnsupportedFile(error.message),
+  Status.modelError => l.errorModel(error.message),
+  _ => l.errorEngine(error.message),
+};
 
 /// "large-v3 turbo / q5_0"
 String modelName(CatalogModel model) =>
@@ -74,6 +74,10 @@ String modelSummary(AppLocalizations l, CatalogModel model) {
     'q8_0' => l.quantQ8,
     _ => l.quantQ5,
   };
-  return l.modelSummary(accuracy, speeds[model.quantization == 'f16' ? speed - 1 : speed], quantization,
-      formatBytes(model.size));
+  return l.modelSummary(
+    accuracy,
+    speeds[model.quantization == 'f16' ? speed - 1 : speed],
+    quantization,
+    formatBytes(model.size),
+  );
 }

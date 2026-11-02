@@ -108,7 +108,9 @@ class _TranscriptViewState extends State<TranscriptView> {
     if (changed && _follow && _playing) {
       final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(current));
       final context = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext : null;
-      if (context != null) Scrollable.ensureVisible(context, alignment: 0.3, duration: const Duration(milliseconds: 200));
+      if (context != null) {
+        Scrollable.ensureVisible(context, alignment: 0.3, duration: const Duration(milliseconds: 200));
+      }
     }
   }
 
@@ -174,9 +176,11 @@ class _TranscriptViewState extends State<TranscriptView> {
               if (meta.durationMs > 0)
                 Text(l.infoTotal(formatTime(total), (total / meta.durationMs).toStringAsFixed(2))),
               if (transcription != null)
-                Text(l.infoDevice(transcription.fellBackToCpu
-                    ? l.infoFellBack(transcription.device)
-                    : transcription.device)),
+                Text(
+                  l.infoDevice(
+                    transcription.fellBackToCpu ? l.infoFellBack(transcription.device) : transcription.device,
+                  ),
+                ),
               for (final MapEntry(:key, :value) in stages.entries) Text('$key: ${value.name}'),
             ],
           ),
@@ -199,15 +203,24 @@ class _TranscriptViewState extends State<TranscriptView> {
         if (query.isEmpty || p.segments.any((s) => transcript.segments[s].text.toLowerCase().contains(query))) i,
     ];
     final selected = _selected;
-    return LayoutBuilder(builder: (context, constraints) {
-      // The pane's own width: a narrow pane beside the list counts too.
-      final narrow = constraints.maxWidth < 560;
-      return _page(l, theme, transcript, shown, query, selected, narrow);
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The pane's own width: a narrow pane beside the list counts too.
+        final narrow = constraints.maxWidth < 560;
+        return _page(l, theme, transcript, shown, query, selected, narrow);
+      },
+    );
   }
 
-  Widget _page(AppLocalizations l, ThemeData theme, Transcript transcript, List<int> shown, String query,
-      int? selected, bool narrow) {
+  Widget _page(
+    AppLocalizations l,
+    ThemeData theme,
+    Transcript transcript,
+    List<int> shown,
+    String query,
+    int? selected,
+    bool narrow,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -216,8 +229,12 @@ class _TranscriptViewState extends State<TranscriptView> {
           child: Row(
             children: [
               Expanded(
-                child: Text(widget.entry.meta.title,
-                    style: theme.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  widget.entry.meta.title,
+                  style: theme.textTheme.titleLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               IconButton(
                 tooltip: l.search,
@@ -231,8 +248,16 @@ class _TranscriptViewState extends State<TranscriptView> {
               // Narrow screens keep only search as a button.
               if (!narrow) ...[
                 if (transcript.speakers.isNotEmpty)
-                  IconButton(tooltip: l.speakers, icon: const Icon(Icons.people_outline), onPressed: () => _renameSpeakers(l)),
-                IconButton(tooltip: l.copyText, icon: const Icon(Icons.copy_all_outlined), onPressed: () => _copyText(l)),
+                  IconButton(
+                    tooltip: l.speakers,
+                    icon: const Icon(Icons.people_outline),
+                    onPressed: () => _renameSpeakers(l),
+                  ),
+                IconButton(
+                  tooltip: l.copyText,
+                  icon: const Icon(Icons.copy_all_outlined),
+                  onPressed: () => _copyText(l),
+                ),
                 IconButton(tooltip: l.info, icon: const Icon(Icons.info_outline), onPressed: () => _showInfo(l)),
               ],
               ResultMenu(
@@ -264,14 +289,14 @@ class _TranscriptViewState extends State<TranscriptView> {
           child: transcript.segments.isEmpty
               ? Center(child: Text(l.resultEmpty))
               : shown.isEmpty
-                  ? Center(child: Text(l.searchNone))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [for (final i in shown) _paragraph(l, theme, transcript, i, query)],
-                      ),
-                    ),
+              ? Center(child: Text(l.searchNone))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [for (final i in shown) _paragraph(l, theme, transcript, i, query)],
+                  ),
+                ),
         ),
         if (selected != null) _selectedCard(l, theme, transcript.segments[selected]),
         _playerBar(l, narrow),
@@ -295,12 +320,14 @@ class _TranscriptViewState extends State<TranscriptView> {
             style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary),
           ),
           Text.rich(
-            TextSpan(children: [
-              for (final s in paragraph.segments) ...[
-                ..._segmentSpans(theme, transcript.segments[s].text, s, query),
-                const TextSpan(text: ' '),
+            TextSpan(
+              children: [
+                for (final s in paragraph.segments) ...[
+                  ..._segmentSpans(theme, transcript.segments[s].text, s, query),
+                  const TextSpan(text: ' '),
+                ],
               ],
-            ]),
+            ),
             style: theme.textTheme.bodyLarge,
           ),
         ],
@@ -314,8 +341,8 @@ class _TranscriptViewState extends State<TranscriptView> {
     final background = segment == _selected
         ? theme.colorScheme.tertiaryContainer
         : segment == _current && _playing
-            ? theme.colorScheme.secondaryContainer
-            : null;
+        ? theme.colorScheme.secondaryContainer
+        : null;
     final style = TextStyle(backgroundColor: background);
     final recognizer = _recognizers[segment];
     if (query.isEmpty) return [TextSpan(text: text, style: style, recognizer: recognizer)];
@@ -324,11 +351,13 @@ class _TranscriptViewState extends State<TranscriptView> {
     var start = 0;
     for (var at = lower.indexOf(query); at >= 0; at = lower.indexOf(query, at + query.length)) {
       if (at > start) spans.add(TextSpan(text: text.substring(start, at), style: style, recognizer: recognizer));
-      spans.add(TextSpan(
-        text: text.substring(at, at + query.length),
-        style: style.copyWith(backgroundColor: theme.colorScheme.primaryContainer, fontWeight: FontWeight.bold),
-        recognizer: recognizer,
-      ));
+      spans.add(
+        TextSpan(
+          text: text.substring(at, at + query.length),
+          style: style.copyWith(backgroundColor: theme.colorScheme.primaryContainer, fontWeight: FontWeight.bold),
+          recognizer: recognizer,
+        ),
+      );
       start = at + query.length;
     }
     if (start < text.length) spans.add(TextSpan(text: text.substring(start), style: style, recognizer: recognizer));
@@ -336,37 +365,42 @@ class _TranscriptViewState extends State<TranscriptView> {
   }
 
   Widget _selectedCard(AppLocalizations l, ThemeData theme, Segment segment) => Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(l.segmentInfo(formatPreciseTime(segment.startMs), formatPreciseTime(segment.endMs),
-                    languageName(l, segment.language))),
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l.segmentInfo(
+                formatPreciseTime(segment.startMs),
+                formatPreciseTime(segment.endMs),
+                languageName(l, segment.language),
               ),
-              IconButton(
-                tooltip: l.segmentPlay,
-                icon: const Icon(Icons.play_arrow),
-                onPressed: () => _playFrom(segment.startMs),
-              ),
-              IconButton(
-                tooltip: l.segmentCopy,
-                icon: const Icon(Icons.copy),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: segment.text));
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.copied)));
-                },
-              ),
-              IconButton(
-                tooltip: l.close,
-                icon: const Icon(Icons.close),
-                onPressed: () => setState(() => _selected = null),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          IconButton(
+            tooltip: l.segmentPlay,
+            icon: const Icon(Icons.play_arrow),
+            onPressed: () => _playFrom(segment.startMs),
+          ),
+          IconButton(
+            tooltip: l.segmentCopy,
+            icon: const Icon(Icons.copy),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: segment.text));
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.copied)));
+            },
+          ),
+          IconButton(
+            tooltip: l.close,
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() => _selected = null),
+          ),
+        ],
+      ),
+    ),
+  );
 
   /// One row on wide screens; on narrow ones the slider gets its own.
   Widget _playerBar(AppLocalizations l, bool narrow) {
@@ -381,10 +415,12 @@ class _TranscriptViewState extends State<TranscriptView> {
       max: (total > 0 ? total : 1).toDouble(),
       onChanged: (value) => _player.seek(Duration(milliseconds: value.round())),
     );
-    final time = Text('${formatTime(_position.inMilliseconds)} / ${formatTime(total)}',
-        maxLines: 1, overflow: TextOverflow.ellipsis);
-    final follow =
-        FilterChip(label: Text(l.follow), selected: _follow, onSelected: (v) => setState(() => _follow = v));
+    final time = Text(
+      '${formatTime(_position.inMilliseconds)} / ${formatTime(total)}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    final follow = FilterChip(label: Text(l.follow), selected: _follow, onSelected: (v) => setState(() => _follow = v));
     return SafeArea(
       top: false,
       child: Padding(
@@ -394,10 +430,24 @@ class _TranscriptViewState extends State<TranscriptView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   slider,
-                  Row(children: [play, Expanded(child: time), follow]),
+                  Row(
+                    children: [
+                      play,
+                      Expanded(child: time),
+                      follow,
+                    ],
+                  ),
                 ],
               )
-            : Row(children: [play, Expanded(child: slider), time, const SizedBox(width: 8), follow]),
+            : Row(
+                children: [
+                  play,
+                  Expanded(child: slider),
+                  time,
+                  const SizedBox(width: 8),
+                  follow,
+                ],
+              ),
       ),
     );
   }
@@ -439,7 +489,11 @@ class _SpeakersDialogState extends State<_SpeakersDialog> {
               Row(
                 children: [
                   Expanded(child: TextField(controller: value)),
-                  IconButton(tooltip: l.speakerListen, icon: const Icon(Icons.volume_up_outlined), onPressed: () => widget.onListen(key)),
+                  IconButton(
+                    tooltip: l.speakerListen,
+                    icon: const Icon(Icons.volume_up_outlined),
+                    onPressed: () => widget.onListen(key),
+                  ),
                 ],
               ),
           ],

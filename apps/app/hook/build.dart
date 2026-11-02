@@ -33,7 +33,9 @@ void main(List<String> args) async {
     // the hook's own directory pass; there the build goes to a short one.
     final localAppData = Platform.environment['LOCALAPPDATA'];
     final buildDir = os == OS.windows && Platform.isWindows && localAppData != null
-        ? Directory('$localAppData\\sillok\\build\\${input.outputDirectory.pathSegments.lastWhere((s) => s.isNotEmpty)}\\').uri
+        ? Directory(
+            '$localAppData\\sillok\\build\\${input.outputDirectory.pathSegments.lastWhere((s) => s.isNotEmpty)}\\',
+          ).uri
         : input.outputDirectory.resolve('cmake/');
 
     final defines = <String, String?>{
@@ -47,7 +49,8 @@ void main(List<String> args) async {
       // The GPU through Vulkan; the app keeps the CPU as Android's default.
       if (os == OS.android) 'SILLOK_VULKAN': 'ON',
       if (os == OS.android && code.targetArchitecture == Architecture.x64)
-        for (final feature in ['GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_FMA', 'GGML_F16C', 'GGML_BMI2']) feature: 'ON',
+        for (final feature in ['GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_FMA', 'GGML_F16C', 'GGML_BMI2'])
+          feature: 'ON',
       // Windows: AVX2 rather than the build machine's CPU, and the C runtime
       // inside the DLLs.
       if (os == OS.windows) ...{
@@ -78,12 +81,9 @@ void main(List<String> args) async {
     final ffmpeg = Directory.fromUri(buildDir.resolve('third_party/ffmpeg/install/'));
     void add(String name, File file) {
       if (!file.existsSync()) throw StateError('${file.path} was not built');
-      output.assets.code.add(CodeAsset(
-        package: input.packageName,
-        name: name,
-        linkMode: DynamicLoadingBundled(),
-        file: file.uri,
-      ));
+      output.assets.code.add(
+        CodeAsset(package: input.packageName, name: name, linkMode: DynamicLoadingBundled(), file: file.uri),
+      );
     }
 
     // The library the app binds to (lib/engine/native.dart), then FFmpeg's,
@@ -124,7 +124,11 @@ File _library(Directory dir, String name, OS os) {
   final files = dir
       .listSync()
       .whereType<File>()
-      .where((f) => pattern.hasMatch(f.uri.pathSegments.last) && FileSystemEntity.typeSync(f.path, followLinks: false) == FileSystemEntityType.file)
+      .where(
+        (f) =>
+            pattern.hasMatch(f.uri.pathSegments.last) &&
+            FileSystemEntity.typeSync(f.path, followLinks: false) == FileSystemEntityType.file,
+      )
       .toList();
   if (files.isEmpty) throw StateError('lib$name not found in ${dir.path}');
   return files.first;

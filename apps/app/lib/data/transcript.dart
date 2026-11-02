@@ -6,12 +6,12 @@ class Segment {
   const Segment({required this.startMs, required this.endMs, required this.text, required this.language, this.speaker});
 
   factory Segment.fromJson(Map<String, dynamic> json) => Segment(
-        startMs: (json['start_ms'] as num).toInt(),
-        endMs: (json['end_ms'] as num).toInt(),
-        text: (json['text'] as String).trim(),
-        language: json['language'] as String? ?? '',
-        speaker: (json['speaker'] as num?)?.toInt(),
-      );
+    startMs: (json['start_ms'] as num).toInt(),
+    endMs: (json['end_ms'] as num).toInt(),
+    text: (json['text'] as String).trim(),
+    language: json['language'] as String? ?? '',
+    speaker: (json['speaker'] as num?)?.toInt(),
+  );
 
   final int startMs;
   final int endMs;
@@ -21,8 +21,9 @@ class Segment {
 }
 
 /// Segments in a preview from the library (a JSON array).
-List<Segment> parseSegments(String json) =>
-    [for (final segment in jsonDecode(json) as List) Segment.fromJson(segment as Map<String, dynamic>)];
+List<Segment> parseSegments(String json) => [
+  for (final segment in jsonDecode(json) as List) Segment.fromJson(segment as Map<String, dynamic>),
+];
 
 /// What ran a stage: the model and the device, as the library reports.
 class StageInfo {
@@ -35,9 +36,7 @@ class StageInfo {
 
 class Transcript {
   Transcript(this._json)
-      : segments = [
-          for (final segment in _json['segments'] as List) Segment.fromJson(segment as Map<String, dynamic>),
-        ];
+    : segments = [for (final segment in _json['segments'] as List) Segment.fromJson(segment as Map<String, dynamic>)];
 
   factory Transcript.parse(String text) => Transcript(jsonDecode(text) as Map<String, dynamic>);
 
@@ -48,19 +47,19 @@ class Transcript {
 
   /// Speaker ids with their names; a null name is unnamed.
   Map<int, String?> get speakers => {
-        for (final speaker in _json['speakers'] as List? ?? const [])
-          (speaker['id'] as num).toInt(): speaker['name'] as String?,
-      };
+    for (final speaker in _json['speakers'] as List? ?? const [])
+      (speaker['id'] as num).toInt(): speaker['name'] as String?,
+  };
 
   /// Stages ("voice_detection", "transcription", "diarization") and what ran them.
   Map<String, StageInfo> get stages => {
-        for (final MapEntry(:key, :value) in (_json['models'] as Map<String, dynamic>? ?? const {}).entries)
-          key: StageInfo(
-            name: value['name'] as String? ?? '',
-            device: value['device'] as String? ?? '',
-            fellBackToCpu: value['fell_back_to_cpu'] as bool? ?? false,
-          ),
-      };
+    for (final MapEntry(:key, :value) in (_json['models'] as Map<String, dynamic>? ?? const {}).entries)
+      key: StageInfo(
+        name: value['name'] as String? ?? '',
+        device: value['device'] as String? ?? '',
+        fellBackToCpu: value['fell_back_to_cpu'] as bool? ?? false,
+      ),
+  };
 
   /// A copy with speaker [id] named [name] (null or blank: unnamed).
   Transcript renamed(int id, String? name) {

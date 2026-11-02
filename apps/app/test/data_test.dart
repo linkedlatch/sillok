@@ -19,20 +19,26 @@ const _document = '''
 void main() {
   test('paragraphs follow speakers, or pauses without them', () {
     final transcript = Transcript.parse(_document);
-    expect([for (final p in paragraphs(transcript.segments)) p.segments], [
-      [0],
-      [1],
-      [2],
-    ]);
+    expect(
+      [for (final p in paragraphs(transcript.segments)) p.segments],
+      [
+        [0],
+        [1],
+        [2],
+      ],
+    );
     const plain = [
       Segment(startMs: 0, endMs: 1000, text: 'a', language: 'en'),
       Segment(startMs: 1500, endMs: 2000, text: 'b', language: 'en'),
       Segment(startMs: 5000, endMs: 6000, text: 'c', language: 'en'),
     ];
-    expect([for (final p in paragraphs(plain)) p.segments], [
-      [0, 1],
-      [2],
-    ]);
+    expect(
+      [for (final p in paragraphs(plain)) p.segments],
+      [
+        [0, 1],
+        [2],
+      ],
+    );
   });
 
   test('renaming a speaker keeps every other field', () {
@@ -45,11 +51,20 @@ void main() {
   });
 
   test('settings round-trip and glossary parsing', () {
-    final settings = JobSettings(language: 'ko', diarize: false, glossary: parseGlossary('Kubernetes, 실록\n gRPC \n'), gpuIndex: 0);
+    final settings = JobSettings(
+      language: 'ko',
+      diarize: false,
+      glossary: parseGlossary('Kubernetes, 실록\n gRPC \n'),
+      gpuIndex: 0,
+    );
     expect(settings.glossary, ['Kubernetes', '실록', 'gRPC']);
     final again = JobSettings.fromJson(settings.toJson());
     expect(again.toJson(), settings.toJson());
-    expect(again.options, {'language': 'ko', 'diarize': false, 'glossary': ['Kubernetes', '실록', 'gRPC']});
+    expect(again.options, {
+      'language': 'ko',
+      'diarize': false,
+      'glossary': ['Kubernetes', '실록', 'gRPC'],
+    });
     expect(again.copyWith(gpuIndex: () => null).gpuIndex, isNull);
   });
 
@@ -63,7 +78,10 @@ void main() {
     expect(first, '20261101-093005');
     expect(second, '20261101-093005-1');
     await store.writeTranscript(first, Transcript.parse(_document));
-    await store.writeMeta(first, const JobMeta(title: 'Lecture', source: 'lecture.m4a', createdMs: 1, durationMs: 12000));
+    await store.writeMeta(
+      first,
+      const JobMeta(title: 'Lecture', source: 'lecture.m4a', createdMs: 1, durationMs: 12000),
+    );
     await store.removeUnfinished();
     expect(store.dirOf(second).existsSync(), isFalse);
     final library = await store.list();

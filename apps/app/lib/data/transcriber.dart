@@ -17,12 +17,12 @@ class QueueItem {
   const QueueItem({required this.key, required this.path, required this.name, required this.settings, this.error});
 
   factory QueueItem.fromJson(Map<String, dynamic> json) => QueueItem(
-        key: json['key'] as String,
-        path: json['path'] as String,
-        name: json['name'] as String,
-        settings: JobSettings.fromJson(json['settings'] as Map<String, dynamic>),
-        error: json['error'] == null ? null : RunError.fromJson(json['error'] as Map<String, dynamic>),
-      );
+    key: json['key'] as String,
+    path: json['path'] as String,
+    name: json['name'] as String,
+    settings: JobSettings.fromJson(json['settings'] as Map<String, dynamic>),
+    error: json['error'] == null ? null : RunError.fromJson(json['error'] as Map<String, dynamic>),
+  );
 
   final String key;
   final String path;
@@ -30,11 +30,15 @@ class QueueItem {
   final JobSettings settings;
   final RunError? error;
 
-  QueueItem withError(RunError? error) =>
-      QueueItem(key: key, path: path, name: name, settings: settings, error: error);
+  QueueItem withError(RunError? error) => QueueItem(key: key, path: path, name: name, settings: settings, error: error);
 
-  Map<String, Object?> toJson() =>
-      {'key': key, 'path': path, 'name': name, 'settings': settings.toJson(), 'error': error?.toJson()};
+  Map<String, Object?> toJson() => {
+    'key': key,
+    'path': path,
+    'name': name,
+    'settings': settings.toJson(),
+    'error': error?.toJson(),
+  };
 }
 
 /// Why a file failed: a sillok status ([Status]) and the library's message.

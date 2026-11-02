@@ -11,12 +11,12 @@ class JobSettings {
   });
 
   factory JobSettings.fromJson(Map<String, dynamic> json) => JobSettings(
-        language: json['language'] as String? ?? 'auto',
-        diarize: json['diarize'] as bool? ?? true,
-        glossary: [for (final term in json['glossary'] as List? ?? const []) term as String],
-        transcriptionModel: json['transcription_model'] as String?,
-        gpuIndex: (json['gpu_index'] as num?)?.toInt(),
-      );
+    language: json['language'] as String? ?? 'auto',
+    diarize: json['diarize'] as bool? ?? true,
+    glossary: [for (final term in json['glossary'] as List? ?? const []) term as String],
+    transcriptionModel: json['transcription_model'] as String?,
+    gpuIndex: (json['gpu_index'] as num?)?.toInt(),
+  );
 
   /// "auto" (Korean and English), "ko" or "en".
   final String language;
@@ -36,27 +36,28 @@ class JobSettings {
     List<String>? glossary,
     String? Function()? transcriptionModel,
     int? Function()? gpuIndex,
-  }) =>
-      JobSettings(
-        language: language ?? this.language,
-        diarize: diarize ?? this.diarize,
-        glossary: glossary ?? this.glossary,
-        transcriptionModel: transcriptionModel != null ? transcriptionModel() : this.transcriptionModel,
-        gpuIndex: gpuIndex != null ? gpuIndex() : this.gpuIndex,
-      );
+  }) => JobSettings(
+    language: language ?? this.language,
+    diarize: diarize ?? this.diarize,
+    glossary: glossary ?? this.glossary,
+    transcriptionModel: transcriptionModel != null ? transcriptionModel() : this.transcriptionModel,
+    gpuIndex: gpuIndex != null ? gpuIndex() : this.gpuIndex,
+  );
 
   /// The job options for the library.
   Map<String, Object?> get options => {'language': language, 'diarize': diarize, 'glossary': glossary};
 
   Map<String, Object?> toJson() => {
-        'language': language,
-        'diarize': diarize,
-        'glossary': glossary,
-        'transcription_model': transcriptionModel,
-        'gpu_index': gpuIndex,
-      };
+    'language': language,
+    'diarize': diarize,
+    'glossary': glossary,
+    'transcription_model': transcriptionModel,
+    'gpu_index': gpuIndex,
+  };
 }
 
 /// Terms typed one a line or separated by commas.
-List<String> parseGlossary(String text) =>
-    [for (final term in text.split(RegExp(r'[\n,]'))) if (term.trim().isNotEmpty) term.trim()];
+List<String> parseGlossary(String text) => [
+  for (final term in text.split(RegExp(r'[\n,]')))
+    if (term.trim().isNotEmpty) term.trim(),
+];

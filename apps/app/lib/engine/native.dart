@@ -68,20 +68,43 @@ external void _engineDestroy(Pointer<SillokEngine> engine);
 @Native<Int32 Function(Pointer<SillokEngine>, Pointer<Utf8>, Pointer<Pointer<SillokJob>>)>(symbol: 'sillok_job_create')
 external int _jobCreate(Pointer<SillokEngine> engine, Pointer<Utf8> options, Pointer<Pointer<SillokJob>> out);
 
-@Native<Int32 Function(Pointer<SillokJob>, Pointer<Utf8>, Pointer<NativeFunction<FileProgressFn>>, Pointer<Void>)>(symbol: 'sillok_job_push_file')
-external int _jobPushFile(Pointer<SillokJob> job, Pointer<Utf8> path, Pointer<NativeFunction<FileProgressFn>> progress, Pointer<Void> user);
+@Native<Int32 Function(Pointer<SillokJob>, Pointer<Utf8>, Pointer<NativeFunction<FileProgressFn>>, Pointer<Void>)>(
+  symbol: 'sillok_job_push_file',
+)
+external int _jobPushFile(
+  Pointer<SillokJob> job,
+  Pointer<Utf8> path,
+  Pointer<NativeFunction<FileProgressFn>> progress,
+  Pointer<Void> user,
+);
 
 @Native<Int32 Function(Pointer<SillokJob>)>(symbol: 'sillok_job_end_audio')
 external int _jobEndAudio(Pointer<SillokJob> job);
 
-@Native<Int32 Function(Pointer<SillokJob>, Pointer<Utf8>, Pointer<NativeFunction<FileProgressFn>>, Pointer<Void>)>(symbol: 'sillok_job_save_audio')
-external int _jobSaveAudio(Pointer<SillokJob> job, Pointer<Utf8> path, Pointer<NativeFunction<FileProgressFn>> progress, Pointer<Void> user);
+@Native<Int32 Function(Pointer<SillokJob>, Pointer<Utf8>, Pointer<NativeFunction<FileProgressFn>>, Pointer<Void>)>(
+  symbol: 'sillok_job_save_audio',
+)
+external int _jobSaveAudio(
+  Pointer<SillokJob> job,
+  Pointer<Utf8> path,
+  Pointer<NativeFunction<FileProgressFn>> progress,
+  Pointer<Void> user,
+);
 
-@Native<Int32 Function(Pointer<SillokJob>, Pointer<NativeFunction<SegmentsFn>>, Pointer<Void>)>(symbol: 'sillok_job_on_segments')
+@Native<Int32 Function(Pointer<SillokJob>, Pointer<NativeFunction<SegmentsFn>>, Pointer<Void>)>(
+  symbol: 'sillok_job_on_segments',
+)
 external int _jobOnSegments(Pointer<SillokJob> job, Pointer<NativeFunction<SegmentsFn>> callback, Pointer<Void> user);
 
-@Native<Int32 Function(Pointer<SillokJob>, Pointer<NativeFunction<ProgressFn>>, Pointer<Void>, Pointer<Pointer<Utf8>>)>(symbol: 'sillok_job_run')
-external int _jobRun(Pointer<SillokJob> job, Pointer<NativeFunction<ProgressFn>> progress, Pointer<Void> user, Pointer<Pointer<Utf8>> out);
+@Native<Int32 Function(Pointer<SillokJob>, Pointer<NativeFunction<ProgressFn>>, Pointer<Void>, Pointer<Pointer<Utf8>>)>(
+  symbol: 'sillok_job_run',
+)
+external int _jobRun(
+  Pointer<SillokJob> job,
+  Pointer<NativeFunction<ProgressFn>> progress,
+  Pointer<Void> user,
+  Pointer<Pointer<Utf8>> out,
+);
 
 @Native<Void Function(Pointer<SillokJob>)>(symbol: 'sillok_job_cancel')
 external void _jobCancel(Pointer<SillokJob> job);
@@ -107,15 +130,33 @@ final class NativeApi {
   int devices(Pointer<Pointer<Utf8>> out) => _devices(out);
   int engineCreate(Pointer<Utf8> config, Pointer<Pointer<SillokEngine>> out) => _engineCreate(config, out);
   void engineDestroy(Pointer<SillokEngine> engine) => _engineDestroy(engine);
-  int jobCreate(Pointer<SillokEngine> engine, Pointer<Utf8> options, Pointer<Pointer<SillokJob>> out) => _jobCreate(engine, options, out);
-  int jobPushFile(Pointer<SillokJob> job, Pointer<Utf8> path, Pointer<NativeFunction<FileProgressFn>> progress, Pointer<Void> user) => _jobPushFile(job, path, progress, user);
+  int jobCreate(Pointer<SillokEngine> engine, Pointer<Utf8> options, Pointer<Pointer<SillokJob>> out) =>
+      _jobCreate(engine, options, out);
+  int jobPushFile(
+    Pointer<SillokJob> job,
+    Pointer<Utf8> path,
+    Pointer<NativeFunction<FileProgressFn>> progress,
+    Pointer<Void> user,
+  ) => _jobPushFile(job, path, progress, user);
   int jobEndAudio(Pointer<SillokJob> job) => _jobEndAudio(job);
-  int jobSaveAudio(Pointer<SillokJob> job, Pointer<Utf8> path, Pointer<NativeFunction<FileProgressFn>> progress, Pointer<Void> user) => _jobSaveAudio(job, path, progress, user);
-  int jobOnSegments(Pointer<SillokJob> job, Pointer<NativeFunction<SegmentsFn>> callback, Pointer<Void> user) => _jobOnSegments(job, callback, user);
-  int jobRun(Pointer<SillokJob> job, Pointer<NativeFunction<ProgressFn>> progress, Pointer<Void> user, Pointer<Pointer<Utf8>> out) => _jobRun(job, progress, user, out);
+  int jobSaveAudio(
+    Pointer<SillokJob> job,
+    Pointer<Utf8> path,
+    Pointer<NativeFunction<FileProgressFn>> progress,
+    Pointer<Void> user,
+  ) => _jobSaveAudio(job, path, progress, user);
+  int jobOnSegments(Pointer<SillokJob> job, Pointer<NativeFunction<SegmentsFn>> callback, Pointer<Void> user) =>
+      _jobOnSegments(job, callback, user);
+  int jobRun(
+    Pointer<SillokJob> job,
+    Pointer<NativeFunction<ProgressFn>> progress,
+    Pointer<Void> user,
+    Pointer<Pointer<Utf8>> out,
+  ) => _jobRun(job, progress, user, out);
   void jobCancel(Pointer<SillokJob> job) => _jobCancel(job);
   void jobDestroy(Pointer<SillokJob> job) => _jobDestroy(job);
-  int export(Pointer<Utf8> transcript, Pointer<Utf8> format, Pointer<Utf8> options, Pointer<Pointer<Utf8>> out) => _export(transcript, format, options, out);
+  int export(Pointer<Utf8> transcript, Pointer<Utf8> format, Pointer<Utf8> options, Pointer<Pointer<Utf8>> out) =>
+      _export(transcript, format, options, out);
 
   /// Throws [SillokException] unless [status] is OK.
   void check(int status) {
