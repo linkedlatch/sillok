@@ -83,10 +83,19 @@ add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/th
 
 # NeMo-Speech.cpp: only the sources behind nemo_speech::asr::Diarizer, built
 # against the ggml above (docs/DESIGN.md D16). Its own CMake would add a second
-# ggml and pull in the NeMo ASR model and SentencePiece.
+# ggml and pull in the NeMo ASR model and SentencePiece. Its model loader reads
+# files with llama.cpp's llama_file/llama_mmap, from NeMo's own llama.cpp
+# submodule, the only one of its submodules fetched; llama.cpp's ggml is not
+# used.
 sillok_require_third_party(NeMo-Speech.cpp)
 set(nemo "${SILLOK_THIRD_PARTY_DIR}/NeMo-Speech.cpp/src")
+set(nemo_llama "${SILLOK_THIRD_PARTY_DIR}/NeMo-Speech.cpp/llama.cpp")
+if(NOT EXISTS "${nemo_llama}/src/llama-mmap.cpp")
+    message(FATAL_ERROR "${nemo_llama} is missing; run git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp")
+endif()
 add_library(nemo_diar STATIC
+    "${nemo_llama}/src/llama-mmap.cpp"
+    "${nemo}/runtime/ggml/llama_log_shim.cpp"
     "${nemo}/runtime/ggml/backend.cpp"
     "${nemo}/runtime/ggml/loader.cpp"
     "${nemo}/runtime/ggml/logging.cpp"
@@ -111,6 +120,7 @@ target_include_directories(nemo_diar SYSTEM PUBLIC
     "${nemo}/asr/features"
     "${nemo}/common"
     "${nemo}/runtime/ggml")
+target_include_directories(nemo_diar SYSTEM PRIVATE "${nemo_llama}/src")
 target_link_libraries(nemo_diar PUBLIC ggml)
 set_target_properties(nemo_diar PROPERTIES
     CXX_STANDARD 17

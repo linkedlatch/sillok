@@ -48,6 +48,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
+      - name: Fetch NeMo's llama.cpp
+        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         if: matrix.msvc_arch
         with:
@@ -79,6 +82,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
+      - name: Fetch NeMo's llama.cpp
+        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - name: Install CMake and Ninja
         run: scripts/ci/install-cmake.sh
       - name: Build for devices and the simulator
@@ -97,6 +103,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
+      - name: Fetch NeMo's llama.cpp
+        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - name: Install CMake, Ninja and the NDK
         run: |
           scripts/ci/install-cmake.sh

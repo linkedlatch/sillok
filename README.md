@@ -36,6 +36,25 @@ the integration tests: one of them fails if the cancel patch no longer takes
 effect; compare an auto-language run's output and time with the previous
 version for the other.
 
+To update a submodule to a release, fetch and check out its tag, then commit
+the submodule's new commit. NeMo's llama.cpp follows the commit NeMo records,
+so fetch it again after updating NeMo:
+
+```
+git -C third_party/NeMo-Speech.cpp fetch --depth 1 origin tag v0.4.0
+git -C third_party/NeMo-Speech.cpp checkout v0.4.0
+git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
+git add third_party/NeMo-Speech.cpp
+```
+
+whisper.cpp needs its patched files reset first
+(`git -C third_party/whisper.cpp checkout -- .`); CMake applies the patches
+again.
+
+After updating NeMo-Speech.cpp, compare the diarization (`ami` and
+`korean_speakers` in `scripts/eval/run_eval.py`) with the previous version, and
+check that the sources listed in `cmake/third_party.cmake` still build.
+
 ## Build
 
 Requirements: CMake 3.28+, a C++20 compiler, git, and `make` with a POSIX
@@ -43,12 +62,15 @@ shell for FFmpeg's own build (on Windows: MSYS2 at `C:\msys64` with
 `pacman -S make diffutils`, building from an MSVC developer prompt); Vulkan
 SDK headers and `glslc` for `-DSILLOK_VULKAN=ON`.
 
-Clone without `--recursive` (or `--recurse-submodules`): NeMo-Speech.cpp's
-own submodules are unused, and shallow submodules are enough.
+Clone without `--recursive` (or `--recurse-submodules`): of NeMo-Speech.cpp's
+own submodules, only llama.cpp is used (its file reading, for NeMo's model
+loader; its ggml is not built, whisper.cpp's is the only one), so it is
+fetched by itself. Shallow submodules are enough.
 
 ```
 git clone https://github.com/linkedlatch/sillok.git && cd sillok
 git submodule update --init --depth 1
+git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build
