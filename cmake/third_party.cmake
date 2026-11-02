@@ -73,23 +73,6 @@ set(WHISPER_COREML ${SILLOK_COREML} CACHE INTERNAL "")
 # whisper.cpp then has to fall back to its own encoder (see backends/whisper).
 set(WHISPER_COREML_ALLOW_FALLBACK ON CACHE INTERNAL "")
 set(GGML_VULKAN ${SILLOK_VULKAN} CACHE INTERNAL "")
-# Android has Vulkan's loader and C headers and glslc in the NDK, but not the
-# C++ headers or the SPIR-V package that ggml's Vulkan backend wants: those
-# come from the Khronos submodules, at the version of the Vulkan SDK that
-# the Windows build uses.
-if(ANDROID AND SILLOK_VULKAN)
-    foreach(headers Vulkan-Headers SPIRV-Headers)
-        sillok_require_third_party(${headers})
-    endforeach()
-    set(Vulkan_INCLUDE_DIR "${SILLOK_THIRD_PARTY_DIR}/Vulkan-Headers/include" CACHE PATH "" FORCE)
-    file(GLOB glslc "${CMAKE_ANDROID_NDK}/shader-tools/*/glslc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
-    if(NOT glslc)
-        message(FATAL_ERROR "no glslc in ${CMAKE_ANDROID_NDK}/shader-tools")
-    endif()
-    list(GET glslc 0 glslc)
-    set(Vulkan_GLSLC_EXECUTABLE "${glslc}" CACHE FILEPATH "" FORCE)
-    set(SPIRV-Headers_DIR "${PROJECT_SOURCE_DIR}/cmake/spirv-headers" CACHE PATH "" FORCE)
-endif()
 # Android and Windows have no OpenMP runtime the app could rely on (libomp.so,
 # libomp.dll with clang-cl, vcomp140.dll with MSVC); ggml's own thread pool
 # saves the app from shipping one.
@@ -97,10 +80,6 @@ if(ANDROID OR WIN32)
     set(GGML_OPENMP OFF CACHE INTERNAL "")
 endif()
 add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/third_party/whisper.cpp" EXCLUDE_FROM_ALL SYSTEM)
-if(ANDROID AND SILLOK_VULKAN)
-    # ggml includes SPIR-V's headers as if they were in the Vulkan SDK's.
-    target_include_directories(ggml-vulkan SYSTEM PRIVATE "${SILLOK_THIRD_PARTY_DIR}/SPIRV-Headers/include")
-endif()
 
 # NeMo-Speech.cpp: only the sources behind nemo_speech::asr::Diarizer, built
 # against the ggml above (docs/DESIGN.md D16). Its own CMake would add a second

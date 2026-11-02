@@ -338,9 +338,8 @@ class AppState extends ChangeNotifier {
     try {
       defaults = JobSettings.fromJson(jsonDecode(await _settingsFile.readAsString()) as Map<String, dynamic>);
     } on Object {
-      // A GPU when there is one (docs/DESIGN.md D15: the app chooses), except
-      // on phones, whose GPUs are often no faster than their CPUs with ggml.
-      defaults = JobSettings(gpuIndex: gpus.isEmpty || Platform.isAndroid ? null : 0);
+      // A GPU when there is one (docs/DESIGN.md D15: the app chooses).
+      defaults = JobSettings(gpuIndex: gpus.isEmpty ? null : 0);
     }
     if ((defaults.gpuIndex ?? -1) >= gpus.length) defaults = defaults.copyWith(gpuIndex: () => null);
   }

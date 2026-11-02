@@ -41,13 +41,14 @@ void main(List<String> args) async {
     final defines = <String, String?>{
       'SILLOK_BUILD_CLI': 'OFF',
       'SILLOK_BUILD_TESTS': 'OFF',
+      // Stated every time, so a build folder that once had it on (in its
+      // CMake cache) does not keep it; Windows turns it on below.
+      'SILLOK_VULKAN': 'OFF',
       if (os == OS.iOS || os == OS.macOS) 'SILLOK_COREML': 'ON',
       // Phones: ARMv8.2 with dot product and fp16 (the app checks the CPU).
       // x86_64 Android is only the emulator, which runs the host's AVX2.
       if (os == OS.android && code.targetArchitecture == Architecture.arm64)
         'GGML_CPU_ARM_ARCH': 'armv8.2-a+dotprod+fp16',
-      // The GPU through Vulkan; the app keeps the CPU as Android's default.
-      if (os == OS.android) 'SILLOK_VULKAN': 'ON',
       if (os == OS.android && code.targetArchitecture == Architecture.x64)
         for (final feature in ['GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_FMA', 'GGML_F16C', 'GGML_BMI2'])
           feature: 'ON',
@@ -102,13 +103,16 @@ void main(List<String> args) async {
       add('ffmpeg/$lib', place(_library(Directory('${ffmpeg.path}${os == OS.windows ? 'bin' : 'lib'}'), lib, os)));
     }
 
-    // Rebuild when the library's sources change.
+    // Rebuild when the library's sources change. Directories count too, so an
+    // added file (a new patch, say) is noticed, not only edits to known ones.
     for (final path in ['CMakeLists.txt', 'cmake', 'include', 'src', 'patches']) {
       final entity = FileSystemEntity.typeSync(root.resolve(path).toFilePath());
       if (entity == FileSystemEntityType.file) output.dependencies.add(root.resolve(path));
       if (entity != FileSystemEntityType.directory) continue;
-      for (final file in Directory.fromUri(root.resolve(path)).listSync(recursive: true)) {
-        if (file is File) output.dependencies.add(file.uri);
+      final sources = Directory.fromUri(root.resolve('$path/'));
+      output.dependencies.add(sources.uri);
+      for (final entry in sources.listSync(recursive: true)) {
+        output.dependencies.add(entry.uri);
       }
     }
   });
