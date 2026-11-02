@@ -23,7 +23,7 @@ src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Android, iOS, iPadOS, macOS, Windows)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
-third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest (submodules); nlohmann/json header
+third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
 scripts/                  fetching test audio, evaluation
 patches/                  local patches to the submodules (CMake applies them)
 ```

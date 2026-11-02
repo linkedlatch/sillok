@@ -1,7 +1,6 @@
 # Third-party code in third_party/: git submodules (`git submodule update
-# --init`, not recursive) and the nlohmann/json header. Only src/backends,
-# src/capi, apps and tests may link the targets defined here (docs/DESIGN.md
-# D1); src/core never sees them.
+# --init`, not recursive). Only src/backends, src/capi, apps and tests may link
+# the targets defined here (docs/DESIGN.md D1); src/core never sees them.
 
 set(SILLOK_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party")
 
@@ -39,11 +38,12 @@ function(sillok_apply_patches name)
     endforeach()
 endfunction()
 
-# nlohmann/json v3.12.0 (55f93686), single_include/nlohmann/json.hpp only:
-# used by the C ABI layer and the CLI.
+# nlohmann/json, single_include/nlohmann/json.hpp only: used by the C ABI layer
+# and the CLI.
+sillok_require_third_party(json)
 add_library(nlohmann_json INTERFACE)
 add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
-target_include_directories(nlohmann_json SYSTEM INTERFACE "${SILLOK_THIRD_PARTY_DIR}/json/include")
+target_include_directories(nlohmann_json SYSTEM INTERFACE "${SILLOK_THIRD_PARTY_DIR}/json/single_include")
 
 if(SILLOK_BUILD_TESTS)
     sillok_require_third_party(googletest)

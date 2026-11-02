@@ -15,3 +15,7 @@
 	path = third_party/ffmpeg
 	url = https://github.com/FFmpeg/FFmpeg.git
 	shallow = true
+[submodule "third_party/json"]
+	path = third_party/json
+	url = https://github.com/nlohmann/json.git
+	shallow = true
