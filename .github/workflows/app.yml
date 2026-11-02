@@ -34,6 +34,9 @@ jobs:
         working-directory: apps/app
         run: |
           flutter --disable-analytics
+          # The formatter reads the 120-column setting through
+          # analysis_options.yaml, which includes a package.
+          flutter pub get
           dart format --output=none --set-exit-if-changed lib/*.dart lib/data lib/engine lib/ui test integration_test hook
           flutter analyze
           flutter test
