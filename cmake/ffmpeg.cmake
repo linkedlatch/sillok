@@ -98,8 +98,10 @@ elseif(APPLE)
             list(APPEND ffmpeg_args --enable-cross-compile)
         endif()
     endif()
+    # Tools FFmpeg builds for itself use the host's compiler, which finds the
+    # SDK through xcode-select.
     list(APPEND ffmpeg_args
-        --target-os=darwin --arch=${arch} --cc=${CMAKE_C_COMPILER}
+        --target-os=darwin --arch=${arch} --cc=${CMAKE_C_COMPILER} --host-cc=/usr/bin/cc
         "--extra-cflags=-target ${target} -isysroot ${sdk}"
         "--extra-ldflags=-target ${target} -isysroot ${sdk}")
 elseif(MSVC)

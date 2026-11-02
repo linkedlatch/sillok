@@ -133,6 +133,8 @@ Map<String, String>? _vulkan(BuildInput input, Logger logger) {
   }
   return {
     'SILLOK_VULKAN': 'ON',
+    // The SDK's CMake packages (SPIRV-Headers), found through VULKAN_SDK otherwise.
+    'CMAKE_PREFIX_PATH': sdk,
     'Vulkan_INCLUDE_DIR': '$sdk/Include',
     'Vulkan_LIBRARY': '$sdk/Lib/vulkan-1.lib',
     'Vulkan_GLSLC_EXECUTABLE': '$sdk/Bin/glslc.exe',
