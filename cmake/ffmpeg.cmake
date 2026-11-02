@@ -65,24 +65,43 @@ if(ANDROID)
         --extra-cflags=--target=${CMAKE_C_COMPILER_TARGET}
         # Android 15 devices may use 16 KB pages.
         "--extra-ldflags=--target=${CMAKE_C_COMPILER_TARGET} -Wl,-z,max-page-size=16384")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    execute_process(COMMAND xcrun --sdk ${CMAKE_OSX_SYSROOT} --show-sdk-path
-        OUTPUT_VARIABLE sdk OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
-    set(target "arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET}")
-    if(sdk MATCHES "Simulator")
-        string(APPEND target "-simulator")
+elseif(APPLE)
+    # The SDK and architecture are given explicitly: the compiler may be the
+    # toolchain's own clang (Flutter's build hook), which finds no SDK by
+    # itself. Flutter builds macOS apps for both architectures.
+    if(IS_ABSOLUTE "${CMAKE_OSX_SYSROOT}")
+        set(sdk "${CMAKE_OSX_SYSROOT}")
+    else()
+        set(sdk_name "${CMAKE_OSX_SYSROOT}")
+        if(NOT sdk_name)
+            set(sdk_name macosx)
+        endif()
+        execute_process(COMMAND xcrun --sdk ${sdk_name} --show-sdk-path
+            OUTPUT_VARIABLE sdk OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    endif()
+    list(GET CMAKE_OSX_ARCHITECTURES 0 arch)
+    if(NOT arch)
+        set(arch ${CMAKE_SYSTEM_PROCESSOR})
+    endif()
+    if(arch STREQUAL "aarch64")
+        set(arch arm64)
+    endif()
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(target "${arch}-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        if(sdk MATCHES "Simulator")
+            string(APPEND target "-simulator")
+        endif()
+        list(APPEND ffmpeg_args --enable-cross-compile)
+    else()
+        set(target "${arch}-apple-macos${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        if(NOT arch STREQUAL CMAKE_HOST_SYSTEM_PROCESSOR)
+            list(APPEND ffmpeg_args --enable-cross-compile)
+        endif()
     endif()
     list(APPEND ffmpeg_args
-        --enable-cross-compile --target-os=darwin --arch=arm64 --cc=${CMAKE_C_COMPILER}
+        --target-os=darwin --arch=${arch} --cc=${CMAKE_C_COMPILER}
         "--extra-cflags=-target ${target} -isysroot ${sdk}"
         "--extra-ldflags=-target ${target} -isysroot ${sdk}")
-elseif(APPLE)
-    list(APPEND ffmpeg_args --cc=${CMAKE_C_COMPILER})
-    if(CMAKE_OSX_DEPLOYMENT_TARGET)
-        list(APPEND ffmpeg_args
-            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}
-            --extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-    endif()
 elseif(MSVC)
     # cl or clang-cl from the developer environment. Arm assembly would need
     # gas-preprocessor; without it FFmpeg uses its C code.
