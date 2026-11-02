@@ -18,7 +18,7 @@ app; the `sillok` CLI is one such app.
 include/sillok/sillok.h   the C ABI, the only public header
 src/core/                 model-independent logic, C++ standard library only
 src/backends/             one directory per model; models.cpp picks the models
-src/media/                 reading audio and video files with FFmpeg
+src/media/                FFmpeg: reading audio and video files, converting audio to 16 kHz mono
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Android, iOS, iPadOS, macOS, Windows)

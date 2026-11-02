@@ -9,7 +9,6 @@ add_library(sillok_core STATIC
     pipeline.cpp
     postprocess.cpp
     prompt.cpp
-    resampler.cpp
     segmenter.cpp
     sha256.cpp
     speakers.cpp

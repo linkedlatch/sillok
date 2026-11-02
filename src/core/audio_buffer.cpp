@@ -118,51 +118,9 @@ AudioBuffer& AudioBuffer::operator=(AudioBuffer&&) noexcept = default;
 
 SampleIndex AudioBuffer::size() const { return file_->size(); }
 
-void AudioBuffer::Push(std::span<const float> interleaved, int sample_rate,
-                       int channels) {
+void AudioBuffer::Push(std::span<const float> samples) {
   if (finished_) throw std::logic_error("audio already finished");
-  if (channels < 1 || channels > 64) {
-    throw std::invalid_argument("channel count must be in [1, 64]");
-  }
-  if (interleaved.size() % static_cast<std::size_t>(channels) != 0) {
-    throw std::invalid_argument("sample count is not a multiple of channels");
-  }
-  if (!resampler_) {
-    resampler_.emplace(sample_rate);  // validates the rate
-    sample_rate_ = sample_rate;
-    channels_ = channels;
-  } else if (sample_rate != sample_rate_ || channels != channels_) {
-    throw std::invalid_argument("sample rate or channels changed mid-stream");
-  }
-
-  const auto count = static_cast<std::size_t>(channels);
-  mono_.resize(interleaved.size() / count);
-  for (std::size_t frame = 0; frame < mono_.size(); ++frame) {
-    float sum = 0.0f;
-    for (std::size_t c = 0; c < count; ++c) {
-      sum += interleaved[frame * count + c];
-    }
-    mono_[frame] = sum / static_cast<float>(channels);
-  }
-  resampled_.clear();
-  resampler_->Process(mono_, resampled_);
-  Append(resampled_);
-}
-
-void AudioBuffer::Finish() {
-  if (finished_) return;
-  finished_ = true;
-  if (!resampler_) return;
-  resampled_.clear();
-  resampler_->Finish(resampled_);
-  Append(resampled_);
-  resampler_.reset();
-  mono_ = {};
-  resampled_ = {};
-}
-
-void AudioBuffer::Append(std::span<const float> mono) {
-  for (const float value : mono) file_->Append(ToInt16(value));
+  for (const float value : samples) file_->Append(ToInt16(value));
 }
 
 std::vector<float> AudioBuffer::Read(SampleRange range) const {

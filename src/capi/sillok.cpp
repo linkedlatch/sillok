@@ -28,6 +28,7 @@
 #include "core/files.hpp"
 #include "core/pipeline.hpp"
 #include "media/audio_file.hpp"
+#include "media/audio_input.hpp"
 
 namespace sillok {
 namespace {
@@ -95,11 +96,13 @@ struct sillok_job {
              sillok::PipelineOptions pipeline_options)
       : engine(std::move(engine_state)),
         options(std::move(pipeline_options)),
-        audio(engine->temp_dir) {}
+        audio(engine->temp_dir),
+        input(audio) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
   sillok::AudioBuffer audio;  // kept in a temporary file
+  sillok::AudioInput input;   // converts pushed audio into `audio`
   sillok::StopSource stop;
   bool ran = false;
   sillok_segments_fn on_segments = nullptr;
@@ -364,7 +367,7 @@ sillok_status sillok_job_push_audio(sillok_job* job, const float* samples,
     RequireArgument(!job->ran, "audio cannot be added after the job ran");
     RequireArgument(!job->audio.finished(),
                     "audio cannot be added after sillok_job_end_audio");
-    job->audio.Push({samples, frames * static_cast<size_t>(channels)},
+    job->input.Push({samples, frames * static_cast<size_t>(channels)},
                     sample_rate, channels);
     return SILLOK_OK;
   });
@@ -379,7 +382,7 @@ sillok_status sillok_job_push_file(sillok_job* job, const char* path,
     RequireArgument(!job->audio.finished(),
                     "audio cannot be added after sillok_job_end_audio");
     sillok::DecodeAudioFile(
-        sillok::PathFromUtf8(path), job->audio,
+        sillok::PathFromUtf8(path), job->input,
         [&](double fraction) {
           if (progress != nullptr) progress(user_data, fraction);
         },
@@ -408,7 +411,7 @@ sillok_status sillok_job_save_audio(sillok_job* job, const char* path,
 sillok_status sillok_job_end_audio(sillok_job* job) {
   return Guard([&] {
     RequireArgument(job != nullptr, "job is NULL");
-    job->audio.Finish();
+    job->input.Finish();
     return SILLOK_OK;
   });
 }
@@ -468,7 +471,7 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
     job->ran = true;
     sillok::ThrowIfStopped(job->stop.Token());
 
-    job->audio.Finish();
+    job->input.Finish();
     sillok::ExitSafeModels models(*job->engine->models);
     const sillok::Transcript transcript = sillok::RunPipeline(
         job->audio, job->options, models,

@@ -23,6 +23,13 @@ target_link_libraries(sillok_unit_tests PRIVATE sillok_fakes GTest::gtest_main)
 sillok_set_warnings(sillok_unit_tests)
 gtest_discover_tests(sillok_unit_tests)
 
+# Converting pushed audio to 16 kHz mono with FFmpeg.
+add_executable(sillok_media_tests unit/audio_input_test.cpp)
+target_link_libraries(sillok_media_tests PRIVATE sillok_media GTest::gtest_main)
+sillok_set_warnings(sillok_media_tests)
+sillok_copy_runtime_dlls(sillok_media_tests)
+gtest_discover_tests(sillok_media_tests)
+
 # The C ABI end to end, over the fake models.
 add_executable(sillok_capi_tests unit/capi_test.cpp fakes/fake_backend.cpp)
 target_link_libraries(sillok_capi_tests PRIVATE

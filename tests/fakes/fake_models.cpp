@@ -197,7 +197,7 @@ AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
     }
   }
   AudioBuffer audio;
-  audio.Push(pcm, kSampleRate, 1);
+  audio.Push(pcm);
   audio.Finish();
   return audio;
 }

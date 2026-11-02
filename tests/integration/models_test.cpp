@@ -30,8 +30,9 @@ const std::filesystem::path kAudio = SILLOK_TEST_AUDIO_DIR;
 std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1e9) {
   if (!std::filesystem::exists(path)) return {};
   AudioBuffer audio;
-  DecodeAudioFile(path, audio, {}, StopToken());
-  audio.Finish();
+  AudioInput input(audio);
+  DecodeAudioFile(path, input, {}, StopToken());
+  input.Finish();
   return audio.Read({0, std::min(audio.size(), static_cast<SampleIndex>(seconds * 16000))});
 }
 

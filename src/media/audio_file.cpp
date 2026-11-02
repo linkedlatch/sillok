@@ -124,7 +124,7 @@ void Interleave(const AVFrame& frame, std::vector<float>& out) {
 
 }  // namespace
 
-void DecodeAudioFile(const std::filesystem::path& path, AudioBuffer& audio,
+void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
                      const std::function<void(double)>& progress,
                      const StopToken& stop) {
   ConfigureLogging();
@@ -169,7 +169,7 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioBuffer& audio,
       if (error == AVERROR_INVALIDDATA) continue;
       if (error < 0) throw MediaError("cannot decode " + name + ": " + ErrorText(error));
       Interleave(*frame, samples);
-      audio.Push(samples, frame->sample_rate, frame->ch_layout.nb_channels);
+      input.Push(samples, frame->sample_rate, frame->ch_layout.nb_channels);
       av_frame_unref(frame.get());
     }
   };

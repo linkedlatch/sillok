@@ -7,6 +7,7 @@
 
 #include "core/audio_buffer.hpp"
 #include "core/cancel.hpp"
+#include "media/audio_input.hpp"
 
 namespace sillok {
 
@@ -17,10 +18,10 @@ class MediaError : public std::runtime_error {
 };
 
 // Decodes the first audio stream of the file at `path` (with FFmpeg) and
-// pushes it into `audio` in the file's own rate and channels, from the start
+// pushes it into `input` in the file's own rate and channels, from the start
 // of the file and without the encoder's priming samples. `progress` receives
 // the fraction of the file read.
-void DecodeAudioFile(const std::filesystem::path& path, AudioBuffer& audio,
+void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
                      const std::function<void(double)>& progress,
                      const StopToken& stop);
 

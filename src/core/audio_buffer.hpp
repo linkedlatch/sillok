@@ -3,18 +3,16 @@
 
 #include <filesystem>
 #include <memory>
-#include <optional>
 #include <span>
 #include <vector>
 
 #include "core/audio.hpp"
-#include "core/resampler.hpp"
 
 namespace sillok {
 
-// Recording converted to 16 kHz mono 16-bit samples and kept in a temporary
-// file, so that memory use does not grow with the length of the recording;
-// readers load only the range they need.
+// Recording as 16 kHz mono 16-bit samples, kept in a temporary file so that
+// memory use does not grow with the length of the recording; readers load
+// only the range they need. media/audio_input.hpp converts other formats.
 class AudioBuffer {
  public:
   // Creates the temporary file in `temp_dir`. Throws std::runtime_error if
@@ -25,11 +23,10 @@ class AudioBuffer {
   AudioBuffer(AudioBuffer&&) noexcept;
   AudioBuffer& operator=(AudioBuffer&&) noexcept;
 
-  // Appends `interleaved` (frames x channels values in [-1, 1]) recorded at
-  // `sample_rate`. Rate and channel count must not change between calls.
-  void Push(std::span<const float> interleaved, int sample_rate, int channels);
-  // Flushes the resampler. Push is not allowed afterwards.
-  void Finish();
+  // Appends 16 kHz mono samples in [-1, 1]; louder ones are clipped.
+  void Push(std::span<const float> samples);
+  // Ends the recording. Push is not allowed afterwards.
+  void Finish() { finished_ = true; }
 
   SampleIndex size() const;
   bool finished() const { return finished_; }
@@ -43,15 +40,8 @@ class AudioBuffer {
  private:
   class File;
 
-  void Append(std::span<const float> mono);
-
   std::unique_ptr<File> file_;
-  int sample_rate_ = 0;
-  int channels_ = 0;
   bool finished_ = false;
-  std::optional<Resampler> resampler_;
-  std::vector<float> mono_;
-  std::vector<float> resampled_;
 };
 
 }  // namespace sillok
