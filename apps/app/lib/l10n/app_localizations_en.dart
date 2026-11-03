@@ -386,7 +386,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMore => 'More';
 
   @override
-  String get verifyModels => 'Check the model files';
+  String get verifyModels => 'Check the model files for damage';
+
+  @override
+  String get verifyModelsHint =>
+      'Reads each downloaded model file through and compares it with the original. Damaged files are removed, to be downloaded again. Large files can take tens of seconds.';
 
   @override
   String get about => 'About';

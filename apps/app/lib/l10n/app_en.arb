@@ -333,7 +333,8 @@
     }
   },
   "settingsMore": "More",
-  "verifyModels": "Check the model files",
+  "verifyModels": "Check the model files for damage",
+  "verifyModelsHint": "Reads each downloaded model file through and compares it with the original. Damaged files are removed, to be downloaded again. Large files can take tens of seconds.",
   "about": "About",
   "version": "Version: {version}",
   "@version": {

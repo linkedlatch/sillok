@@ -381,7 +381,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsMore => '기타';
 
   @override
-  String get verifyModels => '모델 파일 확인';
+  String get verifyModels => '모델 파일 손상 검사';
+
+  @override
+  String get verifyModelsHint => '받은 모델 파일을 끝까지 읽어 원본과 같은지 확인합니다. 손상된 파일은 지우고 다시 받게 합니다. 파일이 커서 몇십 초 걸릴 수 있습니다.';
 
   @override
   String get about => '정보';

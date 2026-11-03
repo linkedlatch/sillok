@@ -73,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(l.verifyModels),
+                    subtitle: Text(l.verifyModelsHint),
                     onTap: () async {
                       await state.verifyModels();
                       _refresh();

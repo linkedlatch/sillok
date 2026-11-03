@@ -725,8 +725,14 @@ abstract class AppLocalizations {
   /// No description provided for @verifyModels.
   ///
   /// In en, this message translates to:
-  /// **'Check the model files'**
+  /// **'Check the model files for damage'**
   String get verifyModels;
+
+  /// No description provided for @verifyModelsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads each downloaded model file through and compares it with the original. Damaged files are removed, to be downloaded again. Large files can take tens of seconds.'**
+  String get verifyModelsHint;
 
   /// No description provided for @about.
   ///
