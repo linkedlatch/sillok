@@ -176,18 +176,6 @@ abstract class AppLocalizations {
   /// **'Audio and video'**
   String get mediaFiles;
 
-  /// No description provided for @dropFiles.
-  ///
-  /// In en, this message translates to:
-  /// **'Drop to add'**
-  String get dropFiles;
-
-  /// No description provided for @dropNoMedia.
-  ///
-  /// In en, this message translates to:
-  /// **'No audio or video among the dropped files'**
-  String get dropNoMedia;
-
   /// No description provided for @title.
   ///
   /// In en, this message translates to:

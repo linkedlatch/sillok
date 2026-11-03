@@ -52,12 +52,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mediaFiles => 'Audio and video';
 
   @override
-  String get dropFiles => 'Drop to add';
-
-  @override
-  String get dropNoMedia => 'No audio or video among the dropped files';
-
-  @override
   String get title => 'Title';
 
   @override

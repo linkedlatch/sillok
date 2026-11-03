@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -293,27 +292,6 @@ void main() {
     player.playAt(48 * 5000);
     await tester.pumpAndSettle();
     expect(position().pixels, there);
-  });
-
-  testWidgets('files dropped on the window are added', (tester) async {
-    acceptsDrops = true;
-    addTearDown(() => acceptsDrops = false);
-    await start(tester, _sizes['desktop']!, result: true);
-    // What the plugin's native side sends.
-    Future<void> send(String method, Object? arguments) => tester.binding.defaultBinaryMessenger.handlePlatformMessage(
-      'desktop_drop',
-      const StandardMethodCodec().encodeMethodCall(MethodCall(method, arguments)),
-      (_) {},
-    );
-
-    await send('entered', [700.0, 400.0]);
-    await tester.pump();
-    expect(find.text('Drop to add'), findsOneWidget);
-    await send('performOperation', ['/x/lecture.m4a', '/x/talk.mp3']);
-    await tester.pumpAndSettle();
-    expect(find.text('Drop to add'), findsNothing);
-    expect(find.text('Transcribe 2 files'), findsOneWidget);
-    expect(find.text('lecture.m4a'), findsOneWidget);
   });
 
   testWidgets('a wide window folds the list away', (tester) async {
