@@ -104,13 +104,16 @@ class _ModelCardState extends State<_ModelCard> {
             if (ready)
               Wrap(
                 spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  // The model new files get (Defaults for new files), as a
+                  // state rather than a button that does nothing.
                   inUse
-                      ? FilledButton.tonal(onPressed: null, child: Text(l.modelInUse))
+                      ? Chip(avatar: const Icon(Icons.check), label: Text(l.modelDefault))
                       : OutlinedButton(
                           onPressed: () =>
                               state.setDefaults(state.defaults.copyWith(transcriptionModel: () => model.id)),
-                          child: Text(l.modelUse),
+                          child: Text(l.modelMakeDefault),
                         ),
                   TextButton(
                     onPressed: () async {

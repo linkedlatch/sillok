@@ -632,17 +632,17 @@ abstract class AppLocalizations {
   /// **'Recommended'**
   String get modelRecommended;
 
-  /// No description provided for @modelInUse.
+  /// No description provided for @modelDefault.
   ///
   /// In en, this message translates to:
-  /// **'Used for new files'**
-  String get modelInUse;
+  /// **'Default for new files'**
+  String get modelDefault;
 
-  /// No description provided for @modelUse.
+  /// No description provided for @modelMakeDefault.
   ///
   /// In en, this message translates to:
-  /// **'Use for new files'**
-  String get modelUse;
+  /// **'Make it the default'**
+  String get modelMakeDefault;
 
   /// No description provided for @modelSummary.
   ///

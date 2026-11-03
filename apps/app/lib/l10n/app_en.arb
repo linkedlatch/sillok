@@ -288,8 +288,8 @@
   "settingsModels": "Transcription models",
   "settingsModelsHint": "large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 is the original. The recommended model suits most devices.",
   "modelRecommended": "Recommended",
-  "modelInUse": "Used for new files",
-  "modelUse": "Use for new files",
+  "modelDefault": "Default for new files",
+  "modelMakeDefault": "Make it the default",
   "modelSummary": "Accuracy {accuracy} · speed {speed} · {quantization} · {size}",
   "@modelSummary": {
     "placeholders": {

@@ -331,10 +331,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get modelRecommended => '권장';
 
   @override
-  String get modelInUse => '새 파일에 사용';
+  String get modelDefault => '새 파일 기본 모델';
 
   @override
-  String get modelUse => '새 파일에 사용하기';
+  String get modelMakeDefault => '기본 모델로 설정';
 
   @override
   String modelSummary(String accuracy, String speed, String quantization, String size) {
