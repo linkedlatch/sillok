@@ -2,7 +2,7 @@
 
 Usage:
   python3 -I run_eval.py --build BUILD_DIR --models DIR --audio DIR \\
-      --device cpu|gpu --out OUT_DIR [--only step,step,...]
+      --device cpu|gpu --out OUT_DIR [--model ID] [--only step,step,...]
 Steps: accuracy, switch, korean_speakers, ami, long, cancel, exit.
 Each step's result is saved as soon as it finishes, so a run can be resumed
 with --only for the missing steps.
@@ -62,6 +62,8 @@ class Evaluation:
         command = [self.cli, "transcribe", wav, "--models", self.args.models,
                    "--device", self.args.device, "--format", "json", "--quiet",
                    "--output", output]
+        if self.args.model:
+            command += ["--model", self.args.model]
         if diarize:
             command.append("--diarize")
         seconds, rss = timed(command, env)
@@ -139,6 +141,7 @@ def main():
     parser = argparse.ArgumentParser()
     for flag in ("--build", "--models", "--audio", "--device", "--out"):
         parser.add_argument(flag, required=True)
+    parser.add_argument("--model", help="transcription model (default: the recommended one)")
     parser.add_argument("--only", default="accuracy,switch,korean_speakers,ami,long,cancel,exit")
     args = parser.parse_args()
     evaluation = Evaluation(args)
