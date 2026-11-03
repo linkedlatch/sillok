@@ -54,7 +54,9 @@ class RunError {
   Map<String, Object?> toJson() => {'status': status, 'message': message};
 }
 
-/// The running file: its step, progress over all steps and the time left.
+/// The running file: its step, the progress within it and the time it has
+/// left. Steps are shown apart: how long each takes relative to the others
+/// varies too much between devices to sum them into one figure.
 class RunState {
   const RunState({
     required this.key,
@@ -62,7 +64,6 @@ class RunState {
     required this.settings,
     required this.step,
     required this.stepFraction,
-    required this.overall,
     required this.remaining,
     required this.timingsMs,
     this.cancelling = false,
@@ -73,10 +74,14 @@ class RunState {
   final JobSettings settings;
   final RunStep step;
   final double stepFraction;
-  final double overall;
 
-  /// Null until the estimate means something (3% done and 20 s in).
+  /// Of the current step; null until the estimate means something (3% of
+  /// the step done and 20 s into it).
   final Duration? remaining;
+
+  /// The step's place among the steps of this run, from 1.
+  int get stepNumber => step.index + 1;
+  int get stepCount => settings.diarize ? RunStep.values.length : RunStep.values.length - 1;
 
   /// Milliseconds of the steps done so far.
   final Map<RunStep, int> timingsMs;
@@ -160,7 +165,6 @@ class Transcriber extends ChangeNotifier {
       settings: run.settings,
       step: run.step,
       stepFraction: run.stepFraction,
-      overall: run.overall,
       remaining: run.remaining,
       timingsMs: run.timingsMs,
       cancelling: true,
@@ -208,7 +212,6 @@ class Transcriber extends ChangeNotifier {
     final id = await store.create(DateTime.now());
     final created = DateTime.now().millisecondsSinceEpoch;
     final clock = Stopwatch()..start();
-    final weights = _weights(item.settings);
     final timings = <RunStep, int>{};
     var stepStarted = 0;
     _previews = [];
@@ -218,7 +221,6 @@ class Transcriber extends ChangeNotifier {
       settings: item.settings,
       step: RunStep.read,
       stepFraction: 0,
-      overall: 0,
       remaining: null,
       timingsMs: const {},
     );
@@ -235,20 +237,14 @@ class Transcriber extends ChangeNotifier {
             timings[previous.step] = clock.elapsedMilliseconds - stepStarted;
             stepStarted = clock.elapsedMilliseconds;
           }
-          var overall = 0.0;
-          for (final s in RunStep.values) {
-            if (s.index < step.index) overall += weights[s] ?? 0;
-          }
-          overall += (weights[step] ?? 0) * fraction;
-          final elapsed = clock.elapsed;
+          final elapsed = Duration(milliseconds: clock.elapsedMilliseconds - stepStarted);
           _run = RunState(
             key: item.key,
             name: item.name,
             settings: item.settings,
             step: step,
             stepFraction: fraction,
-            overall: overall,
-            remaining: overall >= 0.03 && elapsed.inSeconds >= 20 ? elapsed * ((1 - overall) / overall) : null,
+            remaining: fraction >= 0.03 && elapsed.inSeconds >= 20 ? elapsed * ((1 - fraction) / fraction) : null,
             timingsMs: Map.unmodifiable(timings),
             cancelling: previous.cancelling,
           );
@@ -294,19 +290,6 @@ class Transcriber extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
-  }
-
-  /// Share of the whole run each step takes, measured on real runs.
-  static Map<RunStep, double> _weights(JobSettings settings) {
-    final weights = {
-      RunStep.read: 0.03,
-      RunStep.copy: 0.01,
-      RunStep.analyze: 0.02,
-      RunStep.transcribe: 0.84,
-      if (settings.diarize) RunStep.diarize: 0.10,
-    };
-    final total = weights.values.fold(0.0, (a, b) => a + b);
-    return {for (final MapEntry(:key, :value) in weights.entries) key: value / total};
   }
 
   static String _title(String name) {

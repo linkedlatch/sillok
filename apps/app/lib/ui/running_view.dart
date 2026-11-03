@@ -5,7 +5,7 @@ import '../l10n/app_localizations.dart';
 import 'format.dart';
 import 'settings_fields.dart';
 
-/// The running file: progress over all steps, the time left, and the
+/// The running file: the current step's progress and time left, and the
 /// sentences transcribed so far, followed as they arrive while the list is
 /// at its end.
 class RunningView extends StatefulWidget {
@@ -71,8 +71,10 @@ class _RunningViewState extends State<RunningView> {
             children: [
               Text(run.name, style: theme.textTheme.titleLarge, maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(settingsSummary(l, widget.state, run.settings), style: theme.textTheme.bodySmall),
-              LinearProgressIndicator(value: run.overall),
-              Text(l.runningOverall(stepName(l, run.step), (run.overall * 100).round())),
+              LinearProgressIndicator(value: run.stepFraction),
+              Text(
+                l.runningStep(stepName(l, run.step), run.stepNumber, run.stepCount, (run.stepFraction * 100).round()),
+              ),
               if (run.remaining != null) Text(l.runningLeft(formatTime(run.remaining!.inMilliseconds))),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,

@@ -70,22 +70,34 @@
       }
     }
   },
-  "libraryRunning": "{step} · {percent}%",
+  "libraryRunning": "{step} ({number}/{count}) · {percent}%",
   "@libraryRunning": {
     "placeholders": {
       "step": {
         "type": "String"
+      },
+      "number": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
       },
       "percent": {
         "type": "int"
       }
     }
   },
-  "libraryRunningLeft": "{step} · {percent}% · about {left} left",
+  "libraryRunningLeft": "{step} ({number}/{count}) · {percent}% · about {left} left",
   "@libraryRunningLeft": {
     "placeholders": {
       "step": {
         "type": "String"
+      },
+      "number": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
       },
       "percent": {
         "type": "int"
@@ -139,18 +151,24 @@
   "transcriptionModel": "Transcription model",
   "runningCancel": "Cancel",
   "runningCancelling": "Cancelling…",
-  "runningOverall": "{step} · {percent}%",
-  "@runningOverall": {
+  "runningStep": "{step} (step {number} of {count}) · {percent}%",
+  "@runningStep": {
     "placeholders": {
       "step": {
         "type": "String"
+      },
+      "number": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
       },
       "percent": {
         "type": "int"
       }
     }
   },
-  "runningLeft": "About {left} left",
+  "runningLeft": "About {left} left in this step",
   "@runningLeft": {
     "placeholders": {
       "left": {

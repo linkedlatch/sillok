@@ -187,7 +187,6 @@ void main() {
             settings: JobSettings(glossary: ['Raft', 'Paxos']),
             step: RunStep.transcribe,
             stepFraction: 0.4,
-            overall: 0.38,
             remaining: Duration(minutes: 42),
             timingsMs: {RunStep.read: 1200, RunStep.copy: 300, RunStep.analyze: 900},
           ),
@@ -197,6 +196,9 @@ void main() {
           ],
         );
         await tester.pumpAndSettle();
+
+        // The step's own progress, not a share of the whole run.
+        expect(find.text('Transcribing (4/5) · 40% · about 42:00 left'), findsOneWidget);
 
         // The running file.
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);
@@ -335,7 +337,6 @@ void main() {
       settings: JobSettings(),
       step: RunStep.transcribe,
       stepFraction: 0.4,
-      overall: 0.38,
       remaining: null,
       timingsMs: {},
     );
@@ -390,7 +391,6 @@ void main() {
           settings: JobSettings(),
           step: RunStep.transcribe,
           stepFraction: 0.4,
-          overall: 0.38,
           remaining: null,
           timingsMs: {},
         ),

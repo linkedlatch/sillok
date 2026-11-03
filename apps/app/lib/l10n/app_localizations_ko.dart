@@ -108,13 +108,13 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String libraryRunning(String step, int percent) {
-    return '$step · $percent%';
+  String libraryRunning(String step, int number, int count, int percent) {
+    return '$step($number/$count) · $percent%';
   }
 
   @override
-  String libraryRunningLeft(String step, int percent, String left) {
-    return '$step · $percent% · 약 $left 남음';
+  String libraryRunningLeft(String step, int number, int count, int percent, String left) {
+    return '$step($number/$count) · $percent% · 약 $left 남음';
   }
 
   @override
@@ -194,13 +194,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get runningCancelling => '취소하는 중…';
 
   @override
-  String runningOverall(String step, int percent) {
-    return '$step · $percent%';
+  String runningStep(String step, int number, int count, int percent) {
+    return '$step($number/$count단계) · $percent%';
   }
 
   @override
   String runningLeft(String left) {
-    return '약 $left 남음';
+    return '이 단계 약 $left 남음';
   }
 
   @override

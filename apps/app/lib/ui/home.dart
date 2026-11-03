@@ -255,14 +255,21 @@ class _QueueTile extends StatelessWidget {
             children: [
               Text(
                 run.remaining == null
-                    ? l.libraryRunning(stepName(l, run.step), (run.overall * 100).round())
+                    ? l.libraryRunning(
+                        stepName(l, run.step),
+                        run.stepNumber,
+                        run.stepCount,
+                        (run.stepFraction * 100).round(),
+                      )
                     : l.libraryRunningLeft(
                         stepName(l, run.step),
-                        (run.overall * 100).round(),
+                        run.stepNumber,
+                        run.stepCount,
+                        (run.stepFraction * 100).round(),
                         formatTime(run.remaining!.inMilliseconds),
                       ),
               ),
-              LinearProgressIndicator(value: run.overall),
+              LinearProgressIndicator(value: run.stepFraction),
             ],
           )
         : Text(

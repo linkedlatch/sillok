@@ -108,13 +108,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String libraryRunning(String step, int percent) {
-    return '$step · $percent%';
+  String libraryRunning(String step, int number, int count, int percent) {
+    return '$step ($number/$count) · $percent%';
   }
 
   @override
-  String libraryRunningLeft(String step, int percent, String left) {
-    return '$step · $percent% · about $left left';
+  String libraryRunningLeft(String step, int number, int count, int percent, String left) {
+    return '$step ($number/$count) · $percent% · about $left left';
   }
 
   @override
@@ -199,13 +199,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runningCancelling => 'Cancelling…';
 
   @override
-  String runningOverall(String step, int percent) {
-    return '$step · $percent%';
+  String runningStep(String step, int number, int count, int percent) {
+    return '$step (step $number of $count) · $percent%';
   }
 
   @override
   String runningLeft(String left) {
-    return 'About $left left';
+    return 'About $left left in this step';
   }
 
   @override

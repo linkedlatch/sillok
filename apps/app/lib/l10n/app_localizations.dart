@@ -269,14 +269,14 @@ abstract class AppLocalizations {
   /// No description provided for @libraryRunning.
   ///
   /// In en, this message translates to:
-  /// **'{step} · {percent}%'**
-  String libraryRunning(String step, int percent);
+  /// **'{step} ({number}/{count}) · {percent}%'**
+  String libraryRunning(String step, int number, int count, int percent);
 
   /// No description provided for @libraryRunningLeft.
   ///
   /// In en, this message translates to:
-  /// **'{step} · {percent}% · about {left} left'**
-  String libraryRunningLeft(String step, int percent, String left);
+  /// **'{step} ({number}/{count}) · {percent}% · about {left} left'**
+  String libraryRunningLeft(String step, int number, int count, int percent, String left);
 
   /// No description provided for @libraryFailed.
   ///
@@ -416,16 +416,16 @@ abstract class AppLocalizations {
   /// **'Cancelling…'**
   String get runningCancelling;
 
-  /// No description provided for @runningOverall.
+  /// No description provided for @runningStep.
   ///
   /// In en, this message translates to:
-  /// **'{step} · {percent}%'**
-  String runningOverall(String step, int percent);
+  /// **'{step} (step {number} of {count}) · {percent}%'**
+  String runningStep(String step, int number, int count, int percent);
 
   /// No description provided for @runningLeft.
   ///
   /// In en, this message translates to:
-  /// **'About {left} left'**
+  /// **'About {left} left in this step'**
   String runningLeft(String left);
 
   /// No description provided for @runningPreviews.
