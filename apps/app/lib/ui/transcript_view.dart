@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../app_state.dart';
@@ -38,6 +39,10 @@ class _TranscriptViewState extends State<TranscriptView> {
   bool _loaded = false;
   bool _playing = false;
   bool _searching = false;
+
+  /// Whether the playing sentence is kept in view: scrolling by hand stops
+  /// that, and choosing a sentence or the button back to the playing one
+  /// starts it again.
   bool _follow = true;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -105,12 +110,14 @@ class _TranscriptViewState extends State<TranscriptView> {
       _position = position;
       if (current >= 0) _current = current;
     });
-    if (changed && _follow && _playing) {
-      final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(current));
-      final context = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext : null;
-      if (context != null) {
-        Scrollable.ensureVisible(context, alignment: 0.3, duration: const Duration(milliseconds: 200));
-      }
+    if (changed && _follow && _playing) _showCurrent();
+  }
+
+  void _showCurrent() {
+    final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(_current));
+    final context = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext : null;
+    if (context != null) {
+      Scrollable.ensureVisible(context, alignment: 0.3, duration: const Duration(milliseconds: 200));
     }
   }
 
@@ -122,7 +129,10 @@ class _TranscriptViewState extends State<TranscriptView> {
   }
 
   void _choose(int segment) {
-    setState(() => _selected = segment);
+    setState(() {
+      _selected = segment;
+      _follow = true;
+    });
     _playFrom(_transcript!.segments[segment].startMs);
   }
 
@@ -290,12 +300,44 @@ class _TranscriptViewState extends State<TranscriptView> {
               ? Center(child: Text(l.resultEmpty))
               : shown.isEmpty
               ? Center(child: Text(l.searchNone))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [for (final i in shown) _paragraph(l, theme, transcript, i, query)],
-                  ),
+              : Stack(
+                  children: [
+                    Positioned.fill(
+                      // Only the reader's own scrolling has a direction; the
+                      // view's moves to the playing sentence do not.
+                      child: NotificationListener<UserScrollNotification>(
+                        onNotification: (notification) {
+                          if (notification.direction != ScrollDirection.idle && _follow) {
+                            setState(() => _follow = false);
+                          }
+                          return false;
+                        },
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [for (final i in shown) _paragraph(l, theme, transcript, i, query)],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!_follow && _playing && _current != null)
+                      PositionedDirectional(
+                        start: 0,
+                        end: 0,
+                        bottom: 16,
+                        child: Center(
+                          child: FilledButton.tonalIcon(
+                            onPressed: () {
+                              setState(() => _follow = true);
+                              _showCurrent();
+                            },
+                            icon: const Icon(Icons.graphic_eq),
+                            label: Text(l.playingSentence),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
         ),
         if (selected != null) _selectedCard(l, theme, transcript.segments[selected]),
@@ -420,7 +462,6 @@ class _TranscriptViewState extends State<TranscriptView> {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
-    final follow = FilterChip(label: Text(l.follow), selected: _follow, onSelected: (v) => setState(() => _follow = v));
     return SafeArea(
       top: false,
       child: Padding(
@@ -434,7 +475,6 @@ class _TranscriptViewState extends State<TranscriptView> {
                     children: [
                       play,
                       Expanded(child: time),
-                      follow,
                     ],
                   ),
                 ],
@@ -444,8 +484,6 @@ class _TranscriptViewState extends State<TranscriptView> {
                   play,
                   Expanded(child: slider),
                   time,
-                  const SizedBox(width: 8),
-                  follow,
                 ],
               ),
       ),

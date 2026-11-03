@@ -179,7 +179,7 @@
       }
     }
   },
-  "follow": "Follow",
+  "playingSentence": "Now playing",
   "latest": "Latest",
   "search": "Search",
   "searchHint": "Search the result",

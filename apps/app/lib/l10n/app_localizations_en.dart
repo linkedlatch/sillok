@@ -224,7 +224,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get follow => 'Follow';
+  String get playingSentence => 'Now playing';
 
   @override
   String get latest => 'Latest';

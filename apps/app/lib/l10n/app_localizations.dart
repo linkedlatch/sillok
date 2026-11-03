@@ -452,11 +452,11 @@ abstract class AppLocalizations {
   /// **'Waiting to start: number {position} in line.'**
   String detailWaiting(int position);
 
-  /// No description provided for @follow.
+  /// No description provided for @playingSentence.
   ///
   /// In en, this message translates to:
-  /// **'Follow'**
-  String get follow;
+  /// **'Now playing'**
+  String get playingSentence;
 
   /// No description provided for @latest.
   ///

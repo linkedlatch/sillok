@@ -219,7 +219,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get follow => '따라가기';
+  String get playingSentence => '재생 중인 문장';
 
   @override
   String get latest => '최신 문장';

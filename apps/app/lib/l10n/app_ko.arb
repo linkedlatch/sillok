@@ -60,7 +60,7 @@
   "runningDetails": "자세히",
   "stepTime": "{step}: {time}",
   "detailWaiting": "시작 대기 중: {position}번째 순서입니다.",
-  "follow": "따라가기",
+  "playingSentence": "재생 중인 문장",
   "latest": "최신 문장",
   "search": "검색",
   "searchHint": "결과에서 검색",

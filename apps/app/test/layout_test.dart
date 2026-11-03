@@ -52,6 +52,34 @@ class _SilentPlayback implements Playback {
   Future<void> dispose() async {}
 }
 
+/// A player whose position and state the test sets.
+class _ScriptedPlayback implements Playback {
+  final _position = StreamController<Duration>.broadcast();
+  final _playing = StreamController<bool>.broadcast();
+
+  void playAt(int ms) {
+    _playing.add(true);
+    _position.add(Duration(milliseconds: ms));
+  }
+
+  @override
+  Stream<Duration> get position => _position.stream;
+  @override
+  Stream<Duration> get duration => const Stream.empty();
+  @override
+  Stream<bool> get playing => _playing.stream;
+  @override
+  Future<void> open(String path) async {}
+  @override
+  Future<void> seek(Duration position) async {}
+  @override
+  Future<void> play() async {}
+  @override
+  Future<void> pause() async {}
+  @override
+  Future<void> dispose() async {}
+}
+
 const _sizes = {
   'phone': Size(360, 780),
   'phone landscape': Size(780, 360),
@@ -236,6 +264,38 @@ void main() {
     await tester.tap(find.text('f16').first);
     await tester.pumpAndSettle();
     expect(find.text('Accuracy high · speed slow · uncompressed · 1.6 GB'), findsOneWidget);
+  });
+
+  testWidgets('playback follows the playing sentence until the reader scrolls', (tester) async {
+    await start(tester, _sizes['desktop']!, result: true);
+    final player = _ScriptedPlayback();
+    state.newPlayback = () => player;
+    await tester.tap(find.text('분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용').first);
+    await _settle(tester);
+    final text = find.descendant(of: find.byType(TranscriptView), matching: find.byType(Scrollable));
+    ScrollPosition position() => tester.state<ScrollableState>(text).position;
+
+    player.playAt(40 * 5000);
+    await tester.pumpAndSettle();
+    expect(position().pixels, greaterThan(0));
+    expect(find.text('Now playing'), findsNothing);
+
+    // Scrolled by hand, the text stays where the reader left it.
+    await tester.drag(text, const Offset(0, 300));
+    await tester.pumpAndSettle();
+    final reading = position().pixels;
+    player.playAt(50 * 5000);
+    await tester.pumpAndSettle();
+    expect(position().pixels, reading);
+
+    await tester.tap(find.text('Now playing'));
+    await tester.pumpAndSettle();
+    expect(position().pixels, greaterThan(reading));
+    expect(find.text('Now playing'), findsNothing);
+    final following = position().pixels;
+    player.playAt(42 * 5000);
+    await tester.pumpAndSettle();
+    expect(position().pixels, lessThan(following));
   });
 
   testWidgets('a wide window folds the list away', (tester) async {
