@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sillok/data/media_types.dart';
 import 'package:sillok/data/settings.dart';
 import 'package:sillok/data/store.dart';
 import 'package:sillok/data/transcript.dart';
@@ -88,4 +89,9 @@ void main() {
     expect(library.map((e) => e.meta.title), ['Lecture']);
     expect((await store.readTranscript(first))!.segments, hasLength(3));
   });
+
+  test('Windows perceives the common recording formats as audio or video', () {
+    expect(windowsMediaExtensions(), containsAll(['mp3', 'wav', 'm4a', 'mp4']));
+    expect(windowsMediaExtensions(), isNot(contains('txt')));
+  }, skip: !Platform.isWindows);
 }

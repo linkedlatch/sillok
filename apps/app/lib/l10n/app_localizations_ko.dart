@@ -43,6 +43,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get add => '파일 추가';
 
   @override
+  String get mediaFiles => '오디오 및 동영상';
+
+  @override
   String get title => '제목';
 
   @override

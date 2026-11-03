@@ -11,6 +11,7 @@
   "remove": "Remove from the list",
   "settings": "Settings",
   "add": "Add files",
+  "mediaFiles": "Audio and video",
   "title": "Title",
   "welcomeTitle": "Transcribe on this device",
   "welcomeBody": "Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about {size}.",

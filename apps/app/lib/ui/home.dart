@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../data/media_types.dart';
 import '../data/settings.dart';
 import '../data/transcriber.dart';
 import '../l10n/app_localizations.dart';
@@ -75,7 +76,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _add() async {
-    final files = await openFiles();
+    final files = await openFiles(acceptedTypeGroups: mediaTypes(AppLocalizations.of(context).mediaFiles));
     if (files.isEmpty || !mounted) return;
     await showModalBottomSheet<void>(
       context: context,

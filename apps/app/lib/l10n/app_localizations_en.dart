@@ -43,6 +43,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get add => 'Add files';
 
   @override
+  String get mediaFiles => 'Audio and video';
+
+  @override
   String get title => 'Title';
 
   @override

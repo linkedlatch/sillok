@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Add files'**
   String get add;
 
+  /// No description provided for @mediaFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio and video'**
+  String get mediaFiles;
+
   /// No description provided for @title.
   ///
   /// In en, this message translates to:
