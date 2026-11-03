@@ -623,7 +623,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsModelsHint.
   ///
   /// In en, this message translates to:
-  /// **'Larger models are more accurate but slower and use more memory. The recommended model suits most devices.'**
+  /// **'large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 is the original. The recommended model suits most devices.'**
   String get settingsModelsHint;
 
   /// No description provided for @modelRecommended.
@@ -662,24 +662,6 @@ abstract class AppLocalizations {
   /// **'high'**
   String get accuracyHigh;
 
-  /// No description provided for @accuracyMedium.
-  ///
-  /// In en, this message translates to:
-  /// **'medium'**
-  String get accuracyMedium;
-
-  /// No description provided for @accuracyLow.
-  ///
-  /// In en, this message translates to:
-  /// **'low'**
-  String get accuracyLow;
-
-  /// No description provided for @accuracyVeryLow.
-  ///
-  /// In en, this message translates to:
-  /// **'very low'**
-  String get accuracyVeryLow;
-
   /// No description provided for @speedVerySlow.
   ///
   /// In en, this message translates to:
@@ -697,24 +679,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'medium'**
   String get speedMedium;
-
-  /// No description provided for @speedFast.
-  ///
-  /// In en, this message translates to:
-  /// **'fast'**
-  String get speedFast;
-
-  /// No description provided for @speedVeryFast.
-  ///
-  /// In en, this message translates to:
-  /// **'very fast'**
-  String get speedVeryFast;
-
-  /// No description provided for @speedFastest.
-  ///
-  /// In en, this message translates to:
-  /// **'fastest'**
-  String get speedFastest;
 
   /// No description provided for @quantF16.
   ///

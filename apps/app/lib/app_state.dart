@@ -344,6 +344,11 @@ class AppState extends ChangeNotifier {
       defaults = JobSettings(gpuIndex: gpus.isEmpty ? null : 0);
     }
     if ((defaults.gpuIndex ?? -1) >= gpus.length) defaults = defaults.copyWith(gpuIndex: () => null);
+    // A model the catalog no longer lists (the small ones before 2026-11).
+    final model = defaults.transcriptionModel;
+    if (model != null && !catalog.any((m) => m.id == model)) {
+      defaults = defaults.copyWith(transcriptionModel: () => null);
+    }
   }
 
   Future<void> setDefaults(JobSettings settings) async {

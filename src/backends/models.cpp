@@ -79,11 +79,12 @@ std::vector<CatalogModel> BuildCatalog() {
                   .size = 885098,
                   .sha256 = "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
                   .zip = false}}},
-      // Transcription, from the recommended model to ones for slower and
-      // faster devices. The .en models are left out: recordings are Korean.
-      // So is medium: about turbo's size, but slower (24 decoder layers to
-      // turbo's 4) and less accurate. The small models come in one
-      // quantization: they are chosen for speed, which more bits would cost.
+      // Transcription: turbo, and large-v3, slower (32 decoder layers to
+      // turbo's 4) for possibly a little more accuracy, each in the versions
+      // the repository has. Only these two, to keep the choice short
+      // (docs/DESIGN.md D27): the smaller models, the .en models (recordings
+      // are Korean) and medium (about turbo's size, but slower and less
+      // accurate) are left out.
       Whisper("large-v3-turbo", "q5_0",
               WhisperFile("ggml-large-v3-turbo-q5_0.bin", 574041195,
                           "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"),
@@ -105,21 +106,6 @@ std::vector<CatalogModel> BuildCatalog() {
               WhisperFile("ggml-large-v3.bin", 3095033483,
                           "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"),
               large_v3_encoder),
-      Whisper("small", "q5_1",
-              WhisperFile("ggml-small-q5_1.bin", 190085487,
-                          "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"),
-              CoreMlEncoder("ggml-small-encoder.mlmodelc.zip", 163083239,
-                            "de43fb9fed471e95c19e60ae67575c2bf09e8fb607016da171b06ddad313988b")),
-      Whisper("base", "q5_1",
-              WhisperFile("ggml-base-q5_1.bin", 59707625,
-                          "422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"),
-              CoreMlEncoder("ggml-base-encoder.mlmodelc.zip", 37922638,
-                            "7e6ab77041942572f239b5b602f8aaa1c3ed29d73e3d8f20abea03a773541089")),
-      Whisper("tiny", "q5_1",
-              WhisperFile("ggml-tiny-q5_1.bin", 32152673,
-                          "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"),
-              CoreMlEncoder("ggml-tiny-encoder.mlmodelc.zip", 15037446,
-                            "c88cbd2648e1f5415092bcf5256add463a0f19943e6938f46e8d4ffdebd47739")),
       {.id = "nemotron-3-diarization-q8_0",
        .role = "diarization",
        .family = "nemotron-3-diarization",

@@ -47,8 +47,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(l.settingsModels, style: heading),
                   const SizedBox(height: 4),
                   Text(l.settingsModelsHint, style: Theme.of(context).textTheme.bodySmall),
-                  for (final model in state.transcriptionModels)
-                    _ModelTile(state: state, model: model, onChanged: _refresh),
+                  const SizedBox(height: 8),
+                  for (final versions in _families(state.transcriptionModels))
+                    _ModelCard(state: state, versions: versions, onChanged: _refresh),
                   const SizedBox(height: 24),
                   Text(l.settingsStorage, style: heading),
                   FutureBuilder(
@@ -94,58 +95,110 @@ class _SettingsPageState extends State<SettingsPage> {
   void _refresh() => setState(() => _sizes = _measure());
 }
 
-class _ModelTile extends StatelessWidget {
-  const _ModelTile({required this.state, required this.model, required this.onChanged});
+/// The models grouped by family, in catalog order.
+List<List<CatalogModel>> _families(List<CatalogModel> models) {
+  final families = <String, List<CatalogModel>>{};
+  for (final model in models) {
+    families.putIfAbsent(model.family, () => []).add(model);
+  }
+  return families.values.toList();
+}
+
+/// A model family, with a choice among its versions (quantizations) and what
+/// can be done with the chosen one.
+class _ModelCard extends StatefulWidget {
+  const _ModelCard({required this.state, required this.versions, required this.onChanged});
 
   final AppState state;
-  final CatalogModel model;
+  final List<CatalogModel> versions;
   final VoidCallback onChanged;
+
+  @override
+  State<_ModelCard> createState() => _ModelCardState();
+}
+
+class _ModelCardState extends State<_ModelCard> {
+  String? _chosen;
+
+  /// The version picked here, else the one in use, a downloaded one or the
+  /// recommended one.
+  CatalogModel get _model {
+    final state = widget.state;
+    final versions = widget.versions;
+    final inUse = state.defaults.transcriptionModel ?? state.recommendedTranscription.id;
+    return versions.where((m) => m.id == _chosen).firstOrNull ??
+        versions.where((m) => m.id == inUse).firstOrNull ??
+        versions.where((m) => state.models[m.id] is ModelReady).firstOrNull ??
+        versions.where((m) => m.recommended).firstOrNull ??
+        versions.first;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final state = widget.state;
+    final model = _model;
     final ready = state.models[model.id] is ModelReady;
     final inUse = (state.defaults.transcriptionModel ?? state.recommendedTranscription.id) == model.id;
     // Apple builds offer the NPU encoder (Neural Engine) for a model that is here.
     final accelerator = ready ? state.accelerators[model.id] : null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 4,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(modelName(model), style: Theme.of(context).textTheme.titleSmall)),
-              if (model.recommended) Chip(label: Text(l.modelRecommended), visualDensity: VisualDensity.compact),
-            ],
-          ),
-          Text(modelSummary(l, model), style: Theme.of(context).textTheme.bodySmall),
-          if (accelerator != null) _AcceleratorControl(state: state, model: model, status: accelerator),
-          if (ready)
-            Wrap(
-              spacing: 8,
+    return Card.outlined(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            Row(
               children: [
-                inUse
-                    ? FilledButton.tonal(onPressed: null, child: Text(l.modelInUse))
-                    : OutlinedButton(
-                        onPressed: () => state.setDefaults(state.defaults.copyWith(transcriptionModel: () => model.id)),
-                        child: Text(l.modelUse),
-                      ),
-                TextButton(
-                  onPressed: () async {
-                    if (await confirm(context, l.deleteConfirm(modelName(model)), l.delete)) {
-                      await state.deleteModel(model.id);
-                      onChanged();
-                    }
-                  },
-                  child: Text(l.delete),
-                ),
+                Expanded(child: Text(familyName(model.family), style: Theme.of(context).textTheme.titleMedium)),
+                if (widget.versions.any((m) => m.recommended))
+                  Chip(label: Text(l.modelRecommended), visualDensity: VisualDensity.compact),
               ],
-            )
-          else
-            ModelDownloadControl(state: state, model: model),
-        ],
+            ),
+            // Downloaded versions carry a mark.
+            SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: [
+                for (final version in widget.versions)
+                  ButtonSegment(
+                    value: version.id,
+                    label: Text(version.quantization),
+                    icon: state.models[version.id] is ModelReady ? const Icon(Icons.download_done) : null,
+                  ),
+              ],
+              selected: {model.id},
+              onSelectionChanged: (ids) => setState(() => _chosen = ids.first),
+            ),
+            Text(modelSummary(l, model), style: Theme.of(context).textTheme.bodySmall),
+            if (accelerator != null) _AcceleratorControl(state: state, model: model, status: accelerator),
+            if (ready)
+              Wrap(
+                spacing: 8,
+                children: [
+                  inUse
+                      ? FilledButton.tonal(onPressed: null, child: Text(l.modelInUse))
+                      : OutlinedButton(
+                          onPressed: () =>
+                              state.setDefaults(state.defaults.copyWith(transcriptionModel: () => model.id)),
+                          child: Text(l.modelUse),
+                        ),
+                  TextButton(
+                    onPressed: () async {
+                      if (await confirm(context, l.deleteConfirm(modelName(model)), l.delete)) {
+                        await state.deleteModel(model.id);
+                        widget.onChanged();
+                      }
+                    },
+                    child: Text(l.delete),
+                  ),
+                ],
+              )
+            else
+              ModelDownloadControl(state: state, model: model),
+          ],
+        ),
       ),
     );
   }

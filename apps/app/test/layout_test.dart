@@ -226,6 +226,18 @@ void main() {
     });
   }
 
+  testWidgets('a model card shows the chosen version', (tester) async {
+    await start(tester, _sizes['desktop']!, result: true);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(find.text('large-v3'), find.byType(ListView).last, const Offset(0, -300));
+    expect(find.text('large-v3 turbo'), findsOneWidget);
+    expect(find.text('Accuracy high · speed medium · compressed · 574 MB'), findsOneWidget);
+    await tester.tap(find.text('f16').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Accuracy high · speed slow · uncompressed · 1.6 GB'), findsOneWidget);
+  });
+
   testWidgets('a wide window folds the list away', (tester) async {
     await start(tester, _sizes['desktop']!, result: true);
     const title = '분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용';

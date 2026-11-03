@@ -6,7 +6,7 @@ ABI. Korean and English, including recordings that switch between them.
 - Transcription: Whisper large-v3-turbo (q5_0) through whisper.cpp
 - Voice activity detection: Silero through whisper.cpp
 - Speaker diarization: Nemotron-3-Diarization through NeMo-Speech.cpp
-- Compute: CPU, Vulkan, Metal; Core ML (Neural Engine) for the Whisper encoder on Apple
+- Compute: CPU, Vulkan, Metal; the NPU for the Whisper encoder on Apple (Core ML, the Neural Engine)
 
 The library reads audio and video files itself (FFmpeg, audio decoders only)
 or takes decoded PCM. Choosing devices and downloading models are left to the
@@ -92,10 +92,10 @@ LGPL, without GPL or nonfree parts, and stays replaceable that way.
 ```
 sillok models list                   # * marks the recommended models
 sillok models download               # into the default model directory
-sillok models download --model whisper-small-q5_1   # another transcription model
+sillok models download --model whisper-large-v3-q5_0   # another transcription model
 sillok transcribe lecture.m4a --diarize --format srt --output lecture.srt
 sillok transcribe talk.wav --language ko --term "Kubernetes" --device gpu
-sillok transcribe talk.wav --model whisper-small-q5_1
+sillok transcribe talk.wav --model whisper-large-v3-q5_0
 sillok export lecture.json --format txt --speaker-label "화자 {n}"
 ```
 

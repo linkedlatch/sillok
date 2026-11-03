@@ -323,7 +323,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsModels => '받아쓰기 모델';
 
   @override
-  String get settingsModelsHint => '큰 모델은 정확하지만 느리고 메모리를 더 씁니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
+  String get settingsModelsHint =>
+      'large-v3는 turbo보다 느리고 조금 더 정확할 수 있습니다. q5_0과 q8_0은 압축해 작고 빠른 버전이고, f16은 압축하지 않은 원본입니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
 
   @override
   String get modelRecommended => '권장';
@@ -346,15 +347,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get accuracyHigh => '높음';
 
   @override
-  String get accuracyMedium => '보통';
-
-  @override
-  String get accuracyLow => '낮음';
-
-  @override
-  String get accuracyVeryLow => '매우 낮음';
-
-  @override
   String get speedVerySlow => '매우 느림';
 
   @override
@@ -362,15 +354,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get speedMedium => '보통';
-
-  @override
-  String get speedFast => '빠름';
-
-  @override
-  String get speedVeryFast => '매우 빠름';
-
-  @override
-  String get speedFastest => '가장 빠름';
 
   @override
   String get quantF16 => '압축 없음';

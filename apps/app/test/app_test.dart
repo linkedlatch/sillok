@@ -69,9 +69,7 @@ void main() {
     expect(find.text('Open an audio or video file to transcribe it.'), findsOneWidget);
 
     await tester.runAsync(
-      () => state.enqueue([
-        (audio!, 'fleurs.wav'),
-      ], const JobSettings(language: 'en', diarize: false, transcriptionModel: 'whisper-base-q5_1')),
+      () => state.enqueue([(audio!, 'fleurs.wav')], const JobSettings(language: 'en', diarize: false)),
     );
     await _waitFor(tester, () => state.transcriber.run != null);
     expect(find.text('fleurs.wav'), findsOneWidget);
@@ -85,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Transcription models'), findsOneWidget);
     expect(find.text('Used for new files'), findsOneWidget);
-    await tester.dragUntilVisible(find.text('base / q5_1'), find.byType(ListView).last, const Offset(0, -300));
-    expect(find.text('base / q5_1'), findsOneWidget);
+    await tester.dragUntilVisible(find.text('large-v3'), find.byType(ListView).last, const Offset(0, -300));
+    expect(find.text('q5_0'), findsNWidgets(2));
   });
 }

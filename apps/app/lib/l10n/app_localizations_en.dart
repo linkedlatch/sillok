@@ -329,7 +329,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsModelsHint =>
-      'Larger models are more accurate but slower and use more memory. The recommended model suits most devices.';
+      'large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 is the original. The recommended model suits most devices.';
 
   @override
   String get modelRecommended => 'Recommended';
@@ -352,15 +352,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accuracyHigh => 'high';
 
   @override
-  String get accuracyMedium => 'medium';
-
-  @override
-  String get accuracyLow => 'low';
-
-  @override
-  String get accuracyVeryLow => 'very low';
-
-  @override
   String get speedVerySlow => 'very slow';
 
   @override
@@ -368,15 +359,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get speedMedium => 'medium';
-
-  @override
-  String get speedFast => 'fast';
-
-  @override
-  String get speedVeryFast => 'very fast';
-
-  @override
-  String get speedFastest => 'fastest';
 
   @override
   String get quantF16 => 'uncompressed';

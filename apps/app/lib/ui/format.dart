@@ -54,21 +54,17 @@ String errorText(AppLocalizations l, RunError error) => switch (error.status) {
   _ => l.errorEngine(error.message),
 };
 
-/// "large-v3 turbo / q5_0"
-String modelName(CatalogModel model) =>
-    '${model.family.replaceFirst('large-v3-turbo', 'large-v3 turbo')} / ${model.quantization}';
+/// "large-v3 turbo"
+String familyName(String family) => family.replaceFirst('large-v3-turbo', 'large-v3 turbo');
 
-/// "Accuracy high · speed slow · compressed · 574 MB", the same scale for
-/// every model; f16 is a step slower than the compressed ones.
+/// "large-v3 turbo / q5_0"
+String modelName(CatalogModel model) => '${familyName(model.family)} / ${model.quantization}';
+
+/// "Accuracy high · speed medium · compressed · 574 MB"; f16 is a step
+/// slower than the compressed versions.
 String modelSummary(AppLocalizations l, CatalogModel model) {
-  final speeds = [l.speedVerySlow, l.speedSlow, l.speedMedium, l.speedFast, l.speedVeryFast, l.speedFastest];
-  final (accuracy, speed) = switch (model.family) {
-    'large-v3' => (l.accuracyHighest, 1),
-    'large-v3-turbo' => (l.accuracyHigh, 2),
-    'small' => (l.accuracyMedium, 3),
-    'base' => (l.accuracyLow, 4),
-    _ => (l.accuracyVeryLow, 5),
-  };
+  final speeds = [l.speedVerySlow, l.speedSlow, l.speedMedium];
+  final (accuracy, speed) = model.family == 'large-v3' ? (l.accuracyHighest, 1) : (l.accuracyHigh, 2);
   final quantization = switch (model.quantization) {
     'f16' => l.quantF16,
     'q8_0' => l.quantQ8,

@@ -22,8 +22,8 @@ void main() {
         'transcription',
         'diarization',
       });
-      final small = catalog.firstWhere((m) => m.isTranscription && !m.recommended);
-      expect(Sillok.engineModels(small.id).map((m) => m.id), contains(small.id));
+      final other = catalog.firstWhere((m) => m.isTranscription && !m.recommended);
+      expect(Sillok.engineModels(other.id).map((m) => m.id), contains(other.id));
       expect(
         () => Sillok.engineModels('no-such-model'),
         throwsA(isA<SillokException>().having((e) => e.status, 'status', Status.invalidArgument)),
@@ -63,7 +63,7 @@ void main() {
             tempDir: dir.path,
             gpuIndex: null,
             npu: false,
-            transcriptionModel: 'whisper-base-q5_1',
+            transcriptionModel: null,
             options: const {'language': 'en', 'diarize': true, 'glossary': <String>[]},
             source: audio!,
             copyPath: copy,
