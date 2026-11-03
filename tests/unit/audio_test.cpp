@@ -146,5 +146,38 @@ TEST(LevelTest, KeepsSilenceQuiet) {
   EXPECT_LE(PeakOf(pcm), 0.0001 * 31.7);
 }
 
+double RmsOf(std::span<const float> pcm) {
+  double sum = 0.0;
+  for (const float x : pcm) sum += static_cast<double>(x) * static_cast<double>(x);
+  return std::sqrt(sum / static_cast<double>(pcm.size()));
+}
+
+TEST(LevelTest, HoldsTheGainOfSpeechThroughAPause) {
+  // Quiet speech, a 5 s pause whose noise is 10 dB below it, speech again.
+  const auto speech = Sine(16000, 300.0, 3.0, 0.007);
+  const auto noise = Sine(16000, 50.0, 5.0, 0.0022);
+  std::vector<float> pcm = speech;
+  pcm.insert(pcm.end(), noise.begin(), noise.end());
+  pcm.insert(pcm.end(), speech.begin(), speech.end());
+  const std::vector<float> original = pcm;
+  NormalizeLevel(pcm);
+  const auto gain = [&](double from, double seconds) {
+    const auto first = static_cast<std::size_t>(from * 16000);
+    const auto count = static_cast<std::size_t>(seconds * 16000);
+    return RmsOf(std::span<const float>(pcm).subspan(first, count)) /
+           RmsOf(std::span<const float>(original).subspan(first, count));
+  };
+  const double speech_gain = 0.05 / (0.007 / std::sqrt(2.0));  // to -26 dBFS
+  EXPECT_NEAR(gain(0.0, 2.0), speech_gain, 0.3);
+  EXPECT_NEAR(gain(4.5, 2.0), speech_gain, 0.3);  // not the 30 dB the noise alone would get
+}
+
+TEST(LevelTest, LeavesAudioWithoutSpeechAsItIs) {
+  std::vector<float> pcm = Sine(16000, 50.0, 3.0, 0.0022);
+  const std::vector<float> original = pcm;
+  NormalizeLevel(pcm);
+  EXPECT_EQ(pcm, original);
+}
+
 }  // namespace
 }  // namespace sillok
