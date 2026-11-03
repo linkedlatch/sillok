@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "backends/models.hpp"
@@ -34,6 +35,15 @@ std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1
   DecodeAudioFile(path, input, {}, StopToken());
   input.Finish();
   return audio.Read({0, std::min(audio.size(), static_cast<SampleIndex>(seconds * 16000))});
+}
+
+// `pcm` with the gain the pipeline gives a recording of it alone.
+std::vector<float> WithGain(std::vector<float> pcm) {
+  AudioBuffer audio;
+  audio.Push(pcm);
+  audio.Finish();
+  ApplyGain(LoudnessGain(audio), pcm);
+  return pcm;
 }
 
 // Runs `work` and requests a stop after `delay`. Returns the time from the
@@ -87,10 +97,12 @@ class ModelsTest : public ::testing::Test {
 };
 
 TEST_F(ModelsTest, VoiceDetectionFindsQuietSpeechAndIsDeterministic) {
-  // The first 30 s of the English set include recordings near -50 dBFS.
+  // A recording near -50 dBFS (the set's -30 dBFS, 20 dB lower), raised as
+  // the pipeline raises it.
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 30.0);
+  for (float& x : pcm) x *= 0.1f;
+  pcm = WithGain(std::move(pcm));
   pcm.resize(pcm.size() / 512 * 512);
-  NormalizeLevel(pcm);
   auto models = Models();
   const auto first = models->OpenVoiceDetector()->Detect(pcm);
   const auto second = models->OpenVoiceDetector()->Detect(pcm);
@@ -105,7 +117,6 @@ TEST_F(ModelsTest, TranscribesEnglish) {
   // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
   pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
-  NormalizeLevel(pcm);
   auto transcriber = Models()->OpenTranscriber();
   std::string text;
   for (const TokenSegment& segment :
@@ -119,7 +130,6 @@ TEST_F(ModelsTest, TranscribesEnglish) {
 
 TEST_F(ModelsTest, DetectsLanguage) {
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_ko.wav", 15.0);
-  NormalizeLevel(pcm);
   auto transcriber = Models()->OpenTranscriber();
   const std::vector<std::string> candidates = {"ko", "en"};
   const auto scores = transcriber->DetectLanguage(pcm, candidates, {});
@@ -131,7 +141,6 @@ TEST_F(ModelsTest, DetectsLanguage) {
 // between encoder passes, which take half a minute on a slow CPU.
 TEST_F(ModelsTest, CancelsInTheMiddleOfAnEncoderPassOnCpu) {
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 28.0);
-  NormalizeLevel(pcm);
   auto transcriber = Models(Device::kCpu)->OpenTranscriber();
   const std::vector<std::string> candidates = {"ko", "en"};
   const auto detect = TimeToCancel(

@@ -1,15 +1,17 @@
 #include "core/stitcher.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "core/words.hpp"
 
 namespace sillok {
 namespace {
 
-Millis Midpoint(const Word& word) {
+Milliseconds Midpoint(const Word& word) {
   return word.start + (word.end - word.start) / 2;
 }
 
@@ -50,54 +52,60 @@ std::string Normalize(std::string_view text) {
 }  // namespace
 
 StitchCut FindStitch(std::span<const Word> earlier, std::span<const Word> later,
-                     Millis overlap_begin, Millis overlap_end, Millis seam) {
+                     Milliseconds overlap_begin, Milliseconds overlap_end,
+                     Milliseconds seam) {
   // Words that may have been heard by both windows.
-  const auto first_shared = static_cast<std::size_t>(
-      std::find_if(earlier.begin(), earlier.end(),
-                   [&](const Word& w) { return Midpoint(w) >= overlap_begin; }) -
+  const auto earlier_shared_begin = static_cast<std::size_t>(
+      std::find_if(
+          earlier.begin(), earlier.end(),
+          [&](const Word& word) { return Midpoint(word) >= overlap_begin; }) -
       earlier.begin());
-  const auto shared_end = static_cast<std::size_t>(
-      std::find_if(later.begin(), later.end(),
-                   [&](const Word& w) { return Midpoint(w) >= overlap_end; }) -
+  const auto later_shared_end = static_cast<std::size_t>(
+      std::find_if(
+          later.begin(), later.end(),
+          [&](const Word& word) { return Midpoint(word) >= overlap_end; }) -
       later.begin());
 
-  std::vector<std::string> a;
-  for (std::size_t i = first_shared; i < earlier.size(); ++i) {
-    a.push_back(Normalize(earlier[i].text));
+  std::vector<std::string> earlier_text;
+  for (std::size_t i = earlier_shared_begin; i < earlier.size(); ++i) {
+    earlier_text.push_back(Normalize(earlier[i].text));
   }
-  std::vector<std::string> b;
-  for (std::size_t j = 0; j < shared_end; ++j) {
-    b.push_back(Normalize(later[j].text));
+  std::vector<std::string> later_text;
+  for (std::size_t j = 0; j < later_shared_end; ++j) {
+    later_text.push_back(Normalize(later[j].text));
   }
   const auto same = [&](std::size_t i, std::size_t j) {
-    return !a[i].empty() && a[i] == b[j];
+    return !earlier_text[i].empty() && earlier_text[i] == later_text[j];
   };
 
   // Longest common subsequence of the two renderings of the overlap.
-  std::vector<std::vector<int>> lcs(a.size() + 1,
-                                    std::vector<int>(b.size() + 1, 0));
-  for (std::size_t i = a.size(); i-- > 0;) {
-    for (std::size_t j = b.size(); j-- > 0;) {
-      lcs[i][j] = same(i, j) ? lcs[i + 1][j + 1] + 1
-                             : std::max(lcs[i + 1][j], lcs[i][j + 1]);
+  std::vector<std::vector<int>> common_length(
+      earlier_text.size() + 1, std::vector<int>(later_text.size() + 1, 0));
+  for (std::size_t i = earlier_text.size(); i-- > 0;) {
+    for (std::size_t j = later_text.size(); j-- > 0;) {
+      common_length[i][j] = same(i, j) ? common_length[i + 1][j + 1] + 1
+                                       : std::max(common_length[i + 1][j],
+                                                  common_length[i][j + 1]);
     }
   }
 
   bool matched = false;
   StitchCut best;
-  Millis best_distance{0};
-  for (std::size_t i = 0, j = 0; i < a.size() && j < b.size();) {
-    if (same(i, j) && lcs[i][j] == lcs[i + 1][j + 1] + 1) {
-      const Millis distance = abs(Midpoint(earlier[first_shared + i]) - seam) +
-                              abs(Midpoint(later[j]) - seam);
+  Milliseconds best_distance{0};
+  for (std::size_t i = 0, j = 0;
+       i < earlier_text.size() && j < later_text.size();) {
+    if (same(i, j) && common_length[i][j] == common_length[i + 1][j + 1] + 1) {
+      const Milliseconds distance =
+          std::chrono::abs(Midpoint(earlier[earlier_shared_begin + i]) - seam) +
+          std::chrono::abs(Midpoint(later[j]) - seam);
       if (!matched || distance < best_distance) {
         matched = true;
-        best = {first_shared + i + 1, j + 1};
+        best = {earlier_shared_begin + i + 1, j + 1};
         best_distance = distance;
       }
       ++i;
       ++j;
-    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
+    } else if (common_length[i + 1][j] >= common_length[i][j + 1]) {
       ++i;
     } else {
       ++j;
@@ -105,7 +113,9 @@ StitchCut FindStitch(std::span<const Word> earlier, std::span<const Word> later,
   }
   if (matched) return best;
 
-  const auto before_seam = [&](const Word& w) { return Midpoint(w) < seam; };
+  const auto before_seam = [&](const Word& word) {
+    return Midpoint(word) < seam;
+  };
   return {static_cast<std::size_t>(
               std::find_if_not(earlier.begin(), earlier.end(), before_seam) -
               earlier.begin()),
@@ -114,7 +124,8 @@ StitchCut FindStitch(std::span<const Word> earlier, std::span<const Word> later,
               later.begin())};
 }
 
-void KeepLeadingWords(std::vector<Segment>& segments, std::size_t count) {
+std::vector<Segment> KeepLeadingWords(std::vector<Segment> segments,
+                                      std::size_t count) {
   std::vector<Segment> kept;
   for (Segment& segment : segments) {
     if (count == 0) break;
@@ -127,10 +138,11 @@ void KeepLeadingWords(std::vector<Segment>& segments, std::size_t count) {
     kept.push_back(MakeSegment(std::move(segment.words), segment.language));
     count = 0;
   }
-  segments = std::move(kept);
+  return kept;
 }
 
-void DropLeadingWords(std::vector<Segment>& segments, std::size_t count) {
+std::vector<Segment> DropLeadingWords(std::vector<Segment> segments,
+                                      std::size_t count) {
   std::vector<Segment> kept;
   for (Segment& segment : segments) {
     if (count >= segment.words.size()) {
@@ -138,15 +150,15 @@ void DropLeadingWords(std::vector<Segment>& segments, std::size_t count) {
       continue;
     }
     if (count > 0) {
-      segment.words.erase(segment.words.begin(),
-                          segment.words.begin() +
-                              static_cast<std::ptrdiff_t>(count));
+      segment.words.erase(
+          segment.words.begin(),
+          segment.words.begin() + static_cast<std::ptrdiff_t>(count));
       segment = MakeSegment(std::move(segment.words), segment.language);
       count = 0;
     }
     kept.push_back(std::move(segment));
   }
-  segments = std::move(kept);
+  return kept;
 }
 
 }  // namespace sillok

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace sillok {
 
@@ -36,7 +37,9 @@ class StopSource {
  public:
   StopSource() : state_(std::make_shared<std::atomic<bool>>(false)) {}
 
-  void RequestStop() noexcept { state_->store(true, std::memory_order_release); }
+  void RequestStop() noexcept {
+    state_->store(true, std::memory_order_release);
+  }
   bool StopRequested() const noexcept {
     return state_->load(std::memory_order_acquire);
   }

@@ -21,12 +21,15 @@ struct StitchCut {
 // at the matching pair nearest `seam`; otherwise each word stays with the
 // window on its side of the seam (by its midpoint).
 StitchCut FindStitch(std::span<const Word> earlier, std::span<const Word> later,
-                     Millis overlap_begin, Millis overlap_end, Millis seam);
+                     Milliseconds overlap_begin, Milliseconds overlap_end,
+                     Milliseconds seam);
 
 // Keeps the first `count` words of `segments`, dropping emptied segments.
-void KeepLeadingWords(std::vector<Segment>& segments, std::size_t count);
+std::vector<Segment> KeepLeadingWords(std::vector<Segment> segments,
+                                      std::size_t count);
 // Removes the first `count` words of `segments`, dropping emptied segments.
-void DropLeadingWords(std::vector<Segment>& segments, std::size_t count);
+std::vector<Segment> DropLeadingWords(std::vector<Segment> segments,
+                                      std::size_t count);
 
 }  // namespace sillok
 

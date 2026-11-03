@@ -13,15 +13,15 @@ namespace sillok {
 // Times are positions in the original recording.
 struct Word {
   std::string text;
-  Millis start{0};
-  Millis end{0};
+  Milliseconds start{0};
+  Milliseconds end{0};
   float confidence = 0.0f;
   std::optional<int> speaker;
 };
 
 struct Segment {
-  Millis start{0};
-  Millis end{0};
+  Milliseconds start{0};
+  Milliseconds end{0};
   std::string text;
   std::string language;  // ISO 639-1
   std::optional<int> speaker;
@@ -37,7 +37,10 @@ struct ModelInfo {
 };
 
 struct Transcript {
-  Millis duration{0};
+  Milliseconds duration{0};
+  // The gain the recording was heard with and its copy saved with
+  // (LoudnessGain), in dB.
+  double gain_db = 0.0;
   std::vector<Segment> segments;
   // Display names chosen by the app, by speaker id. Export falls back to a
   // numbered label for speakers without a name.

@@ -12,10 +12,10 @@ namespace sillok {
 
 struct SpeakerOptions {
   // A word with no overlapping turn takes the nearest turn within this.
-  Millis max_distance{500};
+  Milliseconds max_distance{500};
   // A run of words shorter than this between turns of one other speaker is
   // treated as that speaker.
-  Millis min_turn{1000};
+  Milliseconds min_turn{1000};
 };
 
 // Labels every word with a speaker, smooths very short interjections, splits

@@ -19,6 +19,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import evaluate  # noqa: E402
+import make_sets  # noqa: E402
 
 
 def timed(command, env=None):
@@ -80,11 +81,22 @@ class Evaluation:
         return os.path.join(self.sets, f"{name}.{extension}")
 
     def accuracy(self):
+        # Each FLEURS sentence from its own file, a recording at its own
+        # level as sillok gets them; some are near -60 dBFS.
         result = {}
-        for name in ("fleurs_ko", "fleurs_en"):
-            transcript, run = self.transcribe(name, self.set_path(name, "wav"), diarize=False)
-            reference = evaluate.load(self.set_path(name, "json"))
-            result[name] = dict(evaluate.accuracy(reference, transcript), **run)
+        for lang in ("ko_kr", "en_us"):
+            name = f"fleurs_{lang[:2]}"
+            os.makedirs(os.path.join(self.args.out, name), exist_ok=True)
+            utterances, transcripts, seconds = make_sets.fleurs(self.args.audio, lang), [], 0.0
+            for utterance in utterances:
+                file = os.path.splitext(os.path.basename(utterance["path"]))[0]
+                transcript, run = self.transcribe(f"{name}/{file}", utterance["path"], diarize=False)
+                transcripts.append(transcript)
+                seconds += run["seconds"]
+            audio = sum(t["duration_ms"] for t in transcripts) / 1000
+            result[name] = dict(evaluate.accuracy_of_files(utterances, transcripts),
+                                seconds=round(seconds, 1), rtf=round(seconds / audio, 3),
+                                audio_minutes=round(audio / 60, 1), devices=run["devices"])
         return result
 
     def switch(self):

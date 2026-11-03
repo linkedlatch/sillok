@@ -117,66 +117,45 @@ TEST(AudioBufferTest, NeedsAWritableDirectory) {
                std::runtime_error);
 }
 
-double PeakOf(std::span<const float> pcm) {
-  double peak = 0.0;
-  for (const float x : pcm) peak = std::max(peak, std::abs(static_cast<double>(x)));
-  return peak;
+AudioBuffer BufferOf(std::span<const float> pcm) {
+  AudioBuffer audio;
+  audio.Push(pcm);
+  audio.Finish();
+  return audio;
 }
 
-TEST(LevelTest, RaisesQuietSpeechNextToLoudSpeech) {
-  // A loud sentence, a pause, then one 40 dB quieter.
-  const auto loud = Sine(16000, 300.0, 4.0, 0.3);
-  const auto quiet = Sine(16000, 300.0, 4.0, 0.003);
-  std::vector<float> pcm(loud.size() + 16000 * 2 + quiet.size(), 0.0f);
-  std::copy(loud.begin(), loud.end(), pcm.begin());
-  std::copy(quiet.begin(), quiet.end(), pcm.end() - static_cast<std::ptrdiff_t>(quiet.size()));
-  const std::vector<float> original = pcm;
-  NormalizeLevel(pcm);
-  const std::span<const float> all(pcm);
-  EXPECT_NEAR(PeakOf(all.subspan(0, 16000 * 2)), 0.3, 1e-6);  // never lowered
-  const double raised = PeakOf(all.subspan(16000 * 7, 16000 * 2));
-  EXPECT_GT(raised, 0.003 * 20);  // close to 30 dB more
-  EXPECT_LE(raised, 0.003 * 31.7);
-  EXPECT_LE(PeakOf(all), 0.95 + 1e-6);
-}
-
-TEST(LevelTest, KeepsSilenceQuiet) {
-  std::vector<float> pcm(16000 * 3, 0.0001f);
-  NormalizeLevel(pcm);
-  EXPECT_LE(PeakOf(pcm), 0.0001 * 31.7);
-}
-
-double RmsOf(std::span<const float> pcm) {
-  double sum = 0.0;
-  for (const float x : pcm) sum += static_cast<double>(x) * static_cast<double>(x);
-  return std::sqrt(sum / static_cast<double>(pcm.size()));
-}
-
-TEST(LevelTest, HoldsTheGainOfSpeechThroughAPause) {
-  // Quiet speech, a 5 s pause whose noise is 10 dB below it, speech again.
+TEST(LevelTest, MeasuresTheSpeechWithoutThePauses) {
+  // Speech at -46 dBFS around a 5 s pause of noise at -69 dBFS.
   const auto speech = Sine(16000, 300.0, 3.0, 0.007);
-  const auto noise = Sine(16000, 50.0, 5.0, 0.0022);
+  const auto noise = Sine(16000, 50.0, 5.0, 0.0005);
   std::vector<float> pcm = speech;
   pcm.insert(pcm.end(), noise.begin(), noise.end());
   pcm.insert(pcm.end(), speech.begin(), speech.end());
-  const std::vector<float> original = pcm;
-  NormalizeLevel(pcm);
-  const auto gain = [&](double from, double seconds) {
-    const auto first = static_cast<std::size_t>(from * 16000);
-    const auto count = static_cast<std::size_t>(seconds * 16000);
-    return RmsOf(std::span<const float>(pcm).subspan(first, count)) /
-           RmsOf(std::span<const float>(original).subspan(first, count));
-  };
-  const double speech_gain = 0.05 / (0.007 / std::sqrt(2.0));  // to -26 dBFS
-  EXPECT_NEAR(gain(0.0, 2.0), speech_gain, 0.3);
-  EXPECT_NEAR(gain(4.5, 2.0), speech_gain, 0.3);  // not the 30 dB the noise alone would get
+  const double to_reference = 0.05 / (0.007 / std::sqrt(2.0));  // -26 dBFS
+  EXPECT_NEAR(LoudnessGain(BufferOf(pcm)), to_reference, to_reference * 0.02);
+  EXPECT_NEAR(LoudnessGain(BufferOf(speech)), to_reference, to_reference * 0.02);
 }
 
-TEST(LevelTest, LeavesAudioWithoutSpeechAsItIs) {
-  std::vector<float> pcm = Sine(16000, 50.0, 3.0, 0.0022);
-  const std::vector<float> original = pcm;
-  NormalizeLevel(pcm);
-  EXPECT_EQ(pcm, original);
+TEST(LevelTest, NeverLowersAndRaisesBy30dBAtMost) {
+  EXPECT_EQ(LoudnessGain(BufferOf(Sine(16000, 300.0, 3.0, 0.3))), 1.0);
+  EXPECT_NEAR(LoudnessGain(BufferOf(Sine(16000, 300.0, 3.0, 0.0005))), 31.6, 1e-9);
+  EXPECT_EQ(LoudnessGain(BufferOf(std::vector<float>(16000 * 3, 0.0f))), 1.0);
+  EXPECT_EQ(LoudnessGain(BufferOf(std::vector<float>{})), 1.0);
+}
+
+TEST(LevelTest, AppliesTheGainAndBendsPeaksBelowOne) {
+  std::vector<float> pcm = {0.01f, -0.05f, 0.2f, -0.3f, 0.6f};
+  ApplyGain(4.0, pcm);
+  EXPECT_FLOAT_EQ(pcm[0], 0.04f);
+  EXPECT_FLOAT_EQ(pcm[1], -0.2f);
+  EXPECT_FLOAT_EQ(pcm[2], 0.8f);
+  EXPECT_LT(pcm[3], -0.9f);  // -1.2, bent
+  EXPECT_GT(pcm[3], -1.0f);
+  EXPECT_GT(pcm[4], pcm[3] * -1.0f);  // still in order
+  EXPECT_LE(pcm[4], 1.0f);            // 2.4 comes as close to 1 as a float gets
+  std::vector<float> loud = {0.95f, -0.99f};
+  ApplyGain(1.0, loud);
+  EXPECT_EQ(loud, (std::vector<float>{0.95f, -0.99f}));
 }
 
 }  // namespace

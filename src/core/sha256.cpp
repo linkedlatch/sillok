@@ -1,11 +1,12 @@
 #include "core/sha256.hpp"
 
 #include <bit>
+#include <cstddef>
 
 namespace sillok {
 namespace {
 
-constexpr std::array<std::uint32_t, 64> kRound = {
+constexpr std::array<std::uint32_t, 64> kK = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
     0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
     0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
@@ -55,32 +56,56 @@ std::string Sha256::HexDigest() {
 
 void Sha256::Compress(const unsigned char* block) {
   std::array<std::uint32_t, 64> w;
-  for (std::size_t i = 0; i < 16; ++i) {
-    w[i] = static_cast<std::uint32_t>(block[4 * i]) << 24 |
-           static_cast<std::uint32_t>(block[4 * i + 1]) << 16 |
-           static_cast<std::uint32_t>(block[4 * i + 2]) << 8 |
-           static_cast<std::uint32_t>(block[4 * i + 3]);
-  }
-  for (std::size_t i = 16; i < 64; ++i) {
-    const std::uint32_t s0 = std::rotr(w[i - 15], 7) ^
-                             std::rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
-    const std::uint32_t s1 = std::rotr(w[i - 2], 17) ^
-                             std::rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
-    w[i] = w[i - 16] + s0 + w[i - 7] + s1;
-  }
-  std::array<std::uint32_t, 8> v = state_;
+  std::uint32_t a = state_[0];
+  std::uint32_t b = state_[1];
+  std::uint32_t c = state_[2];
+  std::uint32_t d = state_[3];
+  std::uint32_t e = state_[4];
+  std::uint32_t f = state_[5];
+  std::uint32_t g = state_[6];
+  std::uint32_t h = state_[7];
+
   for (std::size_t i = 0; i < 64; ++i) {
-    const std::uint32_t s1 =
-        std::rotr(v[4], 6) ^ std::rotr(v[4], 11) ^ std::rotr(v[4], 25);
-    const std::uint32_t choice = (v[4] & v[5]) ^ (~v[4] & v[6]);
-    const std::uint32_t t1 = v[7] + s1 + choice + kRound[i] + w[i];
-    const std::uint32_t s0 =
-        std::rotr(v[0], 2) ^ std::rotr(v[0], 13) ^ std::rotr(v[0], 22);
-    const std::uint32_t majority = (v[0] & v[1]) ^ (v[0] & v[2]) ^ (v[1] & v[2]);
-    const std::uint32_t t2 = s0 + majority;
-    v = {t1 + t2, v[0], v[1], v[2], v[3] + t1, v[4], v[5], v[6]};
+    if (i < 16) {
+      const std::size_t j = i * 4;
+      w[i] = static_cast<std::uint32_t>(block[j]) << 24 |
+             static_cast<std::uint32_t>(block[j + 1]) << 16 |
+             static_cast<std::uint32_t>(block[j + 2]) << 8 |
+             static_cast<std::uint32_t>(block[j + 3]);
+    } else {
+      const std::uint32_t v1 = w[i - 2];
+      const std::uint32_t t1 =
+          std::rotr(v1, 17) ^ std::rotr(v1, 19) ^ (v1 >> 10);
+      const std::uint32_t v2 = w[i - 15];
+      const std::uint32_t t2 = std::rotr(v2, 7) ^ std::rotr(v2, 18) ^ (v2 >> 3);
+      w[i] = t1 + w[i - 7] + t2 + w[i - 16];
+    }
+
+    const std::uint32_t t1 =
+        h + (std::rotr(e, 6) ^ std::rotr(e, 11) ^ std::rotr(e, 25)) +
+        ((e & f) ^ (~e & g)) + kK[i] + w[i];
+    const std::uint32_t t2 =
+        (std::rotr(a, 2) ^ std::rotr(a, 13) ^ std::rotr(a, 22)) +
+        ((a & b) ^ (a & c) ^ (b & c));
+
+    h = g;
+    g = f;
+    f = e;
+    e = d + t1;
+    d = c;
+    c = b;
+    b = a;
+    a = t1 + t2;
   }
-  for (std::size_t i = 0; i < 8; ++i) state_[i] += v[i];
+
+  state_[0] += a;
+  state_[1] += b;
+  state_[2] += c;
+  state_[3] += d;
+  state_[4] += e;
+  state_[5] += f;
+  state_[6] += g;
+  state_[7] += h;
 }
 
 }  // namespace sillok

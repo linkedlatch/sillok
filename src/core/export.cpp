@@ -1,9 +1,12 @@
 #include "core/export.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <set>
 #include <string_view>
+
+#include "core/audio.hpp"
 
 namespace sillok {
 namespace {
@@ -16,8 +19,8 @@ bool HasSeveralSpeakers(const Transcript& transcript) {
   return speakers.size() >= 2;
 }
 
-std::string Line(const Transcript& transcript, const Segment& segment,
-                 bool labeled, const ExportOptions& options) {
+std::string LineText(const Transcript& transcript, const Segment& segment,
+                     bool labeled, const ExportOptions& options) {
   if (!labeled || !segment.speaker) return segment.text;
   return SpeakerLabel(transcript, *segment.speaker, options) + ": " +
          segment.text;
@@ -34,11 +37,13 @@ std::string WithoutBlankLines(std::string_view text) {
   return out;
 }
 
-std::string SrtTime(Millis time) {
-  const long long ms = std::max<long long>(0, time.count());
+std::string SrtTime(Milliseconds time) {
+  const std::int64_t ms = std::max<std::int64_t>(0, time.count());
   char buffer[32];
-  std::snprintf(buffer, sizeof buffer, "%02lld:%02lld:%02lld,%03lld",
-                ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000);
+  std::snprintf(buffer, sizeof buffer, "%02d:%02d:%02d,%03d",
+                static_cast<int>(ms / 3600000),
+                static_cast<int>(ms / 60000 % 60),
+                static_cast<int>(ms / 1000 % 60), static_cast<int>(ms % 1000));
   return buffer;
 }
 
@@ -60,7 +65,7 @@ std::string ToText(const Transcript& transcript, const ExportOptions& options) {
   const bool labeled = HasSeveralSpeakers(transcript);
   std::string out;
   for (const Segment& segment : transcript.segments) {
-    out += Line(transcript, segment, labeled, options);
+    out += LineText(transcript, segment, labeled, options);
     out += '\n';
   }
   return out;
@@ -73,7 +78,7 @@ std::string ToSrt(const Transcript& transcript, const ExportOptions& options) {
   for (const Segment& segment : transcript.segments) {
     out += std::to_string(++index) + '\n';
     out += SrtTime(segment.start) + " --> " + SrtTime(segment.end) + '\n';
-    out += WithoutBlankLines(Line(transcript, segment, labeled, options));
+    out += WithoutBlankLines(LineText(transcript, segment, labeled, options));
     out += "\n\n";
   }
   return out;

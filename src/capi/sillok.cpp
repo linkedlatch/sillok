@@ -26,6 +26,7 @@
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/files.hpp"
+#include "core/level.hpp"
 #include "core/pipeline.hpp"
 #include "media/audio_file.hpp"
 #include "media/audio_input.hpp"
@@ -399,7 +400,7 @@ sillok_status sillok_job_save_audio(sillok_job* job, const char* path,
     RequireArgument(job->audio.finished(),
                     "the recording has not ended (sillok_job_end_audio)");
     sillok::WriteAacFile(
-        job->audio, sillok::PathFromUtf8(path),
+        job->audio, sillok::LoudnessGain(job->audio), sillok::PathFromUtf8(path),
         [&](double fraction) {
           if (progress != nullptr) progress(user_data, fraction);
         },

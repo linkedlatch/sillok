@@ -16,15 +16,16 @@ namespace sillok::testing {
 // One spoken word of a synthetic recording.
 struct ScriptWord {
   int id = 0;  // 0 <= id < 800, encoded in the burst amplitude
-  Millis start{0};
-  Millis end{0};
+  Milliseconds start{0};
+  Milliseconds end{0};
   std::string language = "en";
   int speaker = 0;
 };
 
 // Synthetic recording: each word is a square-wave burst whose amplitude
 // encodes its id; everything else is silence.
-AudioBuffer RenderScript(const std::vector<ScriptWord>& words, Millis duration);
+AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
+                         Milliseconds duration);
 
 // Text a FakeTranscriber produces for word `id` decoded in `language`.
 std::string WordText(int id, const std::string& language);
@@ -46,7 +47,7 @@ struct FakeOptions {
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
   bool detects_language = true;
-  Millis max_audio{30000};
+  Milliseconds max_audio{30000};
 };
 
 // Provider of fake models that work on RenderScript() audio.

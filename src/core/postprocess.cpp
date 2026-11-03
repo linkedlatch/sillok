@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <string_view>
+#include <utility>
 
 #include "core/utf8.hpp"
 #include "core/words.hpp"
@@ -34,14 +35,15 @@ bool TooLong(const Segment& segment, const PostprocessOptions& options) {
 std::size_t ChooseSplit(const std::vector<Word>& words) {
   const std::size_t n = words.size();
   // Only split inside the middle 60% to avoid tiny fragments.
-  const std::size_t lo = std::max<std::size_t>(1, n * 2 / 10);
-  const std::size_t hi = std::max(lo, std::min(n - 1, n * 8 / 10));
+  const std::size_t min_split = std::max<std::size_t>(1, n * 2 / 10);
+  const std::size_t max_split =
+      std::max(min_split, std::min(n - 1, n * 8 / 10));
   std::size_t best = (n + 1) / 2;
   int best_strength = -1;
-  Millis best_pause{0};
-  for (std::size_t k = lo; k <= hi; ++k) {
+  Milliseconds best_pause{0};
+  for (std::size_t k = min_split; k <= max_split; ++k) {
     const int strength = BreakStrength(words[k - 1].text);
-    const Millis pause = words[k].start - words[k - 1].end;
+    const Milliseconds pause = words[k].start - words[k - 1].end;
     if (strength > best_strength ||
         (strength == best_strength && pause > best_pause)) {
       best = k;
@@ -57,27 +59,29 @@ std::size_t ChooseSplit(const std::vector<Word>& words) {
 float SpeechCoverage(std::span<const float> probabilities, int frame_samples,
                      SampleRange range, float threshold) {
   const auto frames = static_cast<SampleIndex>(probabilities.size());
-  const SampleIndex first = std::clamp<SampleIndex>(range.begin / frame_samples, 0, frames);
+  const SampleIndex first =
+      std::clamp<SampleIndex>(range.begin / frame_samples, 0, frames);
   const SampleIndex last = std::clamp<SampleIndex>(
       (range.end + frame_samples - 1) / frame_samples, first, frames);
   if (first == last) return 0.0f;
-  SampleIndex speech = 0;
+  SampleIndex speech_frames = 0;
   for (SampleIndex i = first; i < last; ++i) {
-    if (probabilities[static_cast<std::size_t>(i)] >= threshold) ++speech;
+    if (probabilities[static_cast<std::size_t>(i)] >= threshold)
+      ++speech_frames;
   }
-  return static_cast<float>(speech) / static_cast<float>(last - first);
+  return static_cast<float>(speech_frames) / static_cast<float>(last - first);
 }
 
-void RemoveSilenceHallucinations(std::vector<Segment>& segments,
-                                 std::span<const float> probabilities,
-                                 int frame_samples,
-                                 const PostprocessOptions& options) {
+std::vector<Segment> RemoveSilenceHallucinations(
+    std::vector<Segment> segments, std::span<const float> probabilities,
+    int frame_samples, const PostprocessOptions& options) {
   std::erase_if(segments, [&](const Segment& segment) {
     const SampleRange range{ToSamples(segment.start), ToSamples(segment.end)};
     return SpeechCoverage(probabilities, frame_samples, range,
                           options.speech_threshold) <
            options.min_speech_coverage;
   });
+  return segments;
 }
 
 std::vector<Segment> SplitLongSegments(std::vector<Segment> segments,

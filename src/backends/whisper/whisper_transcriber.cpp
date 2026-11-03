@@ -13,7 +13,7 @@
 namespace sillok {
 namespace {
 
-constexpr Millis kMaxAudio{30000};
+constexpr Milliseconds kMaxAudio{30000};
 
 bool Aborted(void* stop) {
   return static_cast<StopToken*>(stop)->StopRequested();
@@ -143,8 +143,8 @@ class WhisperTranscriber final : public Transcriber {
         const whisper_token_data data = whisper_full_get_token_data(context, i, j);
         if (data.id >= end_of_text) continue;
         segment.tokens.push_back({.text = whisper_full_get_token_text(context, i, j),
-                                  .start = Millis{data.t0 * 10},
-                                  .end = Millis{data.t1 * 10},
+                                  .start = Milliseconds{data.t0 * 10},
+                                  .end = Milliseconds{data.t1 * 10},
                                   .probability = data.p});
       }
       if (!segment.tokens.empty()) segments.push_back(std::move(segment));

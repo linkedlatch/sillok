@@ -17,8 +17,8 @@ class AudioBuffer {
  public:
   // Creates the temporary file in `temp_dir`. Throws std::runtime_error if
   // that is not possible.
-  explicit AudioBuffer(
-      const std::filesystem::path& temp_dir = std::filesystem::temp_directory_path());
+  explicit AudioBuffer(const std::filesystem::path& temp_dir =
+                           std::filesystem::temp_directory_path());
   ~AudioBuffer();
   AudioBuffer(AudioBuffer&&) noexcept;
   AudioBuffer& operator=(AudioBuffer&&) noexcept;

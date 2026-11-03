@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <optional>
+#include <utility>
 
 #include "core/utf8.hpp"
 
@@ -35,9 +38,10 @@ Segment MakeSegment(std::vector<Word> words, std::string language) {
   return segment;
 }
 
-std::vector<Word> AssembleWords(std::span<const Token> tokens, Millis offset,
+std::vector<Word> AssembleWords(std::span<const Token> tokens,
+                                Milliseconds offset,
                                 std::string_view language) {
-  const bool spaces = UsesSpaces(language);
+  const bool uses_spaces = UsesSpaces(language);
   std::vector<Word> words;
   std::vector<int> token_counts;  // tokens per word, for the confidence mean
   std::string pending;            // start of a character not yet complete
@@ -51,7 +55,7 @@ std::vector<Word> AssembleWords(std::span<const Token> tokens, Millis offset,
 
     const bool starts_word =
         words.empty() ||
-        (!continues_character && (!spaces || bytes.starts_with(' ')));
+        (!continues_character && (!uses_spaces || bytes.starts_with(' ')));
     if (starts_word) {
       words.push_back(Word{.text = {},
                            .start = token.start + offset,

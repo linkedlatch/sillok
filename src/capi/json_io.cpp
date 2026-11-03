@@ -1,5 +1,6 @@
 #include "capi/json_io.hpp"
 
+#include <cmath>
 #include <initializer_list>
 #include <optional>
 #include <set>
@@ -53,15 +54,15 @@ std::string Dump(const Json& json) {
   return json.dump(-1, ' ', false, Json::error_handler_t::replace);
 }
 
-long long Ms(Millis time) { return time.count(); }
+long long Ms(Milliseconds time) { return time.count(); }
 
-Millis ReadMs(const Json& object, const char* key) {
+Milliseconds ReadMs(const Json& object, const char* key) {
   const auto value = Get<long long>(object, key, -1);
   if (value < 0) {
     throw std::invalid_argument(std::string("\"") + key +
                                 "\" must be a non-negative integer");
   }
-  return Millis{value};
+  return Milliseconds{value};
 }
 
 std::optional<int> ReadSpeaker(const Json& object) {
@@ -183,6 +184,7 @@ std::string TranscriptToJson(const Transcript& transcript) {
   }
   return Dump({{"version", 1},
                {"duration_ms", Ms(transcript.duration)},
+               {"gain_db", std::round(transcript.gain_db * 10.0) / 10.0},
                {"speakers", std::move(speakers)},
                {"segments", std::move(segments)},
                {"models", std::move(models)}});
@@ -194,7 +196,8 @@ Transcript TranscriptFromJson(std::string_view text) {
     throw std::invalid_argument("unsupported transcript version");
   }
   Transcript transcript;
-  transcript.duration = Millis{Get<long long>(json, "duration_ms", 0)};
+  transcript.duration = Milliseconds{Get<long long>(json, "duration_ms", 0)};
+  transcript.gain_db = Get<double>(json, "gain_db", 0.0);
   for (const Json& speaker : Get<Json>(json, "speakers", Json::array())) {
     const auto name = Get<std::string>(speaker, "name", "");
     if (!name.empty()) transcript.speaker_names[Get<int>(speaker, "id", -1)] = name;

@@ -20,7 +20,7 @@ struct LanguageScore {
 // What a transcription model supports; the pipeline adapts to these instead
 // of to model types.
 struct TranscriberCapabilities {
-  Millis max_audio{0};            // longest audio per request
+  Milliseconds max_audio{0};      // longest audio per request
   bool detects_language = false;  // DetectLanguage() is available
   int max_prompt_tokens = 0;      // 0 when prompts are not supported
 };
@@ -30,8 +30,8 @@ struct TranscriberCapabilities {
 // start of the request audio.
 struct Token {
   std::string text;
-  Millis start{0};
-  Millis end{0};
+  Milliseconds start{0};
+  Milliseconds end{0};
   float probability = 0.0f;
 };
 
@@ -59,8 +59,8 @@ class Transcriber {
       StopToken stop) = 0;
   // Length of `text` in prompt tokens.
   virtual int CountTokens(std::string_view text) const = 0;
-  virtual std::vector<TokenSegment> Transcribe(
-      const TranscribeRequest& request, StopToken stop) = 0;
+  virtual std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
+                                               StopToken stop) = 0;
 };
 
 }  // namespace sillok

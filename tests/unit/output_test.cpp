@@ -17,7 +17,8 @@ namespace sillok {
 namespace {
 
 Word W(std::string text, int start, int end) {
-  return {std::move(text), Millis{start}, Millis{end}, 0.9f, std::nullopt};
+  return {std::move(text), Milliseconds{start}, Milliseconds{end}, 0.9f,
+          std::nullopt};
 }
 
 Segment S(std::vector<Word> words, std::string language = "en") {
@@ -32,14 +33,14 @@ TEST(PostprocessTest, RemovesSegmentsDecodedFromSilence) {
                                    S({W("Thanks", 2000, 2500),
                                       W("for", 2500, 2700),
                                       W("watching", 2700, 3000)})};
-  RemoveSilenceHallucinations(segments, probabilities, 512, {});
+  segments = RemoveSilenceHallucinations(segments, probabilities, 512, {});
   ASSERT_EQ(segments.size(), 1u);
   EXPECT_EQ(segments[0].text, "real");
 }
 
 TEST(PostprocessTest, SplitsLongSegmentsAtSentenceEnd) {
   PostprocessOptions options;
-  options.max_segment_duration = Millis{5000};
+  options.max_segment_duration = Milliseconds{5000};
   const Segment long_segment = S({W("one", 0, 1000), W("two.", 1000, 2000),
                                   W("three", 2000, 3000), W("four,", 3500, 4000),
                                   W("five", 4100, 5000), W("six", 5000, 6000)});
@@ -47,12 +48,12 @@ TEST(PostprocessTest, SplitsLongSegmentsAtSentenceEnd) {
   ASSERT_EQ(out.size(), 2u);
   EXPECT_EQ(out[0].text, "one two.");
   EXPECT_EQ(out[1].text, "three four, five six");
-  EXPECT_EQ(out[1].start, Millis{2000});
+  EXPECT_EQ(out[1].start, Milliseconds{2000});
 }
 
 TEST(PostprocessTest, SplitsAtLongestPauseWithoutPunctuation) {
   PostprocessOptions options;
-  options.max_segment_duration = Millis{4000};
+  options.max_segment_duration = Milliseconds{4000};
   const Segment long_segment =
       S({W("a", 0, 500), W("b", 600, 1000), W("c", 1100, 1500),
          W("d", 2500, 3000), W("e", 3100, 3500), W("f", 3600, 4500)});
@@ -81,10 +82,10 @@ TEST(SpeakersTest, MapsWordsSmoothsAndSplits) {
   // Speaker 7 talks except for a short "yes" by speaker 3 that is smoothed
   // away; speaker 3 takes over at 5 s.
   const std::vector<SpeakerTurn> turns = {
-      {{0, ToSamples(Millis{950})}, 7},
-      {{ToSamples(Millis{1000}), ToSamples(Millis{1200})}, 3},
-      {{ToSamples(Millis{1250}), ToSamples(Millis{2100})}, 7},
-      {{ToSamples(Millis{4900}), ToSamples(Millis{6100})}, 3}};
+      {{0, ToSamples(Milliseconds{950})}, 7},
+      {{ToSamples(Milliseconds{1000}), ToSamples(Milliseconds{1200})}, 3},
+      {{ToSamples(Milliseconds{1250}), ToSamples(Milliseconds{2100})}, 7},
+      {{ToSamples(Milliseconds{4900}), ToSamples(Milliseconds{6100})}, 3}};
   const auto out = AssignSpeakers(segments, turns, {});
   ASSERT_EQ(out.size(), 2u);
   EXPECT_EQ(out[0].speaker, 0);  // renumbered by first appearance
@@ -97,8 +98,8 @@ TEST(SpeakersTest, SplitsSegmentAtSpeakerChange) {
       S({W("a", 0, 1000), W("b", 1000, 2000), W("c", 3000, 4000),
          W("d", 4000, 5000)})};
   const std::vector<SpeakerTurn> turns = {
-      {{0, ToSamples(Millis{2000})}, 1},
-      {{ToSamples(Millis{2900}), ToSamples(Millis{5000})}, 0}};
+      {{0, ToSamples(Milliseconds{2000})}, 1},
+      {{ToSamples(Milliseconds{2900}), ToSamples(Milliseconds{5000})}, 0}};
   const auto out = AssignSpeakers(segments, turns, {});
   ASSERT_EQ(out.size(), 2u);
   EXPECT_EQ(out[0].text, "a b");
@@ -112,7 +113,7 @@ TEST(SpeakersTest, WordsBetweenTurnsTakeNeighbors) {
   const std::vector<Segment> segments = {
       S({W("a", 0, 1000), W("b", 3000, 4000), W("c", 6000, 7000)})};
   const std::vector<SpeakerTurn> turns = {
-      {{0, ToSamples(Millis{1000})}, 4}, {{ToSamples(Millis{6000}), ToSamples(Millis{7000})}, 4}};
+      {{0, ToSamples(Milliseconds{1000})}, 4}, {{ToSamples(Milliseconds{6000}), ToSamples(Milliseconds{7000})}, 4}};
   const auto out = AssignSpeakers(segments, turns, {});
   ASSERT_EQ(out.size(), 1u);
   EXPECT_EQ(out[0].words[1].speaker, 0);

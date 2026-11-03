@@ -1,7 +1,9 @@
 #include "core/language.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <stdexcept>
+#include <utility>
 
 namespace sillok {
 
@@ -16,17 +18,18 @@ LanguageStabilizer::LanguageStabilizer(std::vector<std::string> candidates,
 LanguageDecision LanguageStabilizer::Decide(
     std::span<const LanguageScore> scores) {
   // Probabilities restricted to the candidates and renormalized.
-  std::vector<float> p(candidates_.size(), 0.0f);
+  std::vector<float> probabilities(candidates_.size(), 0.0f);
   float total = 0.0f;
   for (const LanguageScore& score : scores) {
     const auto it =
         std::find(candidates_.begin(), candidates_.end(), score.language);
     if (it == candidates_.end()) continue;
-    p[static_cast<std::size_t>(it - candidates_.begin())] += score.probability;
+    probabilities[static_cast<std::size_t>(it - candidates_.begin())] +=
+        score.probability;
     total += score.probability;
   }
   if (total > 0.0f) {
-    for (float& value : p) value /= total;
+    for (float& value : probabilities) value /= total;
   }
   const auto index_of = [&](const std::string& language) {
     return static_cast<std::size_t>(
@@ -34,19 +37,20 @@ LanguageDecision LanguageStabilizer::Decide(
         candidates_.begin());
   };
   const auto best = static_cast<std::size_t>(
-      std::max_element(p.begin(), p.end()) - p.begin());
+      std::max_element(probabilities.begin(), probabilities.end()) -
+      probabilities.begin());
 
   std::string chosen;
   if (!current_ || candidates_[best] == *current_) {
     chosen = candidates_[best];
     pending_.reset();
-  } else if (p[best] >= options_.switch_now ||
-             (p[best] >= options_.switch_confirm &&
+  } else if (probabilities[best] >= options_.switch_now ||
+             (probabilities[best] >= options_.switch_confirm &&
               pending_ == candidates_[best])) {
     chosen = candidates_[best];
   } else {
     chosen = *current_;
-    pending_ = p[best] >= options_.switch_confirm
+    pending_ = probabilities[best] >= options_.switch_confirm
                    ? std::optional<std::string>(candidates_[best])
                    : std::nullopt;
   }
@@ -57,10 +61,13 @@ LanguageDecision LanguageStabilizer::Decide(
   std::size_t runner_up = candidates_.size();
   for (std::size_t i = 0; i < candidates_.size(); ++i) {
     if (candidates_[i] == chosen) continue;
-    if (runner_up == candidates_.size() || p[i] > p[runner_up]) runner_up = i;
+    if (runner_up == candidates_.size() ||
+        probabilities[i] > probabilities[runner_up])
+      runner_up = i;
   }
-  if (runner_up != candidates_.size() && p[runner_up] >= options_.retry_min &&
-      p[index_of(chosen)] < options_.switch_now) {
+  if (runner_up != candidates_.size() &&
+      probabilities[runner_up] >= options_.retry_min &&
+      probabilities[index_of(chosen)] < options_.switch_now) {
     decision.alternative = candidates_[runner_up];
   }
   return decision;

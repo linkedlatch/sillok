@@ -6,18 +6,19 @@
 
 namespace sillok {
 
-// Audio inside sillok is 16 kHz mono; positions are sample indices at that rate.
+// Audio inside sillok is 16 kHz mono; positions are sample indices at that
+// rate.
 inline constexpr int kSampleRate = 16000;
 
 using SampleIndex = std::int64_t;
-using Millis = std::chrono::milliseconds;
+using Milliseconds = std::chrono::milliseconds;
 
-constexpr SampleIndex ToSamples(Millis time) {
+constexpr SampleIndex ToSamples(Milliseconds time) {
   return time.count() * kSampleRate / 1000;
 }
 
-constexpr Millis ToMillis(SampleIndex samples) {
-  return Millis{samples * 1000 / kSampleRate};
+constexpr Milliseconds ToMilliseconds(SampleIndex samples) {
+  return Milliseconds{samples * 1000 / kSampleRate};
 }
 
 // Half-open interval [begin, end) of samples.

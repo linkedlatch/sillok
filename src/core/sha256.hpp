@@ -2,6 +2,7 @@
 #define SILLOK_CORE_SHA256_HPP_
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -18,9 +19,9 @@ class Sha256 {
  private:
   void Compress(const unsigned char* block);
 
-  std::array<std::uint32_t, 8> state_ = {
-      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+  std::array<std::uint32_t, 8> state_ = {0x6a09e667, 0xbb67ae85, 0x3c6ef372,
+                                         0xa54ff53a, 0x510e527f, 0x9b05688c,
+                                         0x1f83d9ab, 0x5be0cd19};
   std::array<unsigned char, 64> buffer_{};
   std::size_t buffered_ = 0;
   std::uint64_t length_ = 0;  // bytes hashed so far

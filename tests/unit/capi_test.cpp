@@ -34,10 +34,11 @@ std::string Take(char* text) {
 std::vector<float> ScriptPcm(int words, int first_id = 0) {
   std::vector<ScriptWord> script;
   for (int i = 0; i < words; ++i) {
-    const Millis start{500 + 400 * i};
-    script.push_back({first_id + i, start, start + Millis{300}, "en", i < words / 2 ? 0 : 1});
+    const Milliseconds start{500 + 400 * i};
+    script.push_back({first_id + i, start, start + Milliseconds{300}, "en", i < words / 2 ? 0 : 1});
   }
-  const AudioBuffer audio = RenderScript(script, Millis{1000 + 400 * words});
+  const AudioBuffer audio =
+      RenderScript(script, Milliseconds{1000 + 400 * words});
   return audio.Read({0, audio.size()});
 }
 

@@ -189,7 +189,10 @@ SILLOK_API sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
 
 /* Writes the recording to `path` as AAC in an M4A file (16 kHz mono,
  * 32 kbit/s, about 14 MB an hour) for the app to keep for listening back:
- * transcript times are positions in it. Call after the recording ended.
+ * transcript times are positions in it. A quiet recording is raised by the
+ * same gain the transcription hears it with (the transcript's "gain_db"),
+ * so the copy sounds as loud as speech usually does. Call after the
+ * recording ended.
  * Blocks until written; `progress` may be NULL, and sillok_job_cancel() stops
  * it (SILLOK_CANCELLED). An unfinished file is removed. SILLOK_MEDIA_ERROR
  * when the file cannot be written. */
@@ -216,7 +219,7 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *
  * `out_json` receives the transcript document. Times are milliseconds in the
  * original recording; speakers are ids, named by the app:
- * {"version": 1, "duration_ms": 61000,
+ * {"version": 1, "duration_ms": 61000, "gain_db": 14.4,
  *  "speakers": [{"id": 0, "name": null}, ...],
  *  "segments": [{"start_ms": 0, "end_ms": 2300, "text": "...",
  *                "language": "ko", "speaker": 0,
@@ -224,7 +227,8 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *                           "confidence": 0.93, "speaker": 0}, ...]}, ...],
  *  "models": {"transcription": {"name": "...", "device": "...",
  *                               "fell_back_to_cpu": false}, ...}}
- * "speaker" is absent without diarization.
+ * "speaker" is absent without diarization. "gain_db" is how much the
+ * recording was raised for transcription and in the saved copy, 0 to 30 dB.
  * Times locate sentences well enough to listen back to them; word times are
  * approximate. To play a segment, start about a second before "start_ms":
  * a segment occasionally starts later than its first word. */

@@ -153,8 +153,9 @@ sillok_export(transcript, "srt", "{\"speaker_label\": \"Speaker {n}\"}", &srt);
 
 The transcript is JSON with millisecond times in the original recording,
 words with confidence, and speaker ids that the app can name. Apps that
-keep a copy for listening back read the job's own 16 kHz mono recording
-(`sillok_job_read_audio`), the audio those times refer to. See
+keep a copy for listening back save the job's own 16 kHz mono recording
+(`sillok_job_save_audio`), the audio those times refer to, raised by the
+same gain the transcription hears a quiet recording with. See
 `include/sillok/sillok.h` for the schemas and the threading rules.
 
 ## Evaluation
@@ -164,6 +165,14 @@ scripts/fetch-test-audio.sh          # FLEURS ko/en, AMI ES2004a (CC BY 4.0)
 python3 -I scripts/eval/make_sets.py tests/data/audio
 python3 -I scripts/eval/run_eval.py --build build --models models \
     --audio tests/data/audio --device gpu --out eval/gpu
+```
+
+The `lecture` step, not run by default, scores sentences spliced into a real
+lecture (`sillok transcribe` its recording to JSON first; needs numpy):
+
+```
+python3 scripts/eval/make_lecture_set.py lecture.wav lecture.json tests/data/audio
+python3 -I scripts/eval/run_eval.py ... --only lecture
 ```
 
 ## Licenses of the models

@@ -8,8 +8,8 @@
 namespace sillok::testing {
 namespace {
 
-// Loud enough that NormalizeLevel() never raises a burst, even one word
-// alone in two seconds of silence: amplitude carries the word id.
+// Loud enough that LoudnessGain() leaves a recording as it is: amplitude
+// carries the word id.
 constexpr float kBaseAmplitude = 0.2f;
 constexpr float kAmplitudeStep = 0.0005f;
 constexpr float kSilence = 0.05f;
@@ -132,7 +132,7 @@ class FakeTranscriber : public Transcriber {
     ThrowIfStopped(stop);
     std::map<std::string, double> time;
     double total = 0.0;
-    for (const Burst& burst : FindBursts(pcm, ToSamples(Millis{100}))) {
+    for (const Burst& burst : FindBursts(pcm, ToSamples(Milliseconds{100}))) {
       const auto length = static_cast<double>(burst.end - burst.begin);
       time[LanguageOf(models_.options_, burst.id)] += length;
       total += length;
@@ -163,11 +163,11 @@ class FakeTranscriber : public Transcriber {
     ThrowIfStopped(stop);
 
     std::vector<TokenSegment> segments;
-    const auto bursts = FindBursts(request.pcm, ToSamples(Millis{100}));
+    const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
     for (std::size_t i = 0; i < bursts.size(); ++i) {
       const Burst& burst = bursts[i];
       // The same word gets slightly different times in different windows.
-      const auto jitter = Millis{
+      const auto jitter = Milliseconds{
           (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
       const bool right_language =
@@ -175,8 +175,9 @@ class FakeTranscriber : public Transcriber {
       if (i % 5 == 0) segments.emplace_back();
       segments.back().tokens.push_back(
           {.text = " " + WordText(burst.id, request.language),
-           .start = std::max(Millis{0}, ToMillis(burst.begin) + jitter),
-           .end = ToMillis(burst.end) + jitter,
+           .start =
+               std::max(Milliseconds{0}, ToMilliseconds(burst.begin) + jitter),
+           .end = ToMilliseconds(burst.end) + jitter,
            .probability = right_language ? 0.9f : 0.05f});
     }
     return segments;
@@ -187,7 +188,7 @@ class FakeTranscriber : public Transcriber {
 };
 
 AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
-                         Millis duration) {
+                         Milliseconds duration) {
   std::vector<float> pcm(static_cast<std::size_t>(ToSamples(duration)), 0.0f);
   for (const ScriptWord& word : words) {
     const float amplitude =

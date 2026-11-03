@@ -1,6 +1,7 @@
 #include "core/segmenter.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <stdexcept>
 
 namespace sillok {
@@ -13,19 +14,21 @@ SampleIndex QuietestPoint(std::span<const double> prefix, int energy_frame,
   const auto frames = static_cast<SampleIndex>(prefix.size()) - 1;
   const SampleIndex first =
       std::clamp<SampleIndex>(from / energy_frame, 0, frames);
-  const SampleIndex last = std::clamp<SampleIndex>(to / energy_frame, 0, frames);
+  const SampleIndex last =
+      std::clamp<SampleIndex>(to / energy_frame, 0, frames);
   if (first >= last) return (from + to) / 2;
 
   const SampleIndex radius =
-      std::max<SampleIndex>(1, ToSamples(Millis{100}) / energy_frame);
+      std::max<SampleIndex>(1, ToSamples(Milliseconds{100}) / energy_frame);
   SampleIndex best = first;
   double best_mean = 0.0;
   for (SampleIndex center = first; center < last; ++center) {
-    const SampleIndex lo = std::max<SampleIndex>(0, center - radius);
-    const SampleIndex hi = std::min<SampleIndex>(frames, center + radius + 1);
-    const double mean = (prefix[static_cast<std::size_t>(hi)] -
-                         prefix[static_cast<std::size_t>(lo)]) /
-                        static_cast<double>(hi - lo);
+    const SampleIndex window_begin = std::max<SampleIndex>(0, center - radius);
+    const SampleIndex window_end =
+        std::min<SampleIndex>(frames, center + radius + 1);
+    const double mean = (prefix[static_cast<std::size_t>(window_end)] -
+                         prefix[static_cast<std::size_t>(window_begin)]) /
+                        static_cast<double>(window_end - window_begin);
     if (center == first || mean < best_mean) {
       best = center;
       best_mean = mean;
@@ -87,8 +90,8 @@ std::vector<SampleRange> FindSpeech(std::span<const float> probabilities,
 }
 
 std::vector<Window> PlanWindows(std::span<const SampleRange> speech,
-                                std::span<const float> energy,
-                                int energy_frame, SampleIndex total,
+                                std::span<const float> energy, int energy_frame,
+                                SampleIndex total,
                                 const SegmenterOptions& options) {
   const SampleIndex max_length = ToSamples(options.max_window);
   const SampleIndex join_gap = ToSamples(options.max_join_gap);

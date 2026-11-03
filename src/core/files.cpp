@@ -1,6 +1,8 @@
 #include "core/files.hpp"
 
+#include <cstddef>
 #include <fstream>
+#include <ios>
 #include <stdexcept>
 #include <system_error>
 #include <vector>
@@ -43,9 +45,9 @@ std::string Sha256OfFile(const std::filesystem::path& path) {
 FileCheck CheckFile(const std::filesystem::path& path, std::uint64_t size,
                     std::string_view sha256, bool verify_hash) {
   std::error_code error;
-  const std::uintmax_t actual = std::filesystem::file_size(path, error);
+  const std::uintmax_t actual_size = std::filesystem::file_size(path, error);
   if (error) return FileCheck::kMissing;
-  if (actual != size) return FileCheck::kWrongSize;
+  if (actual_size != size) return FileCheck::kWrongSize;
   if (verify_hash && Sha256OfFile(path) != sha256) return FileCheck::kWrongHash;
   return FileCheck::kOk;
 }

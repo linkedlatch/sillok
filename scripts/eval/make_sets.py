@@ -4,6 +4,11 @@ Usage: python3 -I make_sets.py AUDIO_DIR
 Reads AUDIO_DIR/fleurs and AUDIO_DIR/download (scripts/fetch-test-audio.sh)
 and writes AUDIO_DIR/sets/<name>.wav (16 kHz mono PCM16) with
 <name>.json references. Deterministic: the same inputs give the same sets.
+
+FLEURS sentences come from many speakers and devices, 40 dB apart in level;
+in a set, each is brought to SPEECH_DBFS so that the set sounds like one
+recording, as a recording sillok gets does. Accuracy is measured on the
+sentences' own files instead (run_eval.py), each with its own level.
 """
 import array
 import json
@@ -14,6 +19,7 @@ import sys
 import wave
 
 RATE = 16000
+SPEECH_DBFS = -30.0
 
 
 def read_wav(path):
@@ -57,12 +63,22 @@ def fleurs(audio_dir, lang):
             for name in sorted(os.listdir(folder)) if name in meta]
 
 
+def active_rms(samples, frame=RATE // 50):
+    """RMS of the 20 ms frames within 30 dB of the loudest one."""
+    energy = [sum(x * x for x in samples[i:i + frame]) / frame
+              for i in range(0, len(samples) - frame + 1, frame)]
+    loud = [e for e in energy if e > max(energy) * 1e-3]
+    return (sum(loud) / len(loud)) ** 0.5
+
+
 def concatenate(utterances, gaps):
     """One recording of `utterances` separated by `gaps` (seconds), with the
     reference span of each utterance."""
     samples, reference = [0.0] * int(0.5 * RATE), []
     for utterance, gap in zip(utterances, gaps):
         audio = read_wav(utterance["path"])
+        gain = 10 ** (SPEECH_DBFS / 20) / active_rms(audio)
+        audio = [x * gain for x in audio]
         start = len(samples) / RATE
         samples.extend(audio)
         entry = {k: v for k, v in utterance.items() if k != "path"}

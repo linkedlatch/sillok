@@ -68,6 +68,20 @@ def accuracy(reference, transcript):
     return {unit: round(rate, 4), "errors": errors, "reference_tokens": total}
 
 
+def accuracy_of_files(utterances, transcripts):
+    """Error rate of sentences transcribed one file each (make_sets.fleurs),
+    and the gains the files were raised by."""
+    pairs = [(tokens(u["text"], u["language"]),
+              tokens(" ".join(w["text"] for w in hypothesis_words(t)), u["language"]))
+             for u, t in zip(utterances, transcripts)]
+    rate, errors, total = metrics.error_rate(pairs)
+    unit = "cer" if utterances[0]["language"] == "ko" else "wer"
+    gains = sorted(t.get("gain_db", 0.0) for t in transcripts)
+    return {unit: round(rate, 4), "errors": errors, "reference_tokens": total,
+            "files": len(transcripts), "files_raised": sum(g > 0 for g in gains),
+            "gain_db_median": gains[len(gains) // 2], "gain_db_max": gains[-1]}
+
+
 def lecture(reference, transcript):
     """The lecture set (make_lecture_set.py): CER of the spliced sentences by
     level and room, sentences without any text, and characters made up in the

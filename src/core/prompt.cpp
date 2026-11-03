@@ -1,5 +1,8 @@
 #include "core/prompt.hpp"
 
+#include <cstddef>
+#include <utility>
+
 #include "core/words.hpp"
 
 namespace sillok {
@@ -26,9 +29,10 @@ std::string PromptBuilder::Build(std::string_view previous_text,
   std::vector<std::size_t> starts;
   for (std::size_t i = 0; i < previous_text.size(); ++i) {
     const auto byte = static_cast<unsigned char>(previous_text[i]);
-    const bool boundary = UsesSpaces(language)
-                              ? i > 0 && previous_text[i - 1] == ' ' && byte != ' '
-                              : (byte & 0xC0) != 0x80;
+    const bool boundary =
+        UsesSpaces(language)
+            ? i > 0 && previous_text[i - 1] == ' ' && byte != ' '
+            : (byte & 0xC0) != 0x80;
     if (i == 0 || boundary) starts.push_back(i);
   }
   // Token count only falls as the start moves right: binary search for the

@@ -19,14 +19,14 @@ using testing::ScriptWord;
 using testing::WordText;
 
 // Continuous speech: words of 300 ms with 100 ms gaps from `start`.
-std::vector<ScriptWord> Speech(int first_id, int count, Millis start,
+std::vector<ScriptWord> Speech(int first_id, int count, Milliseconds start,
                                const std::string& language = "en") {
   std::vector<ScriptWord> words;
   for (int i = 0; i < count; ++i) {
-    const Millis begin = start + Millis{400 * i};
+    const Milliseconds begin = start + Milliseconds{400 * i};
     words.push_back({.id = first_id + i,
                      .start = begin,
-                     .end = begin + Millis{300},
+                     .end = begin + Milliseconds{300},
                      .language = language,
                      .speaker = 0});
   }
@@ -68,13 +68,13 @@ Transcript RunFakes(const AudioBuffer& audio, FakeModels& models,
 TEST(PipelineTest, LongContinuousSpeechKeepsEveryWordOnce) {
   // 150 words over 60 s without a pause long enough to end a window, so the
   // pipeline must split inside speech with overlapping windows.
-  const auto script = Speech(0, 150, Millis{500});
-  const AudioBuffer audio = RenderScript(script, Millis{61000});
+  const auto script = Speech(0, 150, Milliseconds{500});
+  const AudioBuffer audio = RenderScript(script, Milliseconds{61000});
   int requests = 0;
   FakeOptions options = OptionsFor(script);
   options.on_transcribe = [&](const TranscribeRequest& request) {
     ++requests;
-    EXPECT_LE(request.pcm.size(), static_cast<std::size_t>(ToSamples(Millis{28000})));
+    EXPECT_LE(request.pcm.size(), static_cast<std::size_t>(ToSamples(Milliseconds{28000})));
   };
   FakeModels counting(options);
   const Transcript transcript = RunFakes(audio, counting);
@@ -83,12 +83,12 @@ TEST(PipelineTest, LongContinuousSpeechKeepsEveryWordOnce) {
 }
 
 TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
-  const auto script = Speech(0, 20, Millis{30000});
+  const auto script = Speech(0, 20, Milliseconds{30000});
   FakeModels models(OptionsFor(script));
-  const Transcript transcript = RunFakes(RenderScript(script, Millis{45000}), models);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{45000}), models);
   ASSERT_FALSE(transcript.segments.empty());
-  EXPECT_EQ(transcript.duration, Millis{45000});
-  Millis last{0};
+  EXPECT_EQ(transcript.duration, Milliseconds{45000});
+  Milliseconds last{0};
   for (const Segment& segment : transcript.segments) {
     for (const Word& word : segment.words) {
       EXPECT_GE(word.start, last);
@@ -102,21 +102,21 @@ TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
 
 TEST(PipelineTest, SilenceProducesNoTranscriptionModel) {
   FakeModels models(FakeOptions{});
-  const Transcript transcript = RunFakes(RenderScript({}, Millis{10000}), models);
+  const Transcript transcript = RunFakes(RenderScript({}, Milliseconds{10000}), models);
   EXPECT_TRUE(transcript.segments.empty());
   EXPECT_EQ(models.transcribe_calls(), 0);
   EXPECT_EQ(transcript.models.count("transcription"), 0u);
 }
 
 TEST(PipelineTest, TranscriberAndDiarizerNeverShareMemory) {
-  auto script = Speech(0, 10, Millis{1000});
-  auto second = Speech(10, 10, Millis{6000});
+  auto script = Speech(0, 10, Milliseconds{1000});
+  auto second = Speech(10, 10, Milliseconds{6000});
   for (ScriptWord& word : second) word.speaker = 1;
   script.insert(script.end(), second.begin(), second.end());
   FakeModels models(OptionsFor(script));
   PipelineOptions options;
   options.diarize = true;
-  const Transcript transcript = RunFakes(RenderScript(script, Millis{12000}), models, options);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{12000}), models, options);
   EXPECT_FALSE(models.live().transcriber_with_diarizer);
   EXPECT_EQ(models.live().transcribers, 0);
   EXPECT_EQ(models.live().diarizers, 0);
@@ -128,12 +128,12 @@ TEST(PipelineTest, TranscriberAndDiarizerNeverShareMemory) {
 }
 
 TEST(PipelineTest, ReportsProgressInStageOrder) {
-  const auto script = Speech(0, 100, Millis{500});
+  const auto script = Speech(0, 100, Milliseconds{500});
   FakeModels models(OptionsFor(script));
   PipelineOptions options;
   options.diarize = true;
   std::vector<std::pair<Stage, double>> events;
-  RunFakes(RenderScript(script, Millis{45000}), models, options,
+  RunFakes(RenderScript(script, Milliseconds{45000}), models, options,
       [&](Stage stage, double fraction) { events.emplace_back(stage, fraction); });
   ASSERT_FALSE(events.empty());
   for (std::size_t i = 1; i < events.size(); ++i) {
@@ -159,7 +159,7 @@ TEST(PipelineTest, ReportsProgressInStageOrder) {
 }
 
 TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
-  const auto script = Speech(0, 150, Millis{500});
+  const auto script = Speech(0, 150, Milliseconds{500});
   FakeModels models(OptionsFor(script));
   StopSource source;
   int windows_after_cancel = 0;
@@ -169,7 +169,7 @@ TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
       source.RequestStop();
     }
   };
-  EXPECT_THROW(RunFakes(RenderScript(script, Millis{61000}), models, {}, progress,
+  EXPECT_THROW(RunFakes(RenderScript(script, Milliseconds{61000}), models, {}, progress,
                    source.Token()),
                Cancelled);
   EXPECT_EQ(windows_after_cancel, 0);
@@ -177,14 +177,14 @@ TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
 }
 
 TEST(PipelineTest, CancelFromAnotherThread) {
-  const auto script = Speech(0, 150, Millis{500});
+  const auto script = Speech(0, 150, Milliseconds{500});
   FakeOptions options = OptionsFor(script);
   StopSource source;
   options.on_transcribe = [&](const TranscribeRequest&) {
     std::thread([&] { source.RequestStop(); }).join();
   };
   FakeModels models(options);
-  EXPECT_THROW(RunFakes(RenderScript(script, Millis{61000}), models, {},
+  EXPECT_THROW(RunFakes(RenderScript(script, Milliseconds{61000}), models, {},
                    [](Stage, double) {}, source.Token()),
                Cancelled);
   EXPECT_EQ(models.transcribe_calls(), 1);
@@ -192,13 +192,13 @@ TEST(PipelineTest, CancelFromAnotherThread) {
 
 TEST(PipelineTest, FollowsRealLanguageSwitches) {
   // 20 s of Korean, 20 s of English, then Korean again.
-  auto script = Speech(0, 45, Millis{500}, "ko");
-  const auto english = Speech(100, 45, Millis{20500}, "en");
-  const auto korean = Speech(200, 45, Millis{40500}, "ko");
+  auto script = Speech(0, 45, Milliseconds{500}, "ko");
+  const auto english = Speech(100, 45, Milliseconds{20500}, "en");
+  const auto korean = Speech(200, 45, Milliseconds{40500}, "ko");
   script.insert(script.end(), english.begin(), english.end());
   script.insert(script.end(), korean.begin(), korean.end());
   FakeModels models(OptionsFor(script));
-  const Transcript transcript = RunFakes(RenderScript(script, Millis{61000}), models);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{61000}), models);
   EXPECT_EQ(AllWords(transcript), Expected(script));
   for (const Segment& segment : transcript.segments) {
     for (const Word& word : segment.words) {
@@ -208,27 +208,28 @@ TEST(PipelineTest, FollowsRealLanguageSwitches) {
 }
 
 TEST(PipelineTest, FixedLanguageSkipsDetection) {
-  const auto script = Speech(0, 10, Millis{500}, "ko");
+  const auto script = Speech(0, 10, Milliseconds{500}, "ko");
   FakeOptions options = OptionsFor(script);
   options.detects_language = false;
   FakeModels models(options);
   PipelineOptions pipeline;
   pipeline.language = "ko";
-  const Transcript transcript = RunFakes(RenderScript(script, Millis{6000}), models, pipeline);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{6000}), models, pipeline);
   EXPECT_EQ(AllWords(transcript), Expected(script));
 
   FakeModels no_detection(options);
-  EXPECT_THROW(RunFakes(RenderScript(script, Millis{6000}), no_detection),
+  EXPECT_THROW(RunFakes(RenderScript(script, Milliseconds{6000}), no_detection),
                std::invalid_argument);
   pipeline.language = "fr";
-  EXPECT_THROW(RunFakes(RenderScript(script, Millis{6000}), models, pipeline),
-               std::invalid_argument);
+  EXPECT_THROW(
+      RunFakes(RenderScript(script, Milliseconds{6000}), models, pipeline),
+      std::invalid_argument);
 }
 
 TEST(PipelineTest, PromptUsesGlossaryAndOnlyUnsharedContextOfSameLanguage) {
   // Two windows split inside continuous speech, then English after a pause.
-  auto script = Speech(0, 75, Millis{500}, "ko");
-  const auto english = Speech(100, 10, Millis{40000}, "en");
+  auto script = Speech(0, 75, Milliseconds{500}, "ko");
+  const auto english = Speech(100, 10, Milliseconds{40000}, "en");
   script.insert(script.end(), english.begin(), english.end());
   FakeOptions options = OptionsFor(script);
   std::vector<TranscribeRequest> requests;
@@ -238,7 +239,7 @@ TEST(PipelineTest, PromptUsesGlossaryAndOnlyUnsharedContextOfSameLanguage) {
   FakeModels models(options);
   PipelineOptions pipeline;
   pipeline.glossary = {"sillok"};
-  RunFakes(RenderScript(script, Millis{46000}), models, pipeline);
+  RunFakes(RenderScript(script, Milliseconds{46000}), models, pipeline);
   ASSERT_GE(requests.size(), 3u);
   EXPECT_EQ(requests[0].prompt, "sillok");
   // The second window continues the first in Korean: context, but never the
