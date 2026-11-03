@@ -352,7 +352,10 @@ class _TranscriptViewState extends State<TranscriptView> {
 
   Widget _paragraph(AppLocalizations l, ThemeData theme, Transcript transcript, int index, String query) {
     final paragraph = _paragraphs[index];
-    final speaker = paragraph.speaker;
+    // The speaker where the turn starts; search results show it on each.
+    final speaker = query.isEmpty && index > 0 && _paragraphs[index - 1].speaker == paragraph.speaker
+        ? null
+        : paragraph.speaker;
     final first = transcript.segments[paragraph.segments.first];
     return Padding(
       key: _paragraphKeys[index],

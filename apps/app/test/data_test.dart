@@ -18,7 +18,7 @@ const _document = '''
 ''';
 
 void main() {
-  test('paragraphs follow speakers, or pauses without them', () {
+  test('paragraphs end at a new speaker, a pause or a minute', () {
     final transcript = Transcript.parse(_document);
     expect(
       [for (final p in paragraphs(transcript.segments)) p.segments],
@@ -28,18 +28,25 @@ void main() {
         [2],
       ],
     );
-    const plain = [
-      Segment(startMs: 0, endMs: 1000, text: 'a', language: 'en'),
-      Segment(startMs: 1500, endMs: 2000, text: 'b', language: 'en'),
-      Segment(startMs: 5000, endMs: 6000, text: 'c', language: 'en'),
-    ];
-    expect(
-      [for (final p in paragraphs(plain)) p.segments],
-      [
-        [0, 1],
-        [2],
-      ],
-    );
+    // One speaker, as in a lecture, or none: the same rule.
+    for (final speaker in [0, null]) {
+      final lecture = [
+        Segment(startMs: 0, endMs: 1000, text: 'a', language: 'en', speaker: speaker),
+        Segment(startMs: 3500, endMs: 4000, text: 'b', language: 'en', speaker: speaker),
+        Segment(startMs: 7500, endMs: 8000, text: 'c', language: 'en', speaker: speaker),
+        Segment(startMs: 9000, endMs: 30000, text: 'd', language: 'en', speaker: speaker),
+        Segment(startMs: 31000, endMs: 70000, text: 'e', language: 'en', speaker: speaker),
+        Segment(startMs: 70500, endMs: 71000, text: 'f', language: 'en', speaker: speaker),
+      ];
+      expect(
+        [for (final p in paragraphs(lecture)) p.segments],
+        [
+          [0, 1], // a pause of 2.5 s keeps the paragraph
+          [2, 3], // 3.5 s ends it
+          [4, 5], // e would make it longer than a minute
+        ],
+      );
+    }
   });
 
   test('renaming a speaker keeps every other field', () {

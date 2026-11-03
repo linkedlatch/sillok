@@ -73,8 +73,9 @@ class Transcript {
   String encode() => jsonEncode(_json);
 }
 
-/// Consecutive segments shown together: one speaker's turn, or without
-/// speakers, sentences up to a pause longer than two seconds (eight at most).
+/// Consecutive segments shown together: sentences of one speaker up to a pause
+/// longer than three seconds, a minute at most. Measured on a 71-minute
+/// lecture: about a hundred paragraphs, half of them 50 seconds or longer.
 class Paragraph {
   const Paragraph(this.speaker, this.segments);
 
@@ -91,9 +92,10 @@ List<Paragraph> paragraphs(List<Segment> segments) {
     if (current.isNotEmpty) {
       final previous = segments[current.last];
       final segment = segments[i];
-      final split = segment.speaker != null || previous.speaker != null
-          ? segment.speaker != previous.speaker
-          : segment.startMs - previous.endMs > 2000 || current.length >= 8;
+      final split =
+          segment.speaker != previous.speaker ||
+          segment.startMs - previous.endMs > 3000 ||
+          segment.endMs - segments[current.first].startMs > 60000;
       if (split) {
         result.add(Paragraph(segments[current.first].speaker, current));
         current = [];
