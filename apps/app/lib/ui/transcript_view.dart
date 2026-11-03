@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../app_state.dart';
@@ -40,10 +39,11 @@ class _TranscriptViewState extends State<TranscriptView> {
   bool _playing = false;
   bool _searching = false;
 
-  /// Whether the playing sentence is kept in view: scrolling by hand stops
-  /// that, and choosing a sentence or the button back to the playing one
-  /// starts it again.
-  bool _follow = true;
+  /// Whether the playing sentence's paragraph is scrolled out of view. The
+  /// text never moves by itself during playback; a button goes to the
+  /// playing sentence instead.
+  bool _currentHidden = false;
+  final _textKey = GlobalKey();
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   int? _selected;
@@ -110,7 +110,20 @@ class _TranscriptViewState extends State<TranscriptView> {
       _position = position;
       if (current >= 0) _current = current;
     });
-    if (changed && _follow && _playing) _showCurrent();
+    if (changed) WidgetsBinding.instance.addPostFrameCallback((_) => _checkCurrent());
+  }
+
+  void _checkCurrent() {
+    if (!mounted) return;
+    final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(_current));
+    final box = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext?.findRenderObject() : null;
+    final view = _textKey.currentContext?.findRenderObject();
+    var hidden = false;
+    if (box is RenderBox && view is RenderBox && box.attached && view.attached) {
+      final rect = box.localToGlobal(Offset.zero) & box.size;
+      hidden = !rect.overlaps(view.localToGlobal(Offset.zero) & view.size);
+    }
+    if (hidden != _currentHidden) setState(() => _currentHidden = hidden);
   }
 
   void _showCurrent() {
@@ -129,10 +142,7 @@ class _TranscriptViewState extends State<TranscriptView> {
   }
 
   void _choose(int segment) {
-    setState(() {
-      _selected = segment;
-      _follow = true;
-    });
+    setState(() => _selected = segment);
     _playFrom(_transcript!.segments[segment].startMs);
   }
 
@@ -303,13 +313,10 @@ class _TranscriptViewState extends State<TranscriptView> {
               : Stack(
                   children: [
                     Positioned.fill(
-                      // Only the reader's own scrolling has a direction; the
-                      // view's moves to the playing sentence do not.
-                      child: NotificationListener<UserScrollNotification>(
-                        onNotification: (notification) {
-                          if (notification.direction != ScrollDirection.idle && _follow) {
-                            setState(() => _follow = false);
-                          }
+                      key: _textKey,
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: (_) {
+                          _checkCurrent();
                           return false;
                         },
                         child: SingleChildScrollView(
@@ -321,17 +328,14 @@ class _TranscriptViewState extends State<TranscriptView> {
                         ),
                       ),
                     ),
-                    if (!_follow && _playing && _current != null)
+                    if (_currentHidden && _playing)
                       PositionedDirectional(
                         start: 0,
                         end: 0,
                         bottom: 16,
                         child: Center(
                           child: FilledButton.tonalIcon(
-                            onPressed: () {
-                              setState(() => _follow = true);
-                              _showCurrent();
-                            },
+                            onPressed: _showCurrent,
                             icon: const Icon(Icons.graphic_eq),
                             label: Text(l.playingSentence),
                           ),

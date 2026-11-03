@@ -266,7 +266,7 @@ void main() {
     expect(find.text('Accuracy high · speed slow · uncompressed · 1.6 GB'), findsOneWidget);
   });
 
-  testWidgets('playback follows the playing sentence until the reader scrolls', (tester) async {
+  testWidgets('playback leaves the text where the reader put it', (tester) async {
     await start(tester, _sizes['desktop']!, result: true);
     final player = _ScriptedPlayback();
     state.newPlayback = () => player;
@@ -275,27 +275,23 @@ void main() {
     final text = find.descendant(of: find.byType(TranscriptView), matching: find.byType(Scrollable));
     ScrollPosition position() => tester.state<ScrollableState>(text).position;
 
+    // A sentence in view: nothing to go to.
+    player.playAt(0);
+    await tester.pumpAndSettle();
+    expect(find.text('Now playing'), findsNothing);
+
+    // One further down: the text stays, and a button goes there.
     player.playAt(40 * 5000);
     await tester.pumpAndSettle();
-    expect(position().pixels, greaterThan(0));
-    expect(find.text('Now playing'), findsNothing);
-
-    // Scrolled by hand, the text stays where the reader left it.
-    await tester.drag(text, const Offset(0, 300));
-    await tester.pumpAndSettle();
-    final reading = position().pixels;
-    player.playAt(50 * 5000);
-    await tester.pumpAndSettle();
-    expect(position().pixels, reading);
-
+    expect(position().pixels, 0);
     await tester.tap(find.text('Now playing'));
     await tester.pumpAndSettle();
-    expect(position().pixels, greaterThan(reading));
+    final there = position().pixels;
+    expect(there, greaterThan(0));
     expect(find.text('Now playing'), findsNothing);
-    final following = position().pixels;
-    player.playAt(42 * 5000);
+    player.playAt(48 * 5000);
     await tester.pumpAndSettle();
-    expect(position().pixels, lessThan(following));
+    expect(position().pixels, there);
   });
 
   testWidgets('a wide window folds the list away', (tester) async {
