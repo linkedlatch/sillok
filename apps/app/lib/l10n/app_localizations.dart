@@ -158,6 +158,18 @@ abstract class AppLocalizations {
   /// **'Add files'**
   String get add;
 
+  /// No description provided for @hideList.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the file list'**
+  String get hideList;
+
+  /// No description provided for @showList.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the file list'**
+  String get showList;
+
   /// No description provided for @mediaFiles.
   ///
   /// In en, this message translates to:

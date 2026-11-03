@@ -58,6 +58,9 @@ class _HomePageState extends State<HomePage> {
   final _selection = ValueNotifier<Selection?>(null);
   late final StreamSubscription<(String, String)> _finished;
 
+  /// On wide windows, the list folded away to give the detail the width.
+  bool _listHidden = false;
+
   @override
   void initState() {
     super.initState();
@@ -112,10 +115,20 @@ class _HomePageState extends State<HomePage> {
         final wide = constraints.maxWidth >= 600;
         final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
         final add = FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add), label: Text(l.add));
+        final listHidden = wide && _listHidden;
         return Scaffold(
           appBar: AppBar(
+            leading: wide
+                ? IconButton(
+                    tooltip: listHidden ? l.showList : l.hideList,
+                    icon: Icon(listHidden ? Icons.menu : Icons.menu_open),
+                    onPressed: () => setState(() => _listHidden = !_listHidden),
+                  )
+                : null,
             title: Text(l.appName),
             actions: [
+              // The add button goes with the list.
+              if (listHidden) IconButton(tooltip: l.add, icon: const Icon(Icons.add), onPressed: _add),
               IconButton(
                 tooltip: l.settings,
                 icon: const Icon(Icons.settings_outlined),
@@ -134,23 +147,27 @@ class _HomePageState extends State<HomePage> {
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // The add button over the list rather than the window's
-                      // corner, where it would cover the detail's own buttons
-                      // (a run's cancel).
-                      SizedBox(
-                        width: constraints.maxWidth >= 840 ? 380 : 320,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(child: list),
-                            PositionedDirectional(
-                              end: kFloatingActionButtonMargin,
-                              bottom: kFloatingActionButtonMargin,
-                              child: add,
-                            ),
-                          ],
+                      // Folding the list keeps the detail where it is, so an open
+                      // result keeps its place.
+                      if (!listHidden) ...[
+                        // The add button over the list rather than the window's
+                        // corner, where it would cover the detail's own buttons
+                        // (a run's cancel).
+                        SizedBox(
+                          width: constraints.maxWidth >= 840 ? 380 : 320,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(child: list),
+                              PositionedDirectional(
+                                end: kFloatingActionButtonMargin,
+                                bottom: kFloatingActionButtonMargin,
+                                child: add,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const VerticalDivider(width: 1),
+                        const VerticalDivider(width: 1),
+                      ],
                       Expanded(
                         child: DetailPane(state: widget.state, selection: _selection),
                       ),

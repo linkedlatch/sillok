@@ -11,6 +11,8 @@
   "remove": "목록에서 빼기",
   "settings": "설정",
   "add": "파일 추가",
+  "hideList": "파일 목록 숨기기",
+  "showList": "파일 목록 보기",
   "mediaFiles": "오디오 및 동영상",
   "title": "제목",
   "welcomeTitle": "이 기기에서 전사하기",

@@ -43,6 +43,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get add => 'Add files';
 
   @override
+  String get hideList => 'Hide the file list';
+
+  @override
+  String get showList => 'Show the file list';
+
+  @override
   String get mediaFiles => 'Audio and video';
 
   @override

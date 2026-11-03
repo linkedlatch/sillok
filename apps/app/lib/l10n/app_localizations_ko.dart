@@ -43,6 +43,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get add => '파일 추가';
 
   @override
+  String get hideList => '파일 목록 숨기기';
+
+  @override
+  String get showList => '파일 목록 보기';
+
+  @override
   String get mediaFiles => '오디오 및 동영상';
 
   @override

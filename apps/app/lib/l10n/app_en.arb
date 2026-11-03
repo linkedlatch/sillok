@@ -11,6 +11,8 @@
   "remove": "Remove from the list",
   "settings": "Settings",
   "add": "Add files",
+  "hideList": "Hide the file list",
+  "showList": "Show the file list",
   "mediaFiles": "Audio and video",
   "title": "Title",
   "welcomeTitle": "Transcribe on this device",

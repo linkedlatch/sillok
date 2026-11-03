@@ -19,6 +19,7 @@ import 'package:sillok/main.dart';
 import 'package:sillok/ui/home.dart';
 import 'package:sillok/ui/playback.dart';
 import 'package:sillok/ui/running_view.dart';
+import 'package:sillok/ui/transcript_view.dart';
 
 class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
   _Paths(this.root);
@@ -224,6 +225,27 @@ void main() {
       });
     });
   }
+
+  testWidgets('a wide window folds the list away', (tester) async {
+    await start(tester, _sizes['desktop']!, result: true);
+    const title = '분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용';
+    await tester.tap(find.text(title).first);
+    await _settle(tester);
+    final result = tester.state(find.byType(TranscriptView));
+
+    await tester.tap(find.byTooltip('Hide the file list'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LibraryList), findsNothing);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byTooltip('Add files'), findsOneWidget);
+    // The open result stays as it was.
+    expect(tester.state(find.byType(TranscriptView)), same(result));
+
+    await tester.tap(find.byTooltip('Show the file list'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LibraryList), findsOneWidget);
+    expect(tester.state(find.byType(TranscriptView)), same(result));
+  });
 
   testWidgets('the running file follows new sentences only from the end', (tester) async {
     await start(tester, _sizes['desktop']!, result: true);
