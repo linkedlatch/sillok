@@ -122,6 +122,20 @@ flutter build apk --target-platform android-arm64,android-x64
 flutter test integration_test -d <device>      # the built app on a device or desktop
 ```
 
+Each push builds the apps in CI (the `app` workflow): `sillok-android-debug`,
+`sillok-windows-x64` and `sillok-macos` under the run's artifacts. The macOS
+app has an ad-hoc signature but is not notarized, so macOS refuses to open it
+the first time it comes from a download. Try to open it once, then choose
+Open Anyway in System Settings > Privacy & Security and enter your password;
+it opens normally from then on. Alternatively, remove the download mark
+before opening it:
+
+```
+xattr -dr com.apple.quarantine Sillok.app
+```
+
+A copy built on the Mac itself has no download mark and opens directly.
+
 ## Library use
 
 ```c
