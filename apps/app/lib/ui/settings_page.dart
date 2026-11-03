@@ -170,7 +170,7 @@ class _AcceleratorControl extends StatelessWidget {
         spacing: 4,
         children: [
           const Icon(Icons.memory, size: 16),
-          Text(l.neuralEngineInUse, style: style),
+          Text(l.neuralEngineReady, style: style),
         ],
       ),
       ModelDownloading(:final progress) => Column(

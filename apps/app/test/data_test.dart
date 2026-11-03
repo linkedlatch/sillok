@@ -57,6 +57,7 @@ void main() {
       diarize: false,
       glossary: parseGlossary('Kubernetes, 실록\n gRPC \n'),
       gpuIndex: 0,
+      npu: false,
     );
     expect(settings.glossary, ['Kubernetes', '실록', 'gRPC']);
     final again = JobSettings.fromJson(settings.toJson());
@@ -67,6 +68,8 @@ void main() {
       'glossary': ['Kubernetes', '실록', 'gRPC'],
     });
     expect(again.copyWith(gpuIndex: () => null).gpuIndex, isNull);
+    // Settings saved before the NPU switch use the encoder when it is here.
+    expect(JobSettings.fromJson(const {}).npu, isTrue);
   });
 
   test('the store keeps finished jobs and drops unfinished folders', () async {

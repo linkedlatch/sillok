@@ -50,6 +50,8 @@ constexpr const char* kUsage = R"(usage:
       --device cpu|gpu        compute device (default cpu)
       --gpu-index N           which GPU (default 0)
       --threads N             CPU threads (default: automatic)
+      --npu                   run the encoder on the NPU when the model has an
+                              encoder for it (Core ML on Apple)
       --model ID              transcription model (default: the recommended one)
       --models DIR            model directory
       --quiet                 no progress output
@@ -342,7 +344,7 @@ std::vector<std::string> GlossaryTerms(const Arguments& args) {
 }
 
 int RunTranscribe(const std::vector<std::string>& all_args) {
-  const Arguments args = Parse(all_args, 2, {"diarize", "quiet"});
+  const Arguments args = Parse(all_args, 2, {"diarize", "npu", "quiet"});
   if (args.positional.size() != 1) throw UsageError("transcribe needs one input file");
   const auto input = FindFile(args.positional[0]);
   if (!input) throw std::runtime_error("file not found: " + args.positional[0]);
@@ -355,7 +357,8 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
       {"models_dir", PathToUtf8(ModelsDir(args))},
       {"device", args.Get("device").value_or("cpu")},
       {"gpu_index", std::stoi(args.Get("gpu-index").value_or("0"))},
-      {"threads", std::stoi(args.Get("threads").value_or("0"))}};
+      {"threads", std::stoi(args.Get("threads").value_or("0"))},
+      {"npu", args.Has("npu")}};
   if (const auto model = args.Get("model")) config["transcription_model"] = *model;
   sillok_engine* raw_engine = nullptr;
   Check(sillok_engine_create(config.dump().c_str(), &raw_engine), "engine");

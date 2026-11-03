@@ -249,7 +249,13 @@ TEST_F(CapiTest, RejectsBadInput) {
   const Json bad_temp = {{"models_dir", PathToUtf8(models_dir_)},
                          {"temp_dir", "/no/such/temp/dir"}};
   EXPECT_EQ(sillok_engine_create(bad_temp.dump().c_str(), &engine), SILLOK_INVALID_ARGUMENT);
+  const Json bad_npu = {{"models_dir", PathToUtf8(models_dir_)}, {"npu", "yes"}};
+  EXPECT_EQ(sillok_engine_create(bad_npu.dump().c_str(), &engine), SILLOK_INVALID_ARGUMENT);
   EXPECT_EQ(engine, nullptr);
+  const Json npu = {{"models_dir", PathToUtf8(models_dir_)}, {"device", "cpu"}, {"npu", true}};
+  EXPECT_EQ(sillok_engine_create(npu.dump().c_str(), &engine), SILLOK_OK) << sillok_last_error();
+  sillok_engine_destroy(engine);
+  engine = nullptr;
   sillok_job* job = nullptr;
   EXPECT_EQ(sillok_job_create(Engine(), R"({"language": "fr"})", &job),
             SILLOK_INVALID_ARGUMENT);

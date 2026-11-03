@@ -17,6 +17,7 @@ class JobRequest {
     required this.modelsDir,
     required this.tempDir,
     required this.gpuIndex,
+    required this.npu,
     required this.transcriptionModel,
     required this.options,
     required this.source,
@@ -28,6 +29,9 @@ class JobRequest {
 
   /// The GPU among the library's GPUs, or null for the CPU.
   final int? gpuIndex;
+
+  /// Whether the encoder runs on the NPU when the model has one.
+  final bool npu;
   final String? transcriptionModel;
   final Map<String, Object?> options;
   final String source;
@@ -38,6 +42,7 @@ class JobRequest {
     'temp_dir': tempDir,
     'device': gpuIndex == null ? 'cpu' : 'gpu',
     'gpu_index': gpuIndex ?? 0,
+    'npu': npu,
     if (transcriptionModel != null) 'transcription_model': transcriptionModel,
   });
 }

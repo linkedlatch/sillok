@@ -108,6 +108,7 @@ class AppState extends ChangeNotifier {
         modelsDir: modelsDir.path,
         tempDir: cache.path,
         gpuIndex: item.settings.gpuIndex,
+        npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
         options: item.settings.options,
         source: item.path,
@@ -165,8 +166,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether [model] runs its encoder on the Neural Engine (on a GPU run).
-  bool usesAccelerator(String? modelId) => accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
+  /// Whether the model's accelerator (the Neural Engine encoder) is here, so
+  /// that a job's npu setting takes effect.
+  bool hasAccelerator(String? modelId) => accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
 
   void _setStatuses(List<FileStatus> statuses) {
     accelerators = {

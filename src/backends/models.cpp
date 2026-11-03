@@ -176,6 +176,7 @@ class Models final : public ModelProvider {
       : dir_(config.models_dir),
         device_(ChooseDevice(config.device, config.gpu_index)),
         threads_(config.threads > 0 ? config.threads : DefaultThreads()),
+        npu_(config.npu),
         voice_detector_(FindModel("voice_detection", config.transcription_model)),
         transcriber_(FindModel("transcription", config.transcription_model)),
         diarizer_(FindModel("diarization", config.transcription_model)) {}
@@ -192,7 +193,7 @@ class Models final : public ModelProvider {
     for (const CatalogFile& file : transcriber_.files) {
       if (!file.zip) continue;
       const auto encoder = (dir_ / PathFromUtf8(file.file)).replace_extension();
-      core_ml = device_.gpu_index >= 0 && std::filesystem::is_directory(encoder);
+      core_ml = npu_ && std::filesystem::is_directory(encoder);
     }
     return OpenWhisper({.model = Path(transcriber_),
                         .name = transcriber_.id,
@@ -219,6 +220,7 @@ class Models final : public ModelProvider {
   std::filesystem::path dir_;
   ComputeDevice device_;
   int threads_;
+  bool npu_;
   const CatalogModel& voice_detector_;
   const CatalogModel& transcriber_;
   const CatalogModel& diarizer_;

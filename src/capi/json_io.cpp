@@ -78,8 +78,8 @@ std::optional<int> ReadSpeaker(const Json& object) {
 EngineSettings ParseEngineConfig(std::string_view text) {
   const Json json = Parse(text, "engine config");
   RejectUnknownKeys(json, "engine config",
-                    {"models_dir", "device", "gpu_index", "threads", "temp_dir",
-                     "transcription_model"});
+                    {"models_dir", "device", "gpu_index", "threads", "npu",
+                     "temp_dir", "transcription_model"});
   EngineSettings settings;
   settings.temp_dir = PathFromUtf8(Get<std::string>(json, "temp_dir", ""));
   EngineConfig& config = settings.models;
@@ -96,6 +96,7 @@ EngineSettings ParseEngineConfig(std::string_view text) {
   }
   config.gpu_index = Get<int>(json, "gpu_index", 0);
   config.threads = Get<int>(json, "threads", 0);
+  config.npu = Get<bool>(json, "npu", false);
   config.transcription_model = Get<std::string>(json, "transcription_model", "");
   if (config.gpu_index < 0 || config.threads < 0) {
     throw std::invalid_argument("\"gpu_index\" and \"threads\" must be >= 0");

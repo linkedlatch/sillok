@@ -8,6 +8,7 @@ class JobSettings {
     this.glossary = const [],
     this.transcriptionModel,
     this.gpuIndex,
+    this.npu = true,
   });
 
   factory JobSettings.fromJson(Map<String, dynamic> json) => JobSettings(
@@ -16,6 +17,7 @@ class JobSettings {
     glossary: [for (final term in json['glossary'] as List? ?? const []) term as String],
     transcriptionModel: json['transcription_model'] as String?,
     gpuIndex: (json['gpu_index'] as num?)?.toInt(),
+    npu: json['npu'] as bool? ?? true,
   );
 
   /// "auto" (Korean and English), "ko" or "en".
@@ -30,18 +32,24 @@ class JobSettings {
   /// docs/DESIGN.md D15).
   final int? gpuIndex;
 
+  /// Whether the encoder runs on the NPU when the model has one here (the
+  /// Neural Engine on Apple), with either device.
+  final bool npu;
+
   JobSettings copyWith({
     String? language,
     bool? diarize,
     List<String>? glossary,
     String? Function()? transcriptionModel,
     int? Function()? gpuIndex,
+    bool? npu,
   }) => JobSettings(
     language: language ?? this.language,
     diarize: diarize ?? this.diarize,
     glossary: glossary ?? this.glossary,
     transcriptionModel: transcriptionModel != null ? transcriptionModel() : this.transcriptionModel,
     gpuIndex: gpuIndex != null ? gpuIndex() : this.gpuIndex,
+    npu: npu ?? this.npu,
   );
 
   /// The job options for the library.
@@ -53,6 +61,7 @@ class JobSettings {
     'glossary': glossary,
     'transcription_model': transcriptionModel,
     'gpu_index': gpuIndex,
+    'npu': npu,
   };
 }
 

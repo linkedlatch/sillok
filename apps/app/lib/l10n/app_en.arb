@@ -347,7 +347,9 @@
     }
   },
   "deviceWithNeuralEngine": "{device} + Neural Engine",
-  "neuralEngineInUse": "The encoder runs on the Neural Engine on GPU runs",
+  "neuralEngineReady": "Neural Engine encoder downloaded",
+  "neuralEngine": "Run the encoder on the Neural Engine",
+  "neuralEngineHint": "With the CPU, transcription leaves the GPU alone",
   "neuralEngineUnpacking": "Checking and unpacking…",
   "neuralEngineDownload": "Download the Neural Engine encoder ({size})",
   "@deviceWithNeuralEngine": {

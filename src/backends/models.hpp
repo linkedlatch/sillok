@@ -26,6 +26,10 @@ struct EngineConfig {
   Device device = Device::kCpu;
   int gpu_index = 0;  // among the GPUs ListDevices() reports
   int threads = 0;    // CPU threads; 0 picks a default
+  // Run the transcription encoder on the NPU when the model has an encoder
+  // for it in models_dir (the Core ML encoder on Apple's Neural Engine), on
+  // either device. Off: the encoder runs on `device` like the rest.
+  bool npu = false;
   // Catalog id of the transcription model; empty for the recommended one.
   std::string transcription_model;
 };

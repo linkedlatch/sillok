@@ -411,7 +411,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get neuralEngineInUse => 'The encoder runs on the Neural Engine on GPU runs';
+  String get neuralEngineReady => 'Neural Engine encoder downloaded';
+
+  @override
+  String get neuralEngine => 'Run the encoder on the Neural Engine';
+
+  @override
+  String get neuralEngineHint => 'With the CPU, transcription leaves the GPU alone';
 
   @override
   String get neuralEngineUnpacking => 'Checking and unpacking…';

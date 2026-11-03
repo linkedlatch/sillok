@@ -104,10 +104,15 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
 /* --- Engine -------------------------------------------------------------- */
 
 /* `config_json`: {"models_dir": "...", "device": "cpu" | "gpu",
- *                 "gpu_index": 0, "threads": 0, "temp_dir": "...",
- *                 "transcription_model": "<catalog id>"}
+ *                 "gpu_index": 0, "threads": 0, "npu": false,
+ *                 "temp_dir": "...", "transcription_model": "<catalog id>"}
  * Without "transcription_model" the recommended one is used. Only the
  * engine's models need to be in "models_dir".
+ * "npu" runs the transcription encoder on the NPU when the model's
+ * accelerator file is in "models_dir" (the Core ML encoder on Apple's Neural
+ * Engine), with either device; without that file the encoder runs on
+ * "device". With "device": "cpu" and "npu": false, neither a GPU nor an NPU
+ * is used.
  * Jobs keep their recording in a file in "temp_dir" (default: the system's
  * temporary directory), so memory does not grow with its length. Android has
  * no usable default: pass the app's cache directory there.

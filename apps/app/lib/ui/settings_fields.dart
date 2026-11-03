@@ -76,16 +76,20 @@ class _SettingsFieldsState extends State<SettingsFields> {
               for (final (i, gpu) in state.gpus.indexed)
                 DropdownMenuItem(
                   value: i,
-                  child: Text(
-                    state.usesAccelerator(settings.transcriptionModel)
-                        ? l.deviceWithNeuralEngine(gpu.description)
-                        : gpu.description,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text(gpu.description, overflow: TextOverflow.ellipsis),
                 ),
             ],
             onChanged: (index) =>
                 widget.onChanged(settings.copyWith(gpuIndex: () => index == null || index < 0 ? null : index)),
+          ),
+        // Apple builds, once the model's Neural Engine encoder is here.
+        if (state.hasAccelerator(settings.transcriptionModel))
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l.neuralEngine),
+            subtitle: Text(l.neuralEngineHint),
+            value: settings.npu,
+            onChanged: (value) => widget.onChanged(settings.copyWith(npu: value)),
           ),
       ],
     );
@@ -99,7 +103,15 @@ String settingsSummary(AppLocalizations l, AppState state, JobSettings settings)
     languageName(l, settings.language),
     settings.diarize ? l.diarize : l.diarizeOff,
     if (model.isNotEmpty) modelName(model.first),
-    if (state.gpus.isNotEmpty)
-      settings.gpuIndex == null ? l.deviceCpu : state.gpus[settings.gpuIndex!.clamp(0, state.gpus.length - 1)].name,
+    if (state.gpus.isNotEmpty) _deviceName(l, state, settings),
   ].join(' · ');
+}
+
+/// "CPU", "Apple A18 Pro GPU", or either "+ Neural Engine" when it runs the
+/// encoder.
+String _deviceName(AppLocalizations l, AppState state, JobSettings settings) {
+  final device = settings.gpuIndex == null
+      ? l.deviceCpu
+      : state.gpus[settings.gpuIndex!.clamp(0, state.gpus.length - 1)].name;
+  return settings.npu && state.hasAccelerator(settings.transcriptionModel) ? l.deviceWithNeuralEngine(device) : device;
 }

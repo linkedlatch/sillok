@@ -16,8 +16,8 @@ struct WhisperConfig {
   ComputeDevice device;
   int threads = 4;
   // Whether whisper.cpp may run the encoder through the Core ML model next
-  // to `model` (builds with Core ML only). Off for CPU runs, so that the
-  // Neural Engine stays unused.
+  // to `model` (builds with Core ML only), whatever `device` is. Off keeps
+  // the Neural Engine unused.
   bool core_ml = false;
 };
 

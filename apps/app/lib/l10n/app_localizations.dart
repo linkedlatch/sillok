@@ -764,11 +764,23 @@ abstract class AppLocalizations {
   /// **'{device} + Neural Engine'**
   String deviceWithNeuralEngine(String device);
 
-  /// No description provided for @neuralEngineInUse.
+  /// No description provided for @neuralEngineReady.
   ///
   /// In en, this message translates to:
-  /// **'The encoder runs on the Neural Engine on GPU runs'**
-  String get neuralEngineInUse;
+  /// **'Neural Engine encoder downloaded'**
+  String get neuralEngineReady;
+
+  /// No description provided for @neuralEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the encoder on the Neural Engine'**
+  String get neuralEngine;
+
+  /// No description provided for @neuralEngineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'With the CPU, transcription leaves the GPU alone'**
+  String get neuralEngineHint;
 
   /// No description provided for @neuralEngineUnpacking.
   ///

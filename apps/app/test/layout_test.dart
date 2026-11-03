@@ -195,9 +195,12 @@ void main() {
 
       testWidgets('settings', (tester) async {
         await start(tester, size, result: true);
+        // As on Apple with the recommended model's Neural Engine encoder here.
+        state.accelerators = {state.recommendedTranscription.id: const ModelReady()};
         await tester.tap(find.byTooltip('Settings'));
         await tester.pumpAndSettle();
         expect(find.text('Defaults for new files'), findsOneWidget);
+        expect(find.text('Run the encoder on the Neural Engine'), findsOneWidget);
       });
 
       testWidgets('adding files', (tester) async {
