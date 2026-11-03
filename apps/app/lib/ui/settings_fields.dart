@@ -82,12 +82,12 @@ class _SettingsFieldsState extends State<SettingsFields> {
             onChanged: (index) =>
                 widget.onChanged(settings.copyWith(gpuIndex: () => index == null || index < 0 ? null : index)),
           ),
-        // Apple builds, once the model's Neural Engine encoder is here.
+        // Apple builds, once the model's NPU encoder (Neural Engine) is here.
         if (state.hasAccelerator(settings.transcriptionModel))
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(l.neuralEngine),
-            subtitle: Text(l.neuralEngineHint),
+            title: Text(l.npu),
+            subtitle: Text(l.npuHint),
             value: settings.npu,
             onChanged: (value) => widget.onChanged(settings.copyWith(npu: value)),
           ),
@@ -107,11 +107,11 @@ String settingsSummary(AppLocalizations l, AppState state, JobSettings settings)
   ].join(' · ');
 }
 
-/// "CPU", "Apple A18 Pro GPU", or either "+ Neural Engine" when it runs the
+/// "CPU", "Apple A18 Pro GPU", or either "+ NPU" when it runs the
 /// encoder.
 String _deviceName(AppLocalizations l, AppState state, JobSettings settings) {
   final device = settings.gpuIndex == null
       ? l.deviceCpu
       : state.gpus[settings.gpuIndex!.clamp(0, state.gpus.length - 1)].name;
-  return settings.npu && state.hasAccelerator(settings.transcriptionModel) ? l.deviceWithNeuralEngine(device) : device;
+  return settings.npu && state.hasAccelerator(settings.transcriptionModel) ? l.deviceWithNpu(device) : device;
 }

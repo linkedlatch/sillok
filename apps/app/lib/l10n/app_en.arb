@@ -346,20 +346,20 @@
       }
     }
   },
-  "deviceWithNeuralEngine": "{device} + Neural Engine",
-  "neuralEngineReady": "Neural Engine encoder downloaded",
-  "neuralEngine": "Run the encoder on the Neural Engine",
-  "neuralEngineHint": "With the CPU, transcription leaves the GPU alone",
-  "neuralEngineUnpacking": "Checking and unpacking…",
-  "neuralEngineDownload": "Download the Neural Engine encoder ({size})",
-  "@deviceWithNeuralEngine": {
+  "deviceWithNpu": "{device} + NPU",
+  "npuReady": "NPU encoder downloaded",
+  "npu": "Run the encoder on the NPU",
+  "npuHint": "With the CPU, transcription leaves the GPU alone",
+  "npuUnpacking": "Checking and unpacking…",
+  "npuDownload": "Download the NPU encoder ({size})",
+  "@deviceWithNpu": {
     "placeholders": {
       "device": {
         "type": "String"
       }
     }
   },
-  "@neuralEngineDownload": {
+  "@npuDownload": {
     "placeholders": {
       "size": {
         "type": "String"

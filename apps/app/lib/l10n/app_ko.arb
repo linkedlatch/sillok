@@ -111,10 +111,10 @@
   "verifyModels": "모델 파일 확인",
   "about": "정보",
   "version": "버전: {version}",
-  "deviceWithNeuralEngine": "{device} + Neural Engine",
-  "neuralEngineReady": "Neural Engine용 인코더를 받았습니다",
-  "neuralEngine": "인코더를 Neural Engine에서 실행",
-  "neuralEngineHint": "CPU와 함께 쓰면 전사가 GPU를 쓰지 않습니다",
-  "neuralEngineUnpacking": "확인하고 압축을 푸는 중…",
-  "neuralEngineDownload": "Neural Engine용 인코더 받기({size})"
+  "deviceWithNpu": "{device} + NPU",
+  "npuReady": "NPU용 인코더를 받았습니다",
+  "npu": "인코더를 NPU에서 실행",
+  "npuHint": "CPU와 함께 쓰면 전사가 GPU를 쓰지 않습니다",
+  "npuUnpacking": "확인하고 압축을 푸는 중…",
+  "npuDownload": "NPU용 인코더 받기({size})"
 }

@@ -106,7 +106,7 @@ class _ModelTile extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final ready = state.models[model.id] is ModelReady;
     final inUse = (state.defaults.transcriptionModel ?? state.recommendedTranscription.id) == model.id;
-    // Apple builds offer the Neural Engine encoder for a model that is here.
+    // Apple builds offer the NPU encoder (Neural Engine) for a model that is here.
     final accelerator = ready ? state.accelerators[model.id] : null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -151,7 +151,7 @@ class _ModelTile extends StatelessWidget {
   }
 }
 
-/// The Neural Engine encoder of a ready model: in use, being fetched, or
+/// The NPU encoder of a ready model: in use, being fetched, or
 /// the button to fetch it.
 class _AcceleratorControl extends StatelessWidget {
   const _AcceleratorControl({required this.state, required this.model, required this.status});
@@ -170,7 +170,7 @@ class _AcceleratorControl extends StatelessWidget {
         spacing: 4,
         children: [
           const Icon(Icons.memory, size: 16),
-          Text(l.neuralEngineReady, style: style),
+          Text(l.npuReady, style: style),
         ],
       ),
       ModelDownloading(:final progress) => Column(
@@ -194,7 +194,7 @@ class _AcceleratorControl extends StatelessWidget {
         spacing: 4,
         children: [
           const LinearProgressIndicator(),
-          Text(l.neuralEngineUnpacking, style: style),
+          Text(l.npuUnpacking, style: style),
         ],
       ),
       _ => Align(
@@ -202,7 +202,7 @@ class _AcceleratorControl extends StatelessWidget {
         child: TextButton.icon(
           onPressed: () => state.downloadAccelerator(model.id),
           icon: const Icon(Icons.memory),
-          label: Text(l.neuralEngineDownload(formatBytes(size))),
+          label: Text(l.npuDownload(formatBytes(size))),
         ),
       ),
     };

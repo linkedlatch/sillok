@@ -166,7 +166,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether the model's accelerator (the Neural Engine encoder) is here, so
+  /// Whether the model's accelerator (the NPU encoder) is here, so
   /// that a job's npu setting takes effect.
   bool hasAccelerator(String? modelId) => accelerators[modelId ?? recommendedTranscription.id] is ModelReady;
 

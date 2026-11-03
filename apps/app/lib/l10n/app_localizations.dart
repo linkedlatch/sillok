@@ -758,41 +758,41 @@ abstract class AppLocalizations {
   /// **'Version: {version}'**
   String version(String version);
 
-  /// No description provided for @deviceWithNeuralEngine.
+  /// No description provided for @deviceWithNpu.
   ///
   /// In en, this message translates to:
-  /// **'{device} + Neural Engine'**
-  String deviceWithNeuralEngine(String device);
+  /// **'{device} + NPU'**
+  String deviceWithNpu(String device);
 
-  /// No description provided for @neuralEngineReady.
+  /// No description provided for @npuReady.
   ///
   /// In en, this message translates to:
-  /// **'Neural Engine encoder downloaded'**
-  String get neuralEngineReady;
+  /// **'NPU encoder downloaded'**
+  String get npuReady;
 
-  /// No description provided for @neuralEngine.
+  /// No description provided for @npu.
   ///
   /// In en, this message translates to:
-  /// **'Run the encoder on the Neural Engine'**
-  String get neuralEngine;
+  /// **'Run the encoder on the NPU'**
+  String get npu;
 
-  /// No description provided for @neuralEngineHint.
+  /// No description provided for @npuHint.
   ///
   /// In en, this message translates to:
   /// **'With the CPU, transcription leaves the GPU alone'**
-  String get neuralEngineHint;
+  String get npuHint;
 
-  /// No description provided for @neuralEngineUnpacking.
+  /// No description provided for @npuUnpacking.
   ///
   /// In en, this message translates to:
   /// **'Checking and unpacking…'**
-  String get neuralEngineUnpacking;
+  String get npuUnpacking;
 
-  /// No description provided for @neuralEngineDownload.
+  /// No description provided for @npuDownload.
   ///
   /// In en, this message translates to:
-  /// **'Download the Neural Engine encoder ({size})'**
-  String neuralEngineDownload(String size);
+  /// **'Download the NPU encoder ({size})'**
+  String npuDownload(String size);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

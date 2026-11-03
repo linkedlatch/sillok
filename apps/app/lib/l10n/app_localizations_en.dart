@@ -406,24 +406,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String deviceWithNeuralEngine(String device) {
-    return '$device + Neural Engine';
+  String deviceWithNpu(String device) {
+    return '$device + NPU';
   }
 
   @override
-  String get neuralEngineReady => 'Neural Engine encoder downloaded';
+  String get npuReady => 'NPU encoder downloaded';
 
   @override
-  String get neuralEngine => 'Run the encoder on the Neural Engine';
+  String get npu => 'Run the encoder on the NPU';
 
   @override
-  String get neuralEngineHint => 'With the CPU, transcription leaves the GPU alone';
+  String get npuHint => 'With the CPU, transcription leaves the GPU alone';
 
   @override
-  String get neuralEngineUnpacking => 'Checking and unpacking…';
+  String get npuUnpacking => 'Checking and unpacking…';
 
   @override
-  String neuralEngineDownload(String size) {
-    return 'Download the Neural Engine encoder ($size)';
+  String npuDownload(String size) {
+    return 'Download the NPU encoder ($size)';
   }
 }

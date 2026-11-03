@@ -400,24 +400,24 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String deviceWithNeuralEngine(String device) {
-    return '$device + Neural Engine';
+  String deviceWithNpu(String device) {
+    return '$device + NPU';
   }
 
   @override
-  String get neuralEngineReady => 'Neural Engine용 인코더를 받았습니다';
+  String get npuReady => 'NPU용 인코더를 받았습니다';
 
   @override
-  String get neuralEngine => '인코더를 Neural Engine에서 실행';
+  String get npu => '인코더를 NPU에서 실행';
 
   @override
-  String get neuralEngineHint => 'CPU와 함께 쓰면 전사가 GPU를 쓰지 않습니다';
+  String get npuHint => 'CPU와 함께 쓰면 전사가 GPU를 쓰지 않습니다';
 
   @override
-  String get neuralEngineUnpacking => '확인하고 압축을 푸는 중…';
+  String get npuUnpacking => '확인하고 압축을 푸는 중…';
 
   @override
-  String neuralEngineDownload(String size) {
-    return 'Neural Engine용 인코더 받기($size)';
+  String npuDownload(String size) {
+    return 'NPU용 인코더 받기($size)';
   }
 }
