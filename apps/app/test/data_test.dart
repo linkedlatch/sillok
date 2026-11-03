@@ -97,4 +97,13 @@ void main() {
     expect(windowsMediaExtensions(), containsAll(['mp3', 'wav', 'm4a', 'mp4']));
     expect(windowsMediaExtensions(), isNot(contains('txt')));
   }, skip: !Platform.isWindows);
+
+  test('dropped files: the system tells recordings from other files', () {
+    for (final path in ['/x/a.mp3', '/x/b.M4A', '/x/c.wav', '/x/d.mp4']) {
+      expect(isMediaFile(path), isTrue, reason: path);
+    }
+    for (final path in ['/x/notes.txt', '/x/slides.pdf', '/x/no extension']) {
+      expect(isMediaFile(path), isFalse, reason: path);
+    }
+  }, skip: !Platform.isWindows && !Platform.isMacOS);
 }

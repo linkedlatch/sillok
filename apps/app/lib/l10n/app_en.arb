@@ -14,6 +14,8 @@
   "hideList": "Hide the file list",
   "showList": "Show the file list",
   "mediaFiles": "Audio and video",
+  "dropFiles": "Drop to add",
+  "dropNoMedia": "No audio or video among the dropped files",
   "title": "Title",
   "welcomeTitle": "Transcribe on this device",
   "welcomeBody": "Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about {size}.",

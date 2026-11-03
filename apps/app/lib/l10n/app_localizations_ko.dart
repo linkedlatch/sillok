@@ -52,6 +52,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mediaFiles => '오디오 및 동영상';
 
   @override
+  String get dropFiles => '놓으면 추가합니다';
+
+  @override
+  String get dropNoMedia => '놓은 파일 중에 오디오나 동영상이 없습니다';
+
+  @override
   String get title => '제목';
 
   @override

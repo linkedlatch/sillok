@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
@@ -43,8 +45,13 @@ final class ResultSelection extends Selection {
   int get hashCode => id.hashCode;
 }
 
+/// Whether files dropped on the window are taken: on Windows and macOS,
+/// where they arrive as paths the queue can keep (tests turn it on).
+bool acceptsDrops = Platform.isWindows || Platform.isMacOS;
+
 /// The library with the detail of the chosen file: side by side on wide
-/// windows, the detail as its own page on narrow ones.
+/// windows, the detail as its own page on narrow ones. Files dropped on it
+/// are added like chosen ones.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.state});
 
@@ -60,6 +67,7 @@ class _HomePageState extends State<HomePage> {
 
   /// On wide windows, the list folded away to give the detail the width.
   bool _listHidden = false;
+  bool _dragging = false;
 
   @override
   void initState() {
@@ -81,12 +89,30 @@ class _HomePageState extends State<HomePage> {
   Future<void> _add() async {
     final files = await openFiles(acceptedTypeGroups: mediaTypes(AppLocalizations.of(context).mediaFiles));
     if (files.isEmpty || !mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => AddSheet(state: widget.state, files: [for (final f in files) (f.path, f.name)]),
-    );
+    await _addFiles([for (final f in files) (f.path, f.name)]);
+  }
+
+  Future<void> _addFiles(List<(String, String)> files) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => AddSheet(state: widget.state, files: files),
+  );
+
+  /// Recordings among dropped files, while nothing (settings, a sheet)
+  /// covers the page; folders and other files are left out.
+  void _drop(DropDoneDetails details) {
+    setState(() => _dragging = false);
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    final files = [
+      for (final file in details.files)
+        if (file is DropItemFile && isMediaFile(file.path)) (file.path, file.name),
+    ];
+    if (files.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).dropNoMedia)));
+      return;
+    }
+    _addFiles(files);
   }
 
   void _open(Selection selection, bool wide) {
@@ -116,7 +142,7 @@ class _HomePageState extends State<HomePage> {
         final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
         final add = FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add), label: Text(l.add));
         final listHidden = wide && _listHidden;
-        return Scaffold(
+        final page = Scaffold(
           appBar: AppBar(
             leading: wide
                 ? IconButton(
@@ -174,6 +200,35 @@ class _HomePageState extends State<HomePage> {
                     ],
                   )
                 : list,
+          ),
+        );
+        return DropTarget(
+          enable: acceptsDrops,
+          onDragEntered: (_) => setState(() => _dragging = true),
+          onDragExited: (_) => setState(() => _dragging = false),
+          onDragDone: _drop,
+          child: Stack(
+            children: [
+              page,
+              if (_dragging)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Material(
+                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.9),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 8,
+                          children: [
+                            const Icon(Icons.file_download_outlined, size: 48),
+                            Text(l.dropFiles, style: Theme.of(context).textTheme.titleLarge),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },
