@@ -3,8 +3,9 @@
 Usage:
   python3 -I run_eval.py --build BUILD_DIR --models DIR --audio DIR \\
       --device cpu|gpu --out OUT_DIR [--model ID] [--only step,step,...]
-Steps: accuracy, switch, korean_speakers, ami, long, cancel, exit.
-Each step's result is saved as soon as it finishes, so a run can be resumed
+Steps: accuracy, switch, korean_speakers, ami, long, cancel, exit, and
+lecture, which is not run by default: its set comes from a real lecture
+(make_lecture_set.py). Each step's result is saved as soon as it finishes, so a run can be resumed
 with --only for the missing steps.
 """
 import argparse
@@ -57,11 +58,13 @@ class Evaluation:
             json.dump(self.results, file, ensure_ascii=False, indent=1)
         print(f"[{step}] {json.dumps(result, ensure_ascii=False)}", flush=True)
 
-    def transcribe(self, name, wav, diarize, env=None):
+    def transcribe(self, name, wav, diarize, env=None, language=None):
         output = os.path.join(self.args.out, f"{name}.json")
         command = [self.cli, "transcribe", wav, "--models", self.args.models,
                    "--device", self.args.device, "--format", "json", "--quiet",
                    "--output", output]
+        if language:
+            command += ["--language", language]
         if self.args.model:
             command += ["--model", self.args.model]
         if diarize:
@@ -88,6 +91,13 @@ class Evaluation:
         transcript, run = self.transcribe("switch", self.set_path("switch", "wav"), diarize=False)
         reference = evaluate.load(self.set_path("switch", "json"))
         return dict(evaluate.switch(reference, transcript), **run)
+
+    def lecture(self):
+        # Korean throughout, so that only the level and the room vary.
+        transcript, run = self.transcribe("lecture", self.set_path("lecture", "wav"),
+                                          diarize=False, language="ko")
+        return dict(evaluate.lecture(evaluate.load(self.set_path("lecture", "json")), transcript),
+                    **run)
 
     def korean_speakers(self):
         name = "korean_two_speakers"

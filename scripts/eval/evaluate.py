@@ -4,6 +4,7 @@ Usage:
   python3 -I evaluate.py accuracy SET.json TRANSCRIPT.json
   python3 -I evaluate.py switch SET.json TRANSCRIPT.json
   python3 -I evaluate.py speakers SET.json TRANSCRIPT.json
+  python3 -I evaluate.py lecture SET.json TRANSCRIPT.json
   python3 -I evaluate.py ami TRANSCRIPT.json DOWNLOAD_DIR [OFFSET_SECONDS]
 Prints one JSON object with the scores.
 """
@@ -65,6 +66,31 @@ def accuracy(reference, transcript):
     rate, errors, total = metrics.error_rate(pairs)
     unit = "cer" if reference["utterances"][0]["language"] == "ko" else "wer"
     return {unit: round(rate, 4), "errors": errors, "reference_tokens": total}
+
+
+def lecture(reference, transcript):
+    """The lecture set (make_lecture_set.py): CER of the spliced sentences by
+    level and room, sentences without any text, and characters made up in the
+    stretches of noise alone. The lecture around them is not scored."""
+    words = hypothesis_words(transcript)
+
+    def inside(begin, end):
+        return " ".join(w["text"] for w in words if begin <= (w["start"] + w["end"]) / 2 <= end)
+
+    pairs, missed, made_up = {}, {}, 0
+    for splice in reference["splices"]:
+        if splice["kind"] == "noise":
+            made_up += len(metrics.korean_characters(inside(splice["start"] + 0.3, splice["end"] - 0.3)))
+            continue
+        hypothesis = metrics.korean_characters(inside(splice["start"] - 0.3, splice["end"] + 0.3))
+        key = f"{splice['level_db']}_db_{splice['room']}"
+        pairs.setdefault(key, []).append((metrics.korean_characters(splice["text"]), hypothesis))
+        missed[key] = missed.get(key, 0) + (not hypothesis)
+    result = {"cer": round(metrics.error_rate([p for group in pairs.values() for p in group])[0], 4),
+              "sentences_missed": sum(missed.values()), "made_up_characters": made_up}
+    for key in sorted(pairs, key=lambda k: (int(k.split("_")[0]), k)):
+        result[f"cer_{key}"] = round(metrics.error_rate(pairs[key])[0], 4)
+    return result
 
 
 def switch(reference, transcript):
@@ -249,7 +275,8 @@ def main(argv):
         if command == "speakers":
             result = speakers(reference, transcript, argv[4] if len(argv) > 4 else None)
         else:
-            result = {"accuracy": accuracy, "switch": switch}[command](reference, transcript)
+            result = {"accuracy": accuracy, "switch": switch,
+                      "lecture": lecture}[command](reference, transcript)
     print(json.dumps(result, ensure_ascii=False))
 
 
