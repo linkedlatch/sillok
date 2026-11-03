@@ -115,5 +115,6 @@
   "npuHint": "CPU와 함께 쓰면 전사가 GPU를 쓰지 않습니다",
   "npuUnpacking": "확인하고 압축을 푸는 중…",
   "npuDownload": "NPU용 인코더 받기({size})",
-  "npuIncluded": "NPU용 인코더 {size} 포함"
+  "npuAlong": "NPU용 인코더도 받기(권장)",
+  "npuAlongHint": "{size} · CPU와 GPU의 부담을 덜어 줍니다"
 }

@@ -259,7 +259,10 @@ void main() {
     expect(find.text('large-v3 turbo'), findsOneWidget);
     expect(find.text('large-v3'), findsOneWidget);
     expect(find.textContaining('Download ('), findsNWidgets(2));
-    expect(find.textContaining('Includes the NPU encoder'), Platform.isMacOS ? findsNWidgets(2) : findsNothing);
+    expect(
+      find.text('Also download the NPU encoder (recommended)'),
+      Platform.isMacOS ? findsNWidgets(2) : findsNothing,
+    );
   });
 
   testWidgets('a model card shows the chosen version', (tester) async {

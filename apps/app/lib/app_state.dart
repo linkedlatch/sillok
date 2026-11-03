@@ -193,9 +193,9 @@ class AppState extends ChangeNotifier {
   static bool _isZip(CatalogModel model, String file) => model.files.any((f) => f.file == file && f.zip);
 
   /// The files [downloadModel] fetches for [modelId]: those of the models an
-  /// engine with it needs that are not here, then its accelerator's (on
-  /// Apple, the Core ML encoder: recommended there, so it comes along).
-  List<ModelFile> _toDownload(String modelId) {
+  /// engine with it needs that are not here, then with [accelerator] its
+  /// accelerator's (on Apple, the Core ML encoder).
+  List<ModelFile> _toDownload(String modelId, {required bool accelerator}) {
     final needed = engineModels(modelId);
     // The models first, so that a stop during the larger encoder leaves them
     // usable.
@@ -204,25 +204,31 @@ class AppState extends ChangeNotifier {
         if (models[model.id] is! ModelReady)
           for (final file in model.files)
             if (!file.zip) file.file: file,
-      for (final model in needed)
-        if (accelerators[model.id] case final status? when status is! ModelReady)
-          for (final file in model.files)
-            if (file.zip) file.file: file,
+      if (accelerator)
+        for (final model in needed)
+          if (accelerators[model.id] case final status? when status is! ModelReady)
+            for (final file in model.files)
+              if (file.zip) file.file: file,
     }.values.toList();
   }
 
-  /// Bytes [downloadModel] fetches for [modelId], or of them those of the
-  /// accelerator.
-  int downloadSize(String modelId, {bool accelerator = false}) =>
-      _toDownload(modelId).where((f) => !accelerator || f.zip).fold(0, (sum, f) => sum + f.size);
+  /// Bytes [downloadModel] fetches for [modelId].
+  int downloadSize(String modelId, {required bool accelerator}) =>
+      _toDownload(modelId, accelerator: accelerator).fold(0, (sum, f) => sum + f.size);
+
+  /// Bytes of [modelId]'s accelerator still to download; 0 where there is
+  /// none (outside Apple) or it is here.
+  int acceleratorDownloadSize(String modelId) =>
+      downloadSize(modelId, accelerator: true) - downloadSize(modelId, accelerator: false);
 
   /// Downloads the files of [modelId] and, for the first start, the other
-  /// models an engine needs; checks their hashes once all are here and
-  /// unpacks the accelerator. The first model here becomes the default.
-  Future<void> downloadModel(String modelId) async {
+  /// models an engine needs, with [accelerator] its accelerator too; checks
+  /// their hashes once all are here and unpacks the accelerator. The first
+  /// model here becomes the default.
+  Future<void> downloadModel(String modelId, {required bool accelerator}) async {
     if (_downloading != null || _acceleratorBusy != null) return;
     final wanted = {for (final model in engineModels(modelId)) model.id: model};
-    final files = _toDownload(modelId);
+    final files = _toDownload(modelId, accelerator: accelerator);
     _downloading = modelId;
     void show(ModelStatus status) {
       models = {

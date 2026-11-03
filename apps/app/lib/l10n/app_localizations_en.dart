@@ -424,7 +424,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String npuIncluded(String size) {
-    return 'Includes the NPU encoder, $size';
+  String get npuAlong => 'Also download the NPU encoder (recommended)';
+
+  @override
+  String npuAlongHint(String size) {
+    return '$size · Takes load off the CPU and GPU';
   }
 }

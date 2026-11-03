@@ -782,11 +782,17 @@ abstract class AppLocalizations {
   /// **'Download the NPU encoder ({size})'**
   String npuDownload(String size);
 
-  /// No description provided for @npuIncluded.
+  /// No description provided for @npuAlong.
   ///
   /// In en, this message translates to:
-  /// **'Includes the NPU encoder, {size}'**
-  String npuIncluded(String size);
+  /// **'Also download the NPU encoder (recommended)'**
+  String get npuAlong;
+
+  /// No description provided for @npuAlongHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} · Takes load off the CPU and GPU'**
+  String npuAlongHint(String size);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

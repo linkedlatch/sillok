@@ -81,8 +81,8 @@ class _ModelCardState extends State<_ModelCard> {
             Row(
               children: [
                 Expanded(child: Text(familyName(model.family), style: Theme.of(context).textTheme.titleMedium)),
-                if (widget.versions.any((m) => m.recommended))
-                  Chip(label: Text(l.modelRecommended), visualDensity: VisualDensity.compact),
+                // On the recommended version, so that it names the version.
+                if (model.recommended) Chip(label: Text(l.modelRecommended), visualDensity: VisualDensity.compact),
               ],
             ),
             // Downloaded versions carry a mark.
@@ -192,16 +192,26 @@ class _AcceleratorControl extends StatelessWidget {
 
 /// Download progress of [model], or the button to download it with what else
 /// it needs.
-class ModelDownloadControl extends StatelessWidget {
+class ModelDownloadControl extends StatefulWidget {
   const ModelDownloadControl({super.key, required this.state, required this.model});
 
   final AppState state;
   final CatalogModel model;
 
   @override
+  State<ModelDownloadControl> createState() => _ModelDownloadControlState();
+}
+
+class _ModelDownloadControlState extends State<ModelDownloadControl> {
+  /// Whether the NPU encoder comes along: recommended, so on unless declined.
+  bool _accelerator = true;
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final style = Theme.of(context).textTheme.bodySmall;
+    final state = widget.state;
+    final model = widget.model;
     return switch (state.models[model.id]) {
       ModelDownloading(:final progress) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,13 +241,24 @@ class ModelDownloadControl extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
         children: [
+          // Apple builds, while the model's NPU encoder is not here.
+          if (state.acceleratorDownloadSize(model.id) case final size when size > 0)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(l.npuAlong),
+              subtitle: Text(l.npuAlongHint(formatBytes(size))),
+              value: _accelerator,
+              onChanged: (value) => setState(() => _accelerator = value ?? true),
+            ),
           FilledButton(
-            onPressed: () => state.downloadModel(model.id),
-            child: Text(downloaded > 0 ? l.modelsResume : l.modelsDownload(formatBytes(state.downloadSize(model.id)))),
+            onPressed: () => state.downloadModel(model.id, accelerator: _accelerator),
+            child: Text(
+              downloaded > 0
+                  ? l.modelsResume
+                  : l.modelsDownload(formatBytes(state.downloadSize(model.id, accelerator: _accelerator))),
+            ),
           ),
-          // Apple builds: the NPU encoder comes with the model.
-          if (state.downloadSize(model.id, accelerator: true) case final size when size > 0)
-            Text(l.npuIncluded(formatBytes(size)), style: style),
         ],
       ),
       _ => const SizedBox.shrink(),

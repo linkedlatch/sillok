@@ -418,7 +418,10 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String npuIncluded(String size) {
-    return 'NPU용 인코더 $size 포함';
+  String get npuAlong => 'NPU용 인코더도 받기(권장)';
+
+  @override
+  String npuAlongHint(String size) {
+    return '$size · CPU와 GPU의 부담을 덜어 줍니다';
   }
 }

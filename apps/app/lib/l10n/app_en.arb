@@ -350,8 +350,9 @@
   "npuHint": "With the CPU, transcription leaves the GPU alone",
   "npuUnpacking": "Checking and unpacking…",
   "npuDownload": "Download the NPU encoder ({size})",
-  "npuIncluded": "Includes the NPU encoder, {size}",
-  "@npuIncluded": {
+  "npuAlong": "Also download the NPU encoder (recommended)",
+  "npuAlongHint": "{size} · Takes load off the CPU and GPU",
+  "@npuAlongHint": {
     "placeholders": {
       "size": {
         "type": "String"
