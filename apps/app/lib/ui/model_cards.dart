@@ -78,21 +78,23 @@ class _ModelCardState extends State<_ModelCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 8,
           children: [
-            Row(
-              children: [
-                Expanded(child: Text(familyName(model.family), style: Theme.of(context).textTheme.titleMedium)),
-                // On the recommended version, so that it names the version.
-                if (model.recommended) Chip(label: Text(l.modelRecommended), visualDensity: VisualDensity.compact),
-              ],
-            ),
-            // Downloaded versions carry a mark.
+            Text(familyName(model.family), style: Theme.of(context).textTheme.titleMedium),
+            // Downloaded versions carry a mark; the recommended one says so
+            // under its name, where it names the version.
             SegmentedButton<String>(
               showSelectedIcon: false,
               segments: [
                 for (final version in widget.versions)
                   ButtonSegment(
                     value: version.id,
-                    label: Text(version.quantization),
+                    label: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(version.quantization),
+                        if (version.recommended)
+                          Text(l.modelRecommended, style: Theme.of(context).textTheme.labelSmall),
+                      ],
+                    ),
                     icon: state.models[version.id] is ModelReady ? const Icon(Icons.download_done) : null,
                   ),
               ],
@@ -106,15 +108,8 @@ class _ModelCardState extends State<_ModelCard> {
                 spacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  // The model new files get (Defaults for new files), as a
-                  // state rather than a button that does nothing.
-                  inUse
-                      ? Chip(avatar: const Icon(Icons.check), label: Text(l.modelDefault))
-                      : OutlinedButton(
-                          onPressed: () =>
-                              state.setDefaults(state.defaults.copyWith(transcriptionModel: () => model.id)),
-                          child: Text(l.modelMakeDefault),
-                        ),
+                  // Chosen under Defaults for new files; shown here as a state.
+                  if (inUse) Chip(avatar: const Icon(Icons.check), label: Text(l.modelDefault)),
                   TextButton(
                     onPressed: () async {
                       if (await confirm(context, l.deleteConfirm(modelName(model)), l.delete)) {
@@ -195,26 +190,16 @@ class _AcceleratorControl extends StatelessWidget {
 
 /// Download progress of [model], or the button to download it with what else
 /// it needs.
-class ModelDownloadControl extends StatefulWidget {
+class ModelDownloadControl extends StatelessWidget {
   const ModelDownloadControl({super.key, required this.state, required this.model});
 
   final AppState state;
   final CatalogModel model;
 
   @override
-  State<ModelDownloadControl> createState() => _ModelDownloadControlState();
-}
-
-class _ModelDownloadControlState extends State<ModelDownloadControl> {
-  /// Whether the NPU encoder comes along: recommended, so on unless declined.
-  bool _accelerator = true;
-
-  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final style = Theme.of(context).textTheme.bodySmall;
-    final state = widget.state;
-    final model = widget.model;
     return switch (state.models[model.id]) {
       ModelDownloading(:final progress) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,29 +225,40 @@ class _ModelDownloadControlState extends State<ModelDownloadControl> {
           Text(l.modelsVerifying, style: style),
         ],
       ),
-      ModelMissing(:final downloaded) => Column(
+      // Apple builds, while the model's NPU encoder is not here: with it, as
+      // recommended, or the model alone.
+      ModelMissing() when state.acceleratorDownloadSize(model.id) > 0 => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
         children: [
-          // Apple builds, while the model's NPU encoder is not here.
-          if (state.acceleratorDownloadSize(model.id) case final size when size > 0)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: Text(l.npuAlong),
-              subtitle: Text(l.npuAlongHint(formatBytes(size))),
-              value: _accelerator,
-              onChanged: (value) => setState(() => _accelerator = value ?? true),
-            ),
-          FilledButton(
-            onPressed: () => state.downloadModel(model.id, accelerator: _accelerator),
-            child: Text(
-              downloaded > 0
-                  ? l.modelsResume
-                  : l.modelsDownload(formatBytes(state.downloadSize(model.id, accelerator: _accelerator))),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton(
+                onPressed: () => state.downloadModel(model.id, accelerator: true),
+                child: Text(l.modelsDownloadWithNpu(formatBytes(state.downloadSize(model.id, accelerator: true)))),
+              ),
+              TextButton(
+                onPressed: () => state.downloadModel(model.id, accelerator: false),
+                child: Text(l.modelsDownloadOnly(formatBytes(state.downloadSize(model.id, accelerator: false)))),
+              ),
+            ],
           ),
+          Text(l.npuRecommended, style: style),
         ],
+      ),
+      ModelMissing(:final downloaded) => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FilledButton(
+          onPressed: () => state.downloadModel(model.id, accelerator: false),
+          child: Text(
+            downloaded > 0
+                ? l.modelsResume
+                : l.modelsDownload(formatBytes(state.downloadSize(model.id, accelerator: false))),
+          ),
+        ),
       ),
       _ => const SizedBox.shrink(),
     };

@@ -39,7 +39,10 @@ void main(List<String> args) async {
       // Stated every time, so a build folder that once had it on (in its
       // CMake cache) does not keep it; Windows turns it on below.
       'SILLOK_VULKAN': 'OFF',
-      if (os == OS.iOS || os == OS.macOS) 'SILLOK_COREML': 'ON',
+      // Core ML for the NPU encoder: Apple silicon has the Neural Engine,
+      // Intel Macs have none, so their part of the app has no encoder to
+      // offer. Stated every time, as above.
+      'SILLOK_COREML': os == OS.iOS || (os == OS.macOS && code.targetArchitecture == Architecture.arm64) ? 'ON' : 'OFF',
       // Phones: ARMv8.2 with dot product and fp16 (the app checks the CPU).
       // x86_64 Android is only the emulator, which runs the host's AVX2.
       if (os == OS.android && code.targetArchitecture == Architecture.arm64)

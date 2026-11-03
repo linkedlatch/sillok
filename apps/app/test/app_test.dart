@@ -3,7 +3,7 @@
 // SILLOK_TEST_MODELS and SILLOK_TEST_AUDIO (see engine_test.dart).
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -49,7 +49,7 @@ void main() {
     await tester.pump();
     expect(find.text('Transcribe on this device'), findsOneWidget);
     // A card for each transcription model.
-    expect(find.textContaining('Download ('), findsNWidgets(2));
+    expect(find.byType(FilledButton), findsNWidgets(2));
   });
 
   testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {

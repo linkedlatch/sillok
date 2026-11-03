@@ -638,12 +638,6 @@ abstract class AppLocalizations {
   /// **'Default for new files'**
   String get modelDefault;
 
-  /// No description provided for @modelMakeDefault.
-  ///
-  /// In en, this message translates to:
-  /// **'Make it the default'**
-  String get modelMakeDefault;
-
   /// No description provided for @modelSummary.
   ///
   /// In en, this message translates to:
@@ -782,17 +776,23 @@ abstract class AppLocalizations {
   /// **'Download the NPU encoder ({size})'**
   String npuDownload(String size);
 
-  /// No description provided for @npuAlong.
+  /// No description provided for @modelsDownloadWithNpu.
   ///
   /// In en, this message translates to:
-  /// **'Also download the NPU encoder (recommended)'**
-  String get npuAlong;
+  /// **'Download with the NPU encoder ({size})'**
+  String modelsDownloadWithNpu(String size);
 
-  /// No description provided for @npuAlongHint.
+  /// No description provided for @modelsDownloadOnly.
   ///
   /// In en, this message translates to:
-  /// **'{size} · Takes load off the CPU and GPU'**
-  String npuAlongHint(String size);
+  /// **'Model only ({size})'**
+  String modelsDownloadOnly(String size);
+
+  /// No description provided for @npuRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'The NPU encoder takes load off the CPU and GPU (recommended).'**
+  String get npuRecommended;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -307,7 +307,6 @@
   "settingsModelsHint": "large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 is the original. The recommended model suits most devices.",
   "modelRecommended": "Recommended",
   "modelDefault": "Default for new files",
-  "modelMakeDefault": "Make it the default",
   "modelSummary": "Accuracy {accuracy} · speed {speed} · {quantization} · {size}",
   "@modelSummary": {
     "placeholders": {
@@ -368,15 +367,23 @@
   "npuHint": "With the CPU, transcription leaves the GPU alone",
   "npuUnpacking": "Checking and unpacking…",
   "npuDownload": "Download the NPU encoder ({size})",
-  "npuAlong": "Also download the NPU encoder (recommended)",
-  "npuAlongHint": "{size} · Takes load off the CPU and GPU",
-  "@npuAlongHint": {
+  "modelsDownloadWithNpu": "Download with the NPU encoder ({size})",
+  "@modelsDownloadWithNpu": {
     "placeholders": {
       "size": {
         "type": "String"
       }
     }
   },
+  "modelsDownloadOnly": "Model only ({size})",
+  "@modelsDownloadOnly": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "npuRecommended": "The NPU encoder takes load off the CPU and GPU (recommended).",
   "@deviceWithNpu": {
     "placeholders": {
       "device": {

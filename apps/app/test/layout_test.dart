@@ -260,11 +260,15 @@ void main() {
     await start(tester, _sizes['desktop']!, result: false);
     expect(find.text('large-v3 turbo'), findsOneWidget);
     expect(find.text('large-v3'), findsOneWidget);
-    expect(find.textContaining('Download ('), findsNWidgets(2));
-    expect(
-      find.text('Also download the NPU encoder (recommended)'),
-      Platform.isMacOS ? findsNWidgets(2) : findsNothing,
-    );
+    // Apple: the model with the NPU encoder (recommended) or alone.
+    if (Platform.isMacOS) {
+      expect(find.textContaining('Download with the NPU encoder ('), findsNWidgets(2));
+      expect(find.textContaining('Model only ('), findsNWidgets(2));
+    } else {
+      expect(find.textContaining('Download ('), findsNWidgets(2));
+    }
+    // Under the recommended version, turbo q5_0.
+    expect(find.text('Recommended'), findsOneWidget);
   });
 
   testWidgets('a model card shows the chosen version', (tester) async {

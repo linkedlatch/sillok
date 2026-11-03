@@ -339,9 +339,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelDefault => 'Default for new files';
 
   @override
-  String get modelMakeDefault => 'Make it the default';
-
-  @override
   String modelSummary(String accuracy, String speed, String quantization, String size) {
     return 'Accuracy $accuracy · speed $speed · $quantization · $size';
   }
@@ -424,10 +421,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get npuAlong => 'Also download the NPU encoder (recommended)';
+  String modelsDownloadWithNpu(String size) {
+    return 'Download with the NPU encoder ($size)';
+  }
 
   @override
-  String npuAlongHint(String size) {
-    return '$size · Takes load off the CPU and GPU';
+  String modelsDownloadOnly(String size) {
+    return 'Model only ($size)';
   }
+
+  @override
+  String get npuRecommended => 'The NPU encoder takes load off the CPU and GPU (recommended).';
 }

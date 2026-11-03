@@ -334,9 +334,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get modelDefault => '새 파일 기본 모델';
 
   @override
-  String get modelMakeDefault => '기본 모델로 설정';
-
-  @override
   String modelSummary(String accuracy, String speed, String quantization, String size) {
     return '정확도 $accuracy · 속도 $speed · $quantization · $size';
   }
@@ -418,10 +415,15 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get npuAlong => 'NPU용 인코더도 받기(권장)';
+  String modelsDownloadWithNpu(String size) {
+    return '받기(NPU 인코더 포함, $size)';
+  }
 
   @override
-  String npuAlongHint(String size) {
-    return '$size · CPU와 GPU의 부담을 덜어 줍니다';
+  String modelsDownloadOnly(String size) {
+    return '모델만 받기($size)';
   }
+
+  @override
+  String get npuRecommended => 'NPU 인코더는 CPU와 GPU의 부담을 덜어 줍니다(권장).';
 }
