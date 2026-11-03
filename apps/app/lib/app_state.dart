@@ -156,7 +156,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final dir = modelsDir.path;
-      final statuses = await Isolate.run(() => Sillok.check(dir, verifyHash: false));
+      final statuses = await _check(dir, verifyHash: false);
       _setStatuses(statuses);
       modelsChecked = true;
     } on Object catch (error) {
@@ -220,7 +220,7 @@ class AppState extends ChangeNotifier {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
       final dir = modelsDir.path;
-      final statuses = await Isolate.run(() => Sillok.check(dir, verifyHash: true));
+      final statuses = await _check(dir, verifyHash: true);
       final damaged = statuses.where((s) => s.status == 'wrong_hash' || s.status == 'wrong_size').toList();
       for (final file in damaged) {
         final path = File('${modelsDir.path}${Platform.pathSeparator}${file.file}');
@@ -264,12 +264,12 @@ class AppState extends ChangeNotifier {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
       final dir = modelsDir.path;
-      final statuses = await Isolate.run(() => Sillok.check(dir, verifyHash: true));
+      final statuses = await _check(dir, verifyHash: true);
       for (final file in files) {
         final status = statuses.firstWhere((s) => s.file == file.file).status;
         final archive = '$dir${Platform.pathSeparator}${file.file}';
         if (status == 'extract') {
-          await Isolate.run(() => extractFileToDisk(archive, dir));
+          await _extract(archive, dir);
         } else if (status != 'ok') {
           notice = const DamagedModels();
         }
@@ -313,7 +313,7 @@ class AppState extends ChangeNotifier {
   /// Checks every model file's hash and removes damaged ones.
   Future<void> verifyModels() async {
     final dir = modelsDir.path;
-    final statuses = await Isolate.run(() => Sillok.check(dir, verifyHash: true));
+    final statuses = await _check(dir, verifyHash: true);
     final damaged = statuses.where((s) => s.status == 'wrong_hash' || s.status == 'wrong_size');
     for (final file in damaged) {
       final path = File('${modelsDir.path}${Platform.pathSeparator}${file.file}');
@@ -385,3 +385,12 @@ class AppState extends ChangeNotifier {
     super.dispose();
   }
 }
+
+// Isolate.run sends its closure, with everything the closure's scope holds, to
+// the other isolate. A closure made inside an AppState method can hold the
+// state itself (and through its listeners the widget tree), which cannot be
+// sent; these functions' closures hold only their arguments.
+Future<List<FileStatus>> _check(String dir, {required bool verifyHash}) =>
+    Isolate.run(() => Sillok.check(dir, verifyHash: verifyHash));
+
+Future<void> _extract(String archive, String dir) => Isolate.run(() => extractFileToDisk(archive, dir));
