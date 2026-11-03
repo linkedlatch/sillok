@@ -59,6 +59,7 @@
   "stepTime": "{step}: {time}",
   "detailWaiting": "시작 대기 중: {position}번째 순서입니다.",
   "follow": "따라가기",
+  "latest": "최신 문장",
   "search": "검색",
   "searchHint": "결과에서 검색",
   "searchNone": "일치하는 문장이 없습니다.",

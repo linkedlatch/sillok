@@ -221,6 +221,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get follow => 'Follow';
 
   @override
+  String get latest => 'Latest';
+
+  @override
   String get search => 'Search';
 
   @override

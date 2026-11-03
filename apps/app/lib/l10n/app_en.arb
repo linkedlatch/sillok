@@ -178,6 +178,7 @@
     }
   },
   "follow": "Follow",
+  "latest": "Latest",
   "search": "Search",
   "searchHint": "Search the result",
   "searchNone": "No sentence matches.",

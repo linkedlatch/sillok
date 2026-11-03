@@ -6,7 +6,8 @@ import 'format.dart';
 import 'settings_fields.dart';
 
 /// The running file: progress over all steps, the time left, and the
-/// sentences transcribed so far, followed as they arrive.
+/// sentences transcribed so far, followed as they arrive while the list is
+/// at its end.
 class RunningView extends StatefulWidget {
   const RunningView({super.key, required this.state});
 
@@ -18,22 +19,37 @@ class RunningView extends StatefulWidget {
 
 class _RunningViewState extends State<RunningView> {
   final _scroll = ScrollController();
-  bool _follow = true;
+
+  /// Whether the list is at its end, where new sentences keep it: scrolling
+  /// up stops that and leaves the sentences being read in place; scrolling
+  /// back down starts it again.
+  final _follow = ValueNotifier(true);
   int _shown = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final position = _scroll.position;
+      _follow.value = position.pixels >= position.maxScrollExtent - 24;
+    });
+  }
 
   @override
   void dispose() {
     _scroll.dispose();
+    _follow.dispose();
     super.dispose();
   }
 
   void _followNew(int count) {
     if (count == _shown) return;
     _shown = count;
-    if (!_follow) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-    });
+    if (_follow.value) WidgetsBinding.instance.addPostFrameCallback((_) => _toEnd());
+  }
+
+  void _toEnd() {
+    if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
   }
 
   @override
@@ -66,16 +82,7 @@ class _RunningViewState extends State<RunningView> {
                     ListTile(dense: true, title: Text(l.stepTime(stepName(l, key), formatTime(value)))),
                 ],
               ),
-              Row(
-                children: [
-                  Expanded(child: Text(l.runningPreviews, style: theme.textTheme.bodySmall)),
-                  FilterChip(
-                    label: Text(l.follow),
-                    selected: _follow,
-                    onSelected: (value) => setState(() => _follow = value),
-                  ),
-                ],
-              ),
+              Text(l.runningPreviews, style: theme.textTheme.bodySmall),
             ],
           ),
         );
@@ -100,21 +107,46 @@ class _RunningViewState extends State<RunningView> {
             ),
           ),
         );
+        // Back to the newest sentence, while the list is scrolled away from it.
+        Widget withLatest(Widget list) => Stack(
+          children: [
+            Positioned.fill(child: list),
+            PositionedDirectional(
+              start: 0,
+              end: 0,
+              bottom: 16,
+              child: ValueListenableBuilder(
+                valueListenable: _follow,
+                builder: (context, follow, _) => follow
+                    ? const SizedBox.shrink()
+                    : Center(
+                        child: FilledButton.tonalIcon(
+                          onPressed: _toEnd,
+                          icon: const Icon(Icons.arrow_downward),
+                          label: Text(l.latest),
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        );
         return LayoutBuilder(
           builder: (context, constraints) {
             // A short screen (a phone held sideways) scrolls the header away
             // with the sentences; a tall one keeps it in view.
             if (constraints.maxHeight < 560) {
-              return ListView.builder(
-                controller: _scroll,
-                itemCount: previews.length + 3,
-                itemBuilder: (context, i) => i == 0
-                    ? header
-                    : i == 1
-                    ? const Divider(height: 1)
-                    : i == previews.length + 2
-                    ? cancel
-                    : preview(i - 2),
+              return withLatest(
+                ListView.builder(
+                  controller: _scroll,
+                  itemCount: previews.length + 3,
+                  itemBuilder: (context, i) => i == 0
+                      ? header
+                      : i == 1
+                      ? const Divider(height: 1)
+                      : i == previews.length + 2
+                      ? cancel
+                      : preview(i - 2),
+                ),
               );
             }
             return Column(
@@ -123,11 +155,13 @@ class _RunningViewState extends State<RunningView> {
                 header,
                 const Divider(height: 1),
                 Expanded(
-                  child: ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.only(top: 16),
-                    itemCount: previews.length,
-                    itemBuilder: (context, i) => preview(i),
+                  child: withLatest(
+                    ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.only(top: 16),
+                      itemCount: previews.length,
+                      itemBuilder: (context, i) => preview(i),
+                    ),
                   ),
                 ),
                 cancel,

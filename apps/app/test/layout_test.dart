@@ -18,6 +18,7 @@ import 'package:sillok/l10n/app_localizations.dart';
 import 'package:sillok/main.dart';
 import 'package:sillok/ui/home.dart';
 import 'package:sillok/ui/playback.dart';
+import 'package:sillok/ui/running_view.dart';
 
 class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
   _Paths(this.root);
@@ -223,6 +224,51 @@ void main() {
       });
     });
   }
+
+  testWidgets('the running file follows new sentences only from the end', (tester) async {
+    await start(tester, _sizes['desktop']!, result: true);
+    const item = QueueItem(key: 'k', path: '/x/a.m4a', name: 'a.m4a', settings: JobSettings());
+    const run = RunState(
+      key: 'k',
+      name: 'a.m4a',
+      settings: JobSettings(),
+      step: RunStep.transcribe,
+      stepFraction: 0.4,
+      overall: 0.38,
+      remaining: null,
+      timingsMs: {},
+    );
+    Future<void> show(int count) async {
+      state.transcriber.showRunning(item, run, [
+        for (var i = 0; i < count; i++)
+          Segment(startMs: i * 4000, endMs: i * 4000 + 3500, text: '$_sentence ($i)', language: 'ko'),
+      ]);
+      await tester.pumpAndSettle();
+    }
+
+    await show(30);
+    await tester.tap(find.text('a.m4a').first);
+    await tester.pumpAndSettle();
+    final sentences = find.descendant(of: find.byType(RunningView), matching: find.byType(Scrollable));
+    ScrollPosition position() => tester.state<ScrollableState>(sentences).position;
+    await show(40);
+    expect(position().pixels, position().maxScrollExtent);
+    expect(find.text('Latest'), findsNothing);
+
+    // Scrolled up, the sentences being read stay put.
+    await tester.drag(sentences, const Offset(0, 300));
+    await tester.pumpAndSettle();
+    final reading = position().pixels;
+    await show(50);
+    expect(position().pixels, reading);
+    expect(find.text('Latest'), findsOneWidget);
+
+    await tester.tap(find.text('Latest'));
+    await tester.pumpAndSettle();
+    await show(60);
+    expect(position().pixels, position().maxScrollExtent);
+    expect(find.text('Latest'), findsNothing);
+  });
 
   // Android draws apps under its navigation bar (edge to edge); nothing the
   // user taps may sit there.

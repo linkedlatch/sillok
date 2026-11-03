@@ -446,6 +446,12 @@ abstract class AppLocalizations {
   /// **'Follow'**
   String get follow;
 
+  /// No description provided for @latest.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest'**
+  String get latest;
+
   /// No description provided for @search.
   ///
   /// In en, this message translates to:

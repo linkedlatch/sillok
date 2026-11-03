@@ -216,6 +216,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get follow => '따라가기';
 
   @override
+  String get latest => '최신 문장';
+
+  @override
   String get search => '검색';
 
   @override
