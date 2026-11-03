@@ -110,6 +110,7 @@ class _HomePageState extends State<HomePage> {
         // the expanded width.
         final wide = constraints.maxWidth >= 600;
         final list = LibraryList(state: widget.state, selection: _selection, onOpen: (s) => _open(s, wide));
+        final add = FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add), label: Text(l.add));
         return Scaffold(
           appBar: AppBar(
             title: Text(l.appName),
@@ -123,11 +124,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _add,
-            icon: const Icon(Icons.add),
-            label: Text(l.add),
-          ),
+          floatingActionButton: wide ? null : add,
           // Clear of the system's navigation bar and cutouts; the app bar
           // already keeps clear of the status bar.
           body: SafeArea(
@@ -136,7 +133,22 @@ class _HomePageState extends State<HomePage> {
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(width: constraints.maxWidth >= 840 ? 380 : 320, child: list),
+                      // The add button over the list rather than the window's
+                      // corner, where it would cover the detail's own buttons
+                      // (a run's cancel).
+                      SizedBox(
+                        width: constraints.maxWidth >= 840 ? 380 : 320,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: list),
+                            PositionedDirectional(
+                              end: kFloatingActionButtonMargin,
+                              bottom: kFloatingActionButtonMargin,
+                              child: add,
+                            ),
+                          ],
+                        ),
+                      ),
                       const VerticalDivider(width: 1),
                       Expanded(
                         child: DetailPane(state: widget.state, selection: _selection),

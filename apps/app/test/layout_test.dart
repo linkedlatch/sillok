@@ -172,6 +172,12 @@ void main() {
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);
         await tester.pumpAndSettle();
         expect(find.text('Cancel'), findsOneWidget);
+        // Two panes: the add button stays off the detail's cancel.
+        final add = find.byType(FloatingActionButton);
+        if (add.evaluate().isNotEmpty) {
+          final cancel = find.ancestor(of: find.text('Cancel'), matching: find.bySubtype<ButtonStyleButton>());
+          expect(tester.getRect(add).overlaps(tester.getRect(cancel)), isFalse);
+        }
         if (find.byType(BackButton).evaluate().isNotEmpty) {
           await tester.tap(find.byType(BackButton));
           await tester.pumpAndSettle();
