@@ -9,6 +9,10 @@
 		<string>en</string>
 		<string>ko</string>
 	</array>
+	<!-- Skia: Impeller (on by default on macOS since Flutter 3.46, with SDF text)
+	     garbled Hangul glyphs in the transcript. -->
+	<key>FLTEnableImpeller</key>
+	<false/>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
