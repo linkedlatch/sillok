@@ -191,14 +191,14 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeBody.
   ///
   /// In en, this message translates to:
-  /// **'Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about {size}.'**
-  String welcomeBody(String size);
+  /// **'Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. First choose a transcription model to download; the models for telling speakers apart and finding speech come with it.'**
+  String get welcomeBody;
 
   /// No description provided for @modelsDownload.
   ///
   /// In en, this message translates to:
-  /// **'Download'**
-  String get modelsDownload;
+  /// **'Download ({size})'**
+  String modelsDownload(String size);
 
   /// No description provided for @modelsResume.
   ///
@@ -781,6 +781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download the NPU encoder ({size})'**
   String npuDownload(String size);
+
+  /// No description provided for @npuIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes the NPU encoder, {size}'**
+  String npuIncluded(String size);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -254,6 +254,14 @@ void main() {
     });
   }
 
+  testWidgets('the first start offers each model, with the NPU encoder on Apple', (tester) async {
+    await start(tester, _sizes['desktop']!, result: false);
+    expect(find.text('large-v3 turbo'), findsOneWidget);
+    expect(find.text('large-v3'), findsOneWidget);
+    expect(find.textContaining('Download ('), findsNWidgets(2));
+    expect(find.textContaining('Includes the NPU encoder'), Platform.isMacOS ? findsNWidgets(2) : findsNothing);
+  });
+
   testWidgets('a model card shows the chosen version', (tester) async {
     await start(tester, _sizes['desktop']!, result: true);
     await tester.tap(find.byTooltip('Settings'));

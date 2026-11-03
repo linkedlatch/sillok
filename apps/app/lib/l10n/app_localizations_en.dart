@@ -58,12 +58,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeTitle => 'Transcribe on this device';
 
   @override
-  String welcomeBody(String size) {
-    return 'Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. It first needs its speech models, about $size.';
-  }
+  String get welcomeBody =>
+      'Sillok turns recordings into text with speakers, entirely on this device: your recordings never leave it. First choose a transcription model to download; the models for telling speakers apart and finding speech come with it.';
 
   @override
-  String get modelsDownload => 'Download';
+  String modelsDownload(String size) {
+    return 'Download ($size)';
+  }
 
   @override
   String get modelsResume => 'Resume';
@@ -420,5 +421,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String npuDownload(String size) {
     return 'Download the NPU encoder ($size)';
+  }
+
+  @override
+  String npuIncluded(String size) {
+    return 'Includes the NPU encoder, $size';
   }
 }

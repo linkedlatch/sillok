@@ -192,17 +192,37 @@ class AppState extends ChangeNotifier {
 
   static bool _isZip(CatalogModel model, String file) => model.files.any((f) => f.file == file && f.zip);
 
-  /// Downloads the files of [modelId] and, for the first start, the other
-  /// models an engine needs; checks their hashes once all are here.
-  Future<void> downloadModel(String modelId) async {
-    if (_downloading != null) return;
-    final wanted = {for (final model in engineModels(modelId)) model.id: model};
-    final files = <String, ModelFile>{
-      for (final model in wanted.values)
+  /// The files [downloadModel] fetches for [modelId]: those of the models an
+  /// engine with it needs that are not here, then its accelerator's (on
+  /// Apple, the Core ML encoder: recommended there, so it comes along).
+  List<ModelFile> _toDownload(String modelId) {
+    final needed = engineModels(modelId);
+    // The models first, so that a stop during the larger encoder leaves them
+    // usable.
+    return <String, ModelFile>{
+      for (final model in needed)
         if (models[model.id] is! ModelReady)
           for (final file in model.files)
             if (!file.zip) file.file: file,
+      for (final model in needed)
+        if (accelerators[model.id] case final status? when status is! ModelReady)
+          for (final file in model.files)
+            if (file.zip) file.file: file,
     }.values.toList();
+  }
+
+  /// Bytes [downloadModel] fetches for [modelId], or of them those of the
+  /// accelerator.
+  int downloadSize(String modelId, {bool accelerator = false}) =>
+      _toDownload(modelId).where((f) => !accelerator || f.zip).fold(0, (sum, f) => sum + f.size);
+
+  /// Downloads the files of [modelId] and, for the first start, the other
+  /// models an engine needs; checks their hashes once all are here and
+  /// unpacks the accelerator. The first model here becomes the default.
+  Future<void> downloadModel(String modelId) async {
+    if (_downloading != null || _acceleratorBusy != null) return;
+    final wanted = {for (final model in engineModels(modelId)) model.id: model};
+    final files = _toDownload(modelId);
     _downloading = modelId;
     void show(ModelStatus status) {
       models = {
@@ -229,8 +249,12 @@ class AppState extends ChangeNotifier {
         if (path.existsSync()) await path.delete();
       }
       if (damaged.isNotEmpty) notice = const DamagedModels();
+      await _unpack(files, statuses);
       _downloading = null;
-      _setStatuses(statuses);
+      _setStatuses(await _check(dir, verifyHash: false));
+      if (models[modelId] is ModelReady && !canRun(defaults)) {
+        await setDefaults(defaults.copyWith(transcriptionModel: () => modelId));
+      }
     } on DownloadStopped {
       _downloading = null;
       await checkModels();
@@ -265,18 +289,7 @@ class AppState extends ChangeNotifier {
     try {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
-      final dir = modelsDir.path;
-      final statuses = await _check(dir, verifyHash: true);
-      for (final file in files) {
-        final status = statuses.firstWhere((s) => s.file == file.file).status;
-        final archive = '$dir${Platform.pathSeparator}${file.file}';
-        if (status == 'extract') {
-          await _extract(archive, dir);
-        } else if (status != 'ok') {
-          notice = const DamagedModels();
-        }
-        if (File(archive).existsSync()) await File(archive).delete();
-      }
+      await _unpack(files, await _check(modelsDir.path, verifyHash: true));
     } on DownloadStopped {
       // What was received stays for a resume.
     } on Object catch (error) {
@@ -284,6 +297,22 @@ class AppState extends ChangeNotifier {
     }
     _acceleratorBusy = null;
     await checkModels();
+  }
+
+  /// Unpacks the archives among [files] that were checked whole, then removes
+  /// every archive among them.
+  Future<void> _unpack(List<ModelFile> files, List<FileStatus> statuses) async {
+    final dir = modelsDir.path;
+    for (final file in files.where((f) => f.zip)) {
+      final status = statuses.firstWhere((s) => s.file == file.file).status;
+      final archive = '$dir${Platform.pathSeparator}${file.file}';
+      if (status == 'extract') {
+        await _extract(archive, dir);
+      } else if (status != 'ok') {
+        notice = const DamagedModels();
+      }
+      if (File(archive).existsSync()) await File(archive).delete();
+    }
   }
 
   /// Deletes a transcription model's files that no other ready model uses.

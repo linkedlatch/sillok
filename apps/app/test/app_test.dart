@@ -48,7 +48,8 @@ void main() {
     await tester.pumpWidget(SillokApp(state: state));
     await tester.pump();
     expect(find.text('Transcribe on this device'), findsOneWidget);
-    expect(find.text('Download'), findsOneWidget);
+    // A card for each transcription model.
+    expect(find.textContaining('Download ('), findsNWidgets(2));
   });
 
   testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {

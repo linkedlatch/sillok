@@ -58,12 +58,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get welcomeTitle => '이 기기에서 전사하기';
 
   @override
-  String welcomeBody(String size) {
-    return '실록은 녹음을 화자별 텍스트로 바꿉니다. 모든 처리는 이 기기 안에서 하므로 녹음이 밖으로 나가지 않습니다. 먼저 음성 모델 약 $size를 받아야 합니다.';
-  }
+  String get welcomeBody =>
+      '실록은 녹음을 화자별 텍스트로 바꿉니다. 모든 처리는 이 기기 안에서 하므로 녹음이 밖으로 나가지 않습니다. 먼저 받아쓰기 모델 하나를 골라 받아 주세요. 화자 구분과 음성 구간 찾기에 쓰는 모델도 함께 받습니다.';
 
   @override
-  String get modelsDownload => '받기';
+  String modelsDownload(String size) {
+    return '받기($size)';
+  }
 
   @override
   String get modelsResume => '이어 받기';
@@ -414,5 +415,10 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String npuDownload(String size) {
     return 'NPU용 인코더 받기($size)';
+  }
+
+  @override
+  String npuIncluded(String size) {
+    return 'NPU용 인코더 $size 포함';
   }
 }
