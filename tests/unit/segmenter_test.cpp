@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <cstdlib>
+#include <utility>
 #include <vector>
 
 #include "core/segmenter.hpp"
-#include "core/stitcher.hpp"
 
 namespace sillok {
 namespace {
@@ -28,6 +27,7 @@ TEST(FindSpeechTest, BridgesPausesDropsBlipsAndPads) {
   options.min_silence = Milliseconds{500};
   options.min_speech = Milliseconds{250};
   options.padding = Milliseconds{100};
+  options.tail = Milliseconds{0};
   // Speech 10-40, pause of 5 frames (160 ms), speech 45-60, blip 100-102,
   // speech 200-260 after a long pause.
   const auto p = Probabilities(300, {{10, 40}, {45, 60}, {100, 102}, {200, 260}});
@@ -42,6 +42,7 @@ TEST(FindSpeechTest, BridgesPausesDropsBlipsAndPads) {
 TEST(FindSpeechTest, UsesHysteresis) {
   SegmenterOptions options;
   options.padding = Milliseconds{0};
+  options.tail = Milliseconds{0};
   std::vector<float> p = {0.1f, 0.6f, 0.4f, 0.4f, 0.3f, 0.1f};
   p.resize(20, 0.0f);
   std::fill(p.begin() + 1, p.begin() + 12, 0.4f);  // stays above 0.35
@@ -52,105 +53,45 @@ TEST(FindSpeechTest, UsesHysteresis) {
   EXPECT_EQ(speech[0].end, Frames(12));
 }
 
-TEST(PlanWindowsTest, JoinsNearbySpeechAndTilesOwnership) {
+TEST(FindSpeechTest, KeepsTheTailAfterSpeech) {
   SegmenterOptions options;
-  const SampleIndex total = ToSamples(Milliseconds{60000});
+  options.padding = Milliseconds{10};
+  options.tail = Milliseconds{100};
+  const auto speech = FindSpeech(Probabilities(300, {{100, 200}}), kFrame, Frames(300), options);
+  ASSERT_EQ(speech.size(), 1u);
+  EXPECT_EQ(speech[0].begin, Frames(100) - 160);
+  EXPECT_EQ(speech[0].end, Frames(200) + 160 + 1600);
+}
+
+TEST(GroupSpeechTest, StartsAGroupAtLongPauses) {
+  // 31 999 samples is under 2 s, 32 000 is not.
   const std::vector<SampleRange> speech = {
-      {ToSamples(Milliseconds{1000}), ToSamples(Milliseconds{5000})},
-      {ToSamples(Milliseconds{6000}), ToSamples(Milliseconds{9000})},  // joins
-      {ToSamples(Milliseconds{20000}),
-       ToSamples(Milliseconds{25000})}};  // far: new window
-  const std::vector<float> energy(6000, 1.0f);
-  const auto windows = PlanWindows(speech, energy, 160, total, options);
-  ASSERT_EQ(windows.size(), 2u);
-  EXPECT_EQ(windows[0].audio, (SampleRange{ToSamples(Milliseconds{1000}), ToSamples(Milliseconds{9000})}));
-  EXPECT_EQ(windows[1].audio, (SampleRange{ToSamples(Milliseconds{20000}), ToSamples(Milliseconds{25000})}));
-  EXPECT_FALSE(windows[1].overlaps_previous);
-  EXPECT_EQ(windows[0].owned.begin, 0);
-  EXPECT_EQ(windows[0].owned.end, windows[1].owned.begin);
-  EXPECT_EQ(windows[0].owned.end, ToSamples(Milliseconds{14500}));
-  EXPECT_EQ(windows[1].owned.end, total);
+      {0, 16000}, {47999, 64000}, {96000, 112000}, {112001, 128000}};
+  const auto groups = GroupSpeech(speech, Milliseconds{2000});
+  ASSERT_EQ(groups.size(), 2u);
+  EXPECT_EQ(groups[0].size(), 2u);
+  EXPECT_EQ(groups[1].size(), 2u);
+  EXPECT_TRUE(GroupSpeech({}, Milliseconds{2000}).empty());
 }
 
-TEST(PlanWindowsTest, SplitsLongSpeechAtQuietestPointWithOverlap) {
-  SegmenterOptions options;  // 28 s windows, 2 s overlap, 8 s search
-  const SampleIndex total = ToSamples(Milliseconds{70000});
-  const std::vector<SampleRange> speech = {{0, total}};
-  std::vector<float> energy(7000, 1.0f);  // 10 ms frames
-  // V-shaped quiet spots centered on frames 2400 (24.0 s) and 4750 (47.5 s);
-  // the one at 10 s lies outside the first search range.
-  for (const int center : {1000, 2400, 4750}) {
-    for (int i = center - 50; i <= center + 50; ++i) {
-      energy[static_cast<std::size_t>(i)] = 0.01f * static_cast<float>(std::abs(i - center));
-    }
-  }
-  const auto windows = PlanWindows(speech, energy, 160, total, options);
-  ASSERT_EQ(windows.size(), 3u);
-  const SampleIndex half = ToSamples(Milliseconds{1000});
-  EXPECT_EQ(windows[0].audio.begin, 0);
-  EXPECT_NEAR(static_cast<double>(windows[0].audio.end - half),
-              static_cast<double>(ToSamples(Milliseconds{24005})), 160);
-  EXPECT_TRUE(windows[1].overlaps_previous);
-  EXPECT_EQ(windows[1].audio.begin + 2 * half, windows[0].audio.end);
-  EXPECT_EQ(windows[0].owned.end, windows[1].audio.begin + half);
-  EXPECT_NEAR(static_cast<double>(windows[1].owned.end),
-              static_cast<double>(ToSamples(Milliseconds{47505})), 160);
-  EXPECT_EQ(windows[2].audio.end, total);
-  for (const Window& window : windows) {
-    EXPECT_LE(window.audio.length(), ToSamples(options.max_window));
-    EXPECT_LE(window.audio.begin, window.owned.begin);
-  }
-}
-
-Word W(std::string text, int start, int end) {
-  return {std::move(text), Milliseconds{start}, Milliseconds{end}, 0.9f,
-          std::nullopt};
-}
-
-TEST(StitchTest, JoinsAtSharedWordNearSeam) {
-  // Overlap 9000-11000, seam 10000. Both windows heard "c d e" with
-  // slightly different times; each word must survive exactly once.
-  const std::vector<Word> earlier = {W("a", 8000, 8400), W("b", 8500, 8900),
-                                     W("c", 9100, 9500), W("d", 9900, 10080),
-                                     W("e", 10200, 10600), W("f", 10700, 10990)};
-  const std::vector<Word> later = {W("C", 9060, 9480), W("d", 9950, 10120),
-                                   W("e.", 10150, 10550), W("f", 10650, 10950),
-                                   W("g", 11100, 11500)};
-  const auto cut = FindStitch(earlier, later, Milliseconds{9000}, Milliseconds{11000}, Milliseconds{10000});
-  EXPECT_EQ(cut.earlier_keep, 4u);  // a b c d
-  EXPECT_EQ(cut.later_skip, 2u);    // C d
-}
-
-TEST(StitchTest, MidpointRuleAvoidsDuplicateAndLossWhenTimesDisagree) {
-  // Word "x" straddles the seam with times that put its midpoint on
-  // different sides in the two windows; text still matches, so no
-  // duplicate and no loss.
-  const std::vector<Word> earlier = {W("p", 9200, 9600), W("x", 9800, 10150)};
-  const std::vector<Word> later = {W("x", 9900, 10300), W("q", 10400, 10800)};
-  const auto cut = FindStitch(earlier, later, Milliseconds{9000}, Milliseconds{11000}, Milliseconds{10000});
-  EXPECT_EQ(cut.earlier_keep + (later.size() - cut.later_skip), 3u);
-}
-
-TEST(StitchTest, FallsBackToMidpointsWithoutSharedWords) {
-  const std::vector<Word> earlier = {W("a", 9000, 9500), W("b", 9800, 10400)};
-  const std::vector<Word> later = {W("z", 9700, 9900), W("y", 10100, 10500)};
-  const auto cut = FindStitch(earlier, later, Milliseconds{9000}, Milliseconds{11000}, Milliseconds{10000});
-  EXPECT_EQ(cut.earlier_keep, 1u);  // b's midpoint 10100 is past the seam
-  EXPECT_EQ(cut.later_skip, 1u);    // z's midpoint 9800 is before it
-}
-
-TEST(StitchTest, TrimsSegments) {
-  std::vector<Segment> segments(2);
-  segments[0].words = {W("a", 0, 1), W("b", 1, 2)};
-  segments[1].words = {W("c", 2, 3), W("d", 3, 4)};
-  for (Segment& s : segments) s.language = "en";
-  const auto kept = KeepLeadingWords(segments, 3);
-  ASSERT_EQ(kept.size(), 2u);
-  EXPECT_EQ(kept[1].text, "c");
-  const auto dropped = DropLeadingWords(segments, 3);
-  ASSERT_EQ(dropped.size(), 1u);
-  EXPECT_EQ(dropped[0].text, "d");
-  EXPECT_EQ(dropped[0].start, Milliseconds{3});
+TEST(JoinedSpeechTest, MapsWordsBackToTheRecording) {
+  // 1 s at 10 s, then 1 s at 20 s, 100 ms apart when joined.
+  const std::vector<SampleRange> regions = {{160000, 176000}, {320000, 336000}};
+  const JoinedSpeech joined(regions);
+  EXPECT_EQ(joined.size(), 16000 + 1600 + 16000);
+  EXPECT_EQ(joined.Offset(1), 17600);
+  const auto at = [&](int start, int end) {
+    const auto [first, last] = joined.ToRecording(Milliseconds{start}, Milliseconds{end});
+    return std::pair<long long, long long>(first.count(), last.count());
+  };
+  EXPECT_EQ(at(200, 300), std::make_pair(10200LL, 10300LL));
+  EXPECT_EQ(at(1200, 1300), std::make_pair(20100LL, 20200LL));
+  // Starting in the gap: the next region.
+  EXPECT_EQ(at(1050, 1300), std::make_pair(20000LL, 20200LL));
+  // Running over the gap: stops where its region ends.
+  EXPECT_EQ(at(900, 1300), std::make_pair(10900LL, 11000LL));
+  // Past the end of the audio.
+  EXPECT_EQ(at(2200, 2300), std::make_pair(21000LL, 21000LL));
 }
 
 }  // namespace

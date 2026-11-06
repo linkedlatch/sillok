@@ -120,11 +120,7 @@ class FakeTranscriber : public Transcriber {
   ~FakeTranscriber() override { --models_.live_.transcribers; }
 
   ModelInfo Info() const override { return {"fake-transcriber", "CPU", false}; }
-  TranscriberCapabilities Capabilities() const override {
-    return {.max_audio = models_.options_.max_audio,
-            .detects_language = models_.options_.detects_language,
-            .max_prompt_tokens = 20};
-  }
+  bool DetectsLanguage() const override { return models_.options_.detects_language; }
 
   std::vector<LanguageScore> DetectLanguage(
       std::span<const float> pcm, std::span<const std::string> candidates,
@@ -145,42 +141,37 @@ class FakeTranscriber : public Transcriber {
     return scores;
   }
 
-  int CountTokens(std::string_view text) const override {
-    int words = 0;
-    bool in_word = false;
-    for (const char c : text) {
-      if (c != ' ' && !in_word) ++words;
-      in_word = c != ' ';
-    }
-    return words;
-  }
-
-  std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
-                                       StopToken stop) override {
+  void Transcribe(const TranscribeRequest& request,
+                  const TokenSegmentCallback& on_segment,
+                  StopToken stop) override {
     ThrowIfStopped(stop);
     ++models_.transcribe_calls_;
     if (models_.options_.on_transcribe) models_.options_.on_transcribe(request);
     ThrowIfStopped(stop);
 
-    std::vector<TokenSegment> segments;
+    TokenSegment segment;
     const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
     for (std::size_t i = 0; i < bursts.size(); ++i) {
       const Burst& burst = bursts[i];
-      // The same word gets slightly different times in different windows.
+      // Decoded times are not exact.
       const auto jitter = Milliseconds{
           (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
       const bool right_language =
           LanguageOf(models_.options_, burst.id) == request.language;
-      if (i % 5 == 0) segments.emplace_back();
-      segments.back().tokens.push_back(
+      if (i % 5 == 0 && !segment.tokens.empty()) {
+        on_segment(segment);
+        segment.tokens.clear();
+        ThrowIfStopped(stop);
+      }
+      segment.tokens.push_back(
           {.text = " " + WordText(burst.id, request.language),
            .start =
                std::max(Milliseconds{0}, ToMilliseconds(burst.begin) + jitter),
            .end = ToMilliseconds(burst.end) + jitter,
            .probability = right_language ? 0.9f : 0.05f});
     }
-    return segments;
+    if (!segment.tokens.empty()) on_segment(segment);
   }
 
  private:

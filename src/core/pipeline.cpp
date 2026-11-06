@@ -3,27 +3,23 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <iterator>
-#include <limits>
-#include <optional>
 #include <stdexcept>
-#include <string_view>
+#include <tuple>
 #include <utility>
 
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/diarizer.hpp"
 #include "core/level.hpp"
-#include "core/prompt.hpp"
-#include "core/stitcher.hpp"
 #include "core/transcriber.hpp"
 #include "core/words.hpp"
 
 namespace sillok {
 namespace {
 
-constexpr int kEnergyFrame = kSampleRate / 100;  // 10 ms
 constexpr SampleIndex kDiarizationChunk = SampleIndex{kSampleRate} * 10;
+// Whisper's window, which the language detection hears.
+constexpr SampleIndex kLanguageSample = SampleIndex{kSampleRate} * 30;
 
 // Samples of `range` with the recording's gain (LoudnessGain).
 std::vector<float> ReadWithGain(const AudioBuffer& audio, SampleRange range,
@@ -33,96 +29,67 @@ std::vector<float> ReadWithGain(const AudioBuffer& audio, SampleRange range,
   return pcm;
 }
 
-struct Analysis {
-  std::vector<float> probabilities;  // one per voice-detection frame
-  int frame_samples = 0;
-};
-
-Analysis Analyze(const AudioBuffer& audio, double gain, ModelProvider& models,
-                 const ProgressCallback& progress, const StopToken& stop,
-                 Transcript& transcript) {
+std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio, double gain,
+                                      const SegmenterOptions& options,
+                                      ModelProvider& models,
+                                      const ProgressCallback& progress,
+                                      const StopToken& stop,
+                                      Transcript& transcript) {
   progress(Stage::kAnalyze,
            0.0);  // before the model loads, which takes a while
   const auto detector = models.OpenVoiceDetector();
-  Analysis analysis{.probabilities = {},
-                    .frame_samples = detector->FrameSamples()};
+  const int frame_samples = detector->FrameSamples();
+  std::vector<float> probabilities;
   // About 30 s per call, in whole frames so the detector state carries over.
   const SampleIndex chunk =
-      std::max<SampleIndex>(
-          1, SampleIndex{kSampleRate} * 30 / analysis.frame_samples) *
-      analysis.frame_samples;
+      std::max<SampleIndex>(1, SampleIndex{kSampleRate} * 30 / frame_samples) *
+      frame_samples;
   for (SampleIndex begin = 0; begin < audio.size(); begin += chunk) {
     ThrowIfStopped(stop);
-    const std::vector<float> probabilities =
+    const std::vector<float> part =
         detector->Detect(ReadWithGain(audio, {begin, begin + chunk}, gain));
-    analysis.probabilities.insert(analysis.probabilities.end(),
-                                  probabilities.begin(), probabilities.end());
+    probabilities.insert(probabilities.end(), part.begin(), part.end());
     progress(Stage::kAnalyze,
              static_cast<double>(std::min(begin + chunk, audio.size())) /
                  static_cast<double>(audio.size()));
   }
   transcript.models["voice_detection"] = detector->Info();
-  return analysis;
+  return FindSpeech(probabilities, frame_samples, audio.size(), options);
 }
 
-double MeanLogProbability(const std::vector<TokenSegment>& segments) {
-  double sum = 0.0;
-  std::size_t count = 0;
-  for (const TokenSegment& segment : segments) {
-    for (const Token& token : segment.tokens) {
-      sum += std::log(std::max(static_cast<double>(token.probability), 1e-6));
-      ++count;
-    }
+// The most likely of the candidates in the first speech of the recording.
+std::string DetectLanguage(const AudioBuffer& audio, double gain,
+                           std::span<const SampleRange> speech,
+                           const PipelineOptions& options,
+                           Transcriber& transcriber, const StopToken& stop) {
+  if (!transcriber.DetectsLanguage()) {
+    throw std::invalid_argument(
+        "the transcription model cannot detect languages; choose one");
   }
-  return count == 0 ? std::numeric_limits<double>::lowest()
-                    : sum / static_cast<double>(count);
+  std::vector<float> pcm;
+  for (const SampleRange& region : speech) {
+    const SampleIndex room = kLanguageSample - static_cast<SampleIndex>(pcm.size());
+    if (room <= 0) break;
+    const std::vector<float> part = ReadWithGain(
+        audio, {region.begin, std::min(region.end, region.begin + room)}, gain);
+    pcm.insert(pcm.end(), part.begin(), part.end());
+  }
+  const std::vector<LanguageScore> scores =
+      transcriber.DetectLanguage(pcm, options.candidates, stop);
+  return std::max_element(scores.begin(), scores.end(),
+                          [](const LanguageScore& a, const LanguageScore& b) {
+                            return a.probability < b.probability;
+                          })
+      ->language;
 }
 
-// Segments of one window, with times in the recording clamped to the audio
-// the window heard.
-std::vector<Segment> ToSegments(const std::vector<TokenSegment>& decoded,
-                                const Window& window,
-                                const std::string& language) {
-  const Milliseconds begin = ToMilliseconds(window.audio.begin);
-  const Milliseconds end = ToMilliseconds(window.audio.end);
-  std::vector<Segment> segments;
-  for (const TokenSegment& part : decoded) {
-    std::vector<Word> words = AssembleWords(part.tokens, begin, language);
-    for (Word& word : words) {
-      word.start = std::clamp(word.start, begin, end);
-      word.end = std::clamp(word.end, word.start, end);
-    }
-    if (!words.empty())
-      segments.push_back(MakeSegment(std::move(words), language));
+std::string JoinGlossary(const std::vector<std::string>& glossary) {
+  std::string joined;
+  for (const std::string& term : glossary) {
+    if (!joined.empty()) joined += ", ";
+    joined += term;
   }
-  return segments;
-}
-
-std::vector<Word> Flatten(const std::vector<Segment>& segments) {
-  std::vector<Word> words;
-  for (const Segment& segment : segments) {
-    words.insert(words.end(), segment.words.begin(), segment.words.end());
-  }
-  return words;
-}
-
-// What a finished window leaves for the next one to use as prompt context.
-struct Context {
-  std::vector<Word> words;
-  std::string language;
-  bool usable = false;
-};
-
-std::string ContextText(const Context& context, const std::string& language,
-                        Milliseconds before) {
-  if (!context.usable || context.language != language) return {};
-  std::vector<Word> words;
-  for (const Word& word : context.words) {
-    // Words the next window hears again must not be in its prompt, or the
-    // model may take them as already said and skip them.
-    if (word.end <= before) words.push_back(word);
-  }
-  return JoinWords(words, language);
+  return joined;
 }
 
 std::vector<Segment> TranscribeSpeech(
@@ -133,109 +100,51 @@ std::vector<Segment> TranscribeSpeech(
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
-  const TranscriberCapabilities capabilities = transcriber->Capabilities();
-  // Windows never hold more audio than the model accepts.
-  SegmenterOptions segmenter = options.segmenter;
-  if (capabilities.max_audio > Milliseconds{0}) {
-    segmenter.max_window =
-        std::min(segmenter.max_window, capabilities.max_audio);
-  }
-  const std::vector<Window> windows =
-      PlanWindows(speech, audio.FrameEnergy(kEnergyFrame), kEnergyFrame,
-                  audio.size(), segmenter);
+  const std::string language =
+      options.language == "auto"
+          ? DetectLanguage(audio, gain, speech, options, *transcriber, stop)
+          : options.language;
+  const std::string prompt = JoinGlossary(options.glossary);
 
-  const bool detect_language = options.language == "auto";
-  if (detect_language && !capabilities.detects_language) {
-    throw std::invalid_argument(
-        "the transcription model cannot detect languages; choose one");
-  }
-  LanguageStabilizer stabilizer(options.candidates, options.language_detection);
-  std::optional<PromptBuilder> prompts;
-  if (capabilities.max_prompt_tokens > 0) {
-    prompts.emplace(
-        options.glossary, capabilities.max_prompt_tokens,
-        [&](std::string_view text) { return transcriber->CountTokens(text); });
-  }
-  const auto decode = [&](const std::vector<float>& pcm,
-                          const std::string& language,
-                          const std::string& context) {
-    return transcriber->Transcribe(
-        TranscribeRequest{.pcm = pcm,
-                          .language = language,
-                          .prompt = prompts ? prompts->Build(context, language)
-                                            : std::string()},
-        stop);
-  };
-
+  const std::vector<std::vector<SampleRange>> groups =
+      GroupSpeech(speech, options.segmenter.max_gap);
   SampleIndex total_samples = 0;
-  for (const Window& window : windows) total_samples += window.audio.length();
+  for (const auto& group : groups) total_samples += JoinedSpeech(group).size();
   SampleIndex done_samples = 0;
 
-  std::vector<Segment> finished;
-  std::vector<Segment> previous;  // may still be cut by an overlapping window
-  const Window* previous_window = nullptr;
-  Context context;
-  for (const Window& window : windows) {
+  std::vector<Segment> segments;
+  for (const std::vector<SampleRange>& group : groups) {
     ThrowIfStopped(stop);
-    const std::vector<float> pcm = ReadWithGain(audio, window.audio, gain);
-    LanguageDecision decision{.language = options.language,
-                              .alternative = std::nullopt,
-                              .overruled = false};
-    if (detect_language) {
-      decision = stabilizer.Decide(
-          transcriber->DetectLanguage(pcm, options.candidates, stop));
+    const JoinedSpeech joined(group);
+    std::vector<float> pcm(static_cast<std::size_t>(joined.size()), 0.0f);
+    for (std::size_t i = 0; i < group.size(); ++i) {
+      const std::vector<float> part = ReadWithGain(audio, group[i], gain);
+      std::copy(part.begin(), part.end(),
+                pcm.begin() + static_cast<std::ptrdiff_t>(joined.Offset(i)));
     }
-    const Milliseconds window_begin = ToMilliseconds(window.audio.begin);
-    std::string language = decision.language;
-    std::vector<TokenSegment> decoded =
-        decode(pcm, language, ContextText(context, language, window_begin));
-    double quality = MeanLogProbability(decoded);
-    if (decision.alternative &&
-        (decision.overruled || quality < options.retry_below)) {
-      const std::string& other = *decision.alternative;
-      std::vector<TokenSegment> retry =
-          decode(pcm, other, ContextText(context, other, window_begin));
-      const double retry_quality = MeanLogProbability(retry);
-      if (retry_quality > quality) {
-        decoded = std::move(retry);
-        quality = retry_quality;
-        language = other;
-      }
-    }
-    if (detect_language) stabilizer.Commit(language);
-
-    std::vector<Segment> segments = ToSegments(decoded, window, language);
-    if (window.overlaps_previous && previous_window != nullptr) {
-      const std::vector<Word> earlier = Flatten(previous);
-      const std::vector<Word> later = Flatten(segments);
-      const StitchCut cut =
-          FindStitch(earlier, later, window_begin,
-                     ToMilliseconds(previous_window->audio.end),
-                     ToMilliseconds(window.owned.begin));
-      previous = KeepLeadingWords(std::move(previous), cut.earlier_keep);
-      segments = DropLeadingWords(std::move(segments), cut.later_skip);
-    }
-    // The next window can no longer cut the previous one's segments.
-    if (on_segments && !previous.empty()) on_segments(previous);
-    std::move(previous.begin(), previous.end(), std::back_inserter(finished));
-
-    const bool switched =
-        !context.language.empty() && language != context.language;
-    context =
-        Context{.words = Flatten(segments),
-                .language = language,
-                .usable = !switched && quality >= options.min_context_quality};
-    previous = std::move(segments);
-    previous_window = &window;
-
-    done_samples += window.audio.length();
-    progress(Stage::kTranscribe, static_cast<double>(done_samples) /
-                                     static_cast<double>(total_samples));
+    transcriber->Transcribe(
+        TranscribeRequest{.pcm = pcm, .language = language, .prompt = prompt},
+        [&](const TokenSegment& decoded) {
+          std::vector<Word> words =
+              AssembleWords(decoded.tokens, Milliseconds{0}, language);
+          if (words.empty()) return;
+          const Milliseconds heard = words.back().end;
+          for (Word& word : words) {
+            std::tie(word.start, word.end) =
+                joined.ToRecording(word.start, word.end);
+          }
+          segments.push_back(MakeSegment(std::move(words), language));
+          if (on_segments) on_segments(std::span(&segments.back(), 1));
+          const SampleIndex done =
+              done_samples + std::min(ToSamples(heard), joined.size());
+          progress(Stage::kTranscribe, static_cast<double>(done) /
+                                           static_cast<double>(total_samples));
+        },
+        stop);
+    done_samples += joined.size();
   }
-  if (on_segments && !previous.empty()) on_segments(previous);
-  std::move(previous.begin(), previous.end(), std::back_inserter(finished));
   transcript.models["transcription"] = transcriber->Info();
-  return finished;
+  return segments;
 }
 
 std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
@@ -278,11 +187,9 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
 
   const double gain = LoudnessGain(audio);
   transcript.gain_db = 20.0 * std::log10(gain);
-  const Analysis analysis =
-      Analyze(audio, gain, models, progress, stop, transcript);
   const std::vector<SampleRange> speech =
-      FindSpeech(analysis.probabilities, analysis.frame_samples, audio.size(),
-                 options.segmenter);
+      DetectSpeech(audio, gain, options.segmenter, models, progress, stop,
+                   transcript);
 
   // Each stage opens its model in its own function, so the model is freed
   // before the next stage starts.
@@ -292,9 +199,6 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                                 on_segments, stop, transcript);
   }
   progress(Stage::kTranscribe, 1.0);
-  segments =
-      RemoveSilenceHallucinations(std::move(segments), analysis.probabilities,
-                                  analysis.frame_samples, options.postprocess);
 
   if (options.diarize && !segments.empty()) {
     const std::vector<SpeakerTurn> turns =

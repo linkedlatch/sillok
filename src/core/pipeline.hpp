@@ -8,7 +8,6 @@
 
 #include "core/audio_buffer.hpp"
 #include "core/cancel.hpp"
-#include "core/language.hpp"
 #include "core/model_provider.hpp"
 #include "core/postprocess.hpp"
 #include "core/segmenter.hpp"
@@ -22,27 +21,22 @@ enum class Stage { kAnalyze, kTranscribe, kDiarize };
 // Progress of `stage` as a fraction in [0, 1].
 using ProgressCallback = std::function<void(Stage stage, double fraction)>;
 
-// Transcribed segments, in order, as each becomes final during the
-// transcription stage. They preview the transcript, which then removes
-// hallucinations in silence, adds speakers and splits long segments.
+// Transcribed segments, in order, as the transcription stage decodes them.
+// They preview the transcript, which then adds speakers and splits long
+// segments.
 using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
 struct PipelineOptions {
-  // "auto" or one of `candidates` (ISO 639-1).
+  // "auto", detected once from the first speech, or one of `candidates`
+  // (ISO 639-1).
   std::string language = "auto";
   std::vector<std::string> candidates = {"ko", "en"};
   std::vector<std::string> glossary;
   bool diarize = false;
 
   SegmenterOptions segmenter;
-  LanguageOptions language_detection;
   PostprocessOptions postprocess;
   SpeakerOptions speakers;
-  // A window whose mean token log-probability falls below this is decoded
-  // again in the runner-up language, when there is one.
-  double retry_below = -0.5;
-  // Text of windows below this is not used as context for the next window.
-  double min_context_quality = -0.8;
 };
 
 // Transcribes `audio` (finished). Models are opened one stage at a time and

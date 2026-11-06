@@ -10,34 +10,6 @@ function(sillok_require_third_party name)
     endif()
 endfunction()
 
-# Applies patches/<name>/*.patch to a submodule once (.gitmodules ignores the
-# resulting changes, and the lock file). Build trees configured at the same
-# time, such as Gradle's one per Android ABI, take turns.
-function(sillok_apply_patches name)
-    file(GLOB patches "${PROJECT_SOURCE_DIR}/patches/${name}/*.patch")
-    if(NOT patches)
-        return()
-    endif()
-    file(LOCK "${SILLOK_THIRD_PARTY_DIR}/${name}" DIRECTORY GUARD FUNCTION TIMEOUT 300)
-    find_package(Git REQUIRED)
-    foreach(patch IN LISTS patches)
-        execute_process(
-            COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${patch}"
-            WORKING_DIRECTORY "${SILLOK_THIRD_PARTY_DIR}/${name}"
-            RESULT_VARIABLE applied OUTPUT_QUIET ERROR_QUIET)
-        if(NOT applied EQUAL 0)
-            execute_process(
-                COMMAND "${GIT_EXECUTABLE}" apply "${patch}"
-                WORKING_DIRECTORY "${SILLOK_THIRD_PARTY_DIR}/${name}"
-                RESULT_VARIABLE failed)
-            if(failed)
-                message(FATAL_ERROR "cannot apply ${patch}")
-            endif()
-            message(STATUS "Applied ${patch}")
-        endif()
-    endforeach()
-endfunction()
-
 # nlohmann/json, single_include/nlohmann/json.hpp only: used by the C ABI layer
 # and the CLI.
 sillok_require_third_party(json)
@@ -60,7 +32,6 @@ endif()
 # below link the same ggml target (docs/DESIGN.md D2). Everything is static so the
 # sillok library is self-contained.
 sillok_require_third_party(whisper.cpp)
-sillok_apply_patches(whisper.cpp)
 # whisper.cpp declares cmake_minimum_required(3.5), so without CMP0077 its
 # option(BUILD_SHARED_LIBS) would override the value set here.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)

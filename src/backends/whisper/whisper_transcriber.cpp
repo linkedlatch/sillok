@@ -1,6 +1,7 @@
 #include "backends/whisper/whisper_transcriber.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <fstream>
 #include <vector>
 
@@ -13,10 +14,41 @@
 namespace sillok {
 namespace {
 
-constexpr Milliseconds kMaxAudio{30000};
+// What the callbacks of one whisper_full call need.
+struct Run {
+  const TokenSegmentCallback& on_segment;
+  const StopToken& stop;
+  std::exception_ptr error;
+};
 
-bool Aborted(void* stop) {
-  return static_cast<StopToken*>(stop)->StopRequested();
+bool Aborted(void* data) {
+  const Run* run = static_cast<Run*>(data);
+  return run->error != nullptr || run->stop.StopRequested();
+}
+
+void NewSegments(whisper_context* context, whisper_state*, int count,
+                 void* data) {
+  Run* run = static_cast<Run*>(data);
+  if (run->error) return;
+  // Special tokens (timestamps, end of text, ...) have ids from EOT up.
+  const whisper_token end_of_text = whisper_token_eot(context);
+  const int total = whisper_full_n_segments(context);
+  try {
+    for (int i = total - count; i < total; ++i) {
+      TokenSegment segment;
+      for (int j = 0; j < whisper_full_n_tokens(context, i); ++j) {
+        const whisper_token_data token = whisper_full_get_token_data(context, i, j);
+        if (token.id >= end_of_text) continue;
+        segment.tokens.push_back({.text = whisper_full_get_token_text(context, i, j),
+                                  .start = Milliseconds{token.t0 * 10},
+                                  .end = Milliseconds{token.t1 * 10},
+                                  .probability = token.p});
+      }
+      if (!segment.tokens.empty()) run->on_segment(segment);
+    }
+  } catch (...) {
+    run->error = std::current_exception();  // not through whisper.cpp
+  }
 }
 
 // Loads through a reader instead of a path. whisper.cpp derives the Core ML
@@ -67,10 +99,8 @@ class WhisperTranscriber final : public Transcriber {
 
   ModelInfo Info() const override { return info_; }
 
-  TranscriberCapabilities Capabilities() const override {
-    return {.max_audio = kMaxAudio,
-            .detects_language = whisper_is_multilingual(context_.get()) != 0,
-            .max_prompt_tokens = whisper_n_text_ctx(context_.get()) / 2};
+  bool DetectsLanguage() const override {
+    return whisper_is_multilingual(context_.get()) != 0;
   }
 
   std::vector<LanguageScore> DetectLanguage(
@@ -83,9 +113,8 @@ class WhisperTranscriber final : public Transcriber {
     }
     std::vector<float> probabilities(
         static_cast<std::size_t>(whisper_lang_max_id() + 1), 0.0f);
-    // From patches/whisper.cpp: whisper_lang_auto_detect cannot be aborted.
-    const int status = whisper_lang_auto_detect_with_abort(
-        context_.get(), 0, threads_, probabilities.data(), Aborted, &stop);
+    const int status = whisper_lang_auto_detect(context_.get(), 0, threads_,
+                                                probabilities.data());
     ThrowIfStopped(stop);
     if (status < 0) throw ModelError("whisper_lang_auto_detect failed");
     std::vector<LanguageScore> scores;
@@ -97,62 +126,52 @@ class WhisperTranscriber final : public Transcriber {
     return scores;
   }
 
-  int CountTokens(std::string_view text) const override {
-    const std::string copy(text);
-    std::vector<whisper_token> tokens(copy.size() + 16);
-    const int count = whisper_tokenize(context_.get(), copy.c_str(),
-                                       tokens.data(),
-                                       static_cast<int>(tokens.size()));
-    if (count < 0) throw ModelError("whisper_tokenize failed");
-    return count;
-  }
-
-  std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
-                                       StopToken stop) override {
+  void Transcribe(const TranscribeRequest& request,
+                  const TokenSegmentCallback& on_segment,
+                  StopToken stop) override {
     // whisper_full checks the abort callback only after its encoder pass.
     ThrowIfStopped(stop);
     whisper_full_params params =
         whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.n_threads = threads_;
     params.language = request.language.c_str();
-    params.no_context = true;  // the pipeline chooses the context
     params.print_progress = false;
     params.print_realtime = false;
     params.print_timestamps = false;
     params.token_timestamps = true;
-    params.suppress_nst = true;
-    params.initial_prompt =
-        request.prompt.empty() ? nullptr : request.prompt.c_str();
+    // Earlier text as context lets a mistake repeat for the rest of a
+    // recording, so whisper_full gets room for the prompt alone.
+    params.n_max_text_ctx = 0;
+    if (!request.prompt.empty()) {
+      params.initial_prompt = request.prompt.c_str();
+      params.carry_initial_prompt = true;
+      params.n_max_text_ctx = CountTokens(request.prompt) + 1;
+    }
+    Run run{.on_segment = on_segment, .stop = stop, .error = nullptr};
     params.abort_callback = Aborted;
-    params.abort_callback_user_data = &stop;
+    params.abort_callback_user_data = &run;
+    params.new_segment_callback = NewSegments;
+    params.new_segment_callback_user_data = &run;
 
-    whisper_context* context = context_.get();
-    const int status = whisper_full(context, params, request.pcm.data(),
+    const int status = whisper_full(context_.get(), params, request.pcm.data(),
                                     static_cast<int>(request.pcm.size()));
+    if (run.error) std::rethrow_exception(run.error);
     ThrowIfStopped(stop);
     if (status != 0) {
       throw ModelError("whisper_full failed with " + std::to_string(status));
     }
-
-    // Special tokens (timestamps, end of text, ...) have ids from EOT up.
-    const whisper_token end_of_text = whisper_token_eot(context);
-    std::vector<TokenSegment> segments;
-    for (int i = 0; i < whisper_full_n_segments(context); ++i) {
-      TokenSegment segment;
-      for (int j = 0; j < whisper_full_n_tokens(context, i); ++j) {
-        const whisper_token_data data = whisper_full_get_token_data(context, i, j);
-        if (data.id >= end_of_text) continue;
-        segment.tokens.push_back({.text = whisper_full_get_token_text(context, i, j),
-                                  .start = Milliseconds{data.t0 * 10},
-                                  .end = Milliseconds{data.t1 * 10},
-                                  .probability = data.p});
-      }
-      if (!segment.tokens.empty()) segments.push_back(std::move(segment));
-    }
-    return segments;
   }
 
  private:
+  // Length of `text` in prompt tokens.
+  int CountTokens(const std::string& text) const {
+    std::vector<whisper_token> tokens(text.size() + 16);
+    const int count = whisper_tokenize(context_.get(), text.c_str(), tokens.data(),
+                                       static_cast<int>(tokens.size()));
+    if (count < 0) throw ModelError("whisper_tokenize failed");
+    return count;
+  }
+
   std::unique_ptr<whisper_context, decltype(&whisper_free)> context_;
   int threads_;
   ModelInfo info_;

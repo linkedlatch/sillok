@@ -1,9 +1,9 @@
 #ifndef SILLOK_CORE_TRANSCRIBER_HPP_
 #define SILLOK_CORE_TRANSCRIBER_HPP_
 
+#include <functional>
 #include <span>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "core/audio.hpp"
@@ -15,14 +15,6 @@ namespace sillok {
 struct LanguageScore {
   std::string language;  // ISO 639-1
   float probability = 0.0f;
-};
-
-// What a transcription model supports; the pipeline adapts to these instead
-// of to model types.
-struct TranscriberCapabilities {
-  Milliseconds max_audio{0};      // longest audio per request
-  bool detects_language = false;  // DetectLanguage() is available
-  int max_prompt_tokens = 0;      // 0 when prompts are not supported
 };
 
 // Decoded text with its time span. `text` holds raw bytes: one UTF-8
@@ -41,26 +33,28 @@ struct TokenSegment {
 };
 
 struct TranscribeRequest {
-  std::span<const float> pcm;  // 16 kHz mono, at most max_audio long
+  std::span<const float> pcm;  // 16 kHz mono, of any length
   std::string language;        // ISO 639-1
-  std::string prompt;          // within max_prompt_tokens
+  std::string prompt;          // terms the model should expect, or empty
 };
+
+// Receives each decoded segment, in order, during Transcribe().
+using TokenSegmentCallback = std::function<void(const TokenSegment&)>;
 
 class Transcriber {
  public:
   virtual ~Transcriber() = default;
 
   virtual ModelInfo Info() const = 0;
-  virtual TranscriberCapabilities Capabilities() const = 0;
+  virtual bool DetectsLanguage() const = 0;
   // Probability of each candidate language being spoken in `pcm`. Only
   // called when the model detects languages.
   virtual std::vector<LanguageScore> DetectLanguage(
       std::span<const float> pcm, std::span<const std::string> candidates,
       StopToken stop) = 0;
-  // Length of `text` in prompt tokens.
-  virtual int CountTokens(std::string_view text) const = 0;
-  virtual std::vector<TokenSegment> Transcribe(const TranscribeRequest& request,
-                                               StopToken stop) = 0;
+  virtual void Transcribe(const TranscribeRequest& request,
+                          const TokenSegmentCallback& on_segment,
+                          StopToken stop) = 0;
 };
 
 }  // namespace sillok

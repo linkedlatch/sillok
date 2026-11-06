@@ -25,19 +25,6 @@ Segment S(std::vector<Word> words, std::string language = "en") {
   return MakeSegment(std::move(words), std::move(language));
 }
 
-TEST(PostprocessTest, RemovesSegmentsDecodedFromSilence) {
-  // 32 ms frames; speech only in the first second.
-  std::vector<float> probabilities(100, 0.0f);
-  std::fill(probabilities.begin(), probabilities.begin() + 31, 0.9f);
-  std::vector<Segment> segments = {S({W("real", 100, 900)}),
-                                   S({W("Thanks", 2000, 2500),
-                                      W("for", 2500, 2700),
-                                      W("watching", 2700, 3000)})};
-  segments = RemoveSilenceHallucinations(segments, probabilities, 512, {});
-  ASSERT_EQ(segments.size(), 1u);
-  EXPECT_EQ(segments[0].text, "real");
-}
-
 TEST(PostprocessTest, SplitsLongSegmentsAtSentenceEnd) {
   PostprocessOptions options;
   options.max_segment_duration = Milliseconds{5000};

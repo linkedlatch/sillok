@@ -2,34 +2,25 @@
 #define SILLOK_CORE_SEGMENTER_HPP_
 
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "core/audio.hpp"
 
 namespace sillok {
 
+// The defaults are whisper.cpp's (whisper_vad_default_params), but for
+// max_gap.
 struct SegmenterOptions {
   float speech_threshold = 0.5f;    // a frame at or above this starts speech
   float silence_threshold = 0.35f;  // a frame below this ends it
   Milliseconds min_speech{250};     // shorter speech is dropped
-  Milliseconds min_silence{500};    // shorter pauses are bridged
-  Milliseconds padding{300};        // kept before and after speech
-  Milliseconds max_window{28000};   // longest audio per transcription
-  Milliseconds max_join_gap{2000};  // speech further apart starts a new window
-  Milliseconds overlap{2000};       // shared by windows split inside speech
-  Milliseconds split_search{
-      8000};  // span before max_window searched for a split
-};
-
-// A stretch of the recording transcribed in one request.
-struct Window {
-  SampleRange audio;  // what the transcriber hears
-  // Words whose midpoint falls here belong to this window. Owned ranges tile
-  // the whole recording.
-  SampleRange owned;
-  // Split inside continuous speech: the audio overlaps the previous window
-  // and the seam between them is owned.begin.
-  bool overlaps_previous = false;
+  Milliseconds min_silence{100};    // shorter pauses are bridged
+  Milliseconds padding{30};         // kept before and after speech
+  Milliseconds tail{100};           // kept after speech as well
+  // Speech further apart than this is transcribed separately, so that what
+  // follows a long pause is not heard together with what came before it.
+  Milliseconds max_gap{2000};
 };
 
 // Speech regions from per-frame speech probabilities, with short pauses
@@ -38,13 +29,41 @@ std::vector<SampleRange> FindSpeech(std::span<const float> probabilities,
                                     int frame_samples, SampleIndex total,
                                     const SegmenterOptions& options);
 
-// Windows covering `speech`. Nearby regions share a window while it stays
-// within max_window; longer speech is split at its quietest point (by
-// `energy`, one value per `energy_frame` samples) with an overlap.
-std::vector<Window> PlanWindows(std::span<const SampleRange> speech,
-                                std::span<const float> energy, int energy_frame,
-                                SampleIndex total,
-                                const SegmenterOptions& options);
+// `speech` in groups transcribed together: a new one starts at each pause of
+// at least `max_gap`.
+std::vector<std::vector<SampleRange>> GroupSpeech(
+    std::span<const SampleRange> speech, Milliseconds max_gap);
+
+// Silence between the regions of joined speech, as in whisper.cpp.
+inline constexpr Milliseconds kJoinGap{100};
+
+// Regions of a recording joined with kJoinGap between them, as the
+// transcriber hears them, and the way back to times in the recording.
+class JoinedSpeech {
+ public:
+  explicit JoinedSpeech(std::span<const SampleRange> regions);
+
+  SampleIndex size() const { return size_; }
+  // Where region `index` starts in the joined speech.
+  SampleIndex Offset(std::size_t index) const {
+    return pieces_[index].joined;
+  }
+
+  // Times in the recording of a word at [start, end) of the joined speech. A
+  // word starting in a gap moves to the region after it. It ends inside the
+  // region it starts in, or the pause there would become part of it.
+  std::pair<Milliseconds, Milliseconds> ToRecording(Milliseconds start,
+                                                    Milliseconds end) const;
+
+ private:
+  struct Piece {
+    SampleIndex joined = 0;
+    SampleRange recording;
+  };
+
+  std::vector<Piece> pieces_;
+  SampleIndex size_ = 0;
+};
 
 }  // namespace sillok
 

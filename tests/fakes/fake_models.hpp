@@ -47,7 +47,6 @@ struct FakeOptions {
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
   bool detects_language = true;
-  Milliseconds max_audio{30000};
 };
 
 // Provider of fake models that work on RenderScript() audio.

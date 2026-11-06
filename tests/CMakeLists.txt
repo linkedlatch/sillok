@@ -14,7 +14,6 @@ sillok_set_warnings(sillok_fakes)
 
 add_executable(sillok_unit_tests
     unit/audio_test.cpp
-    unit/language_prompt_test.cpp
     unit/output_test.cpp
     unit/pipeline_test.cpp
     unit/segmenter_test.cpp

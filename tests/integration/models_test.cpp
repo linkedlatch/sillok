@@ -5,14 +5,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <atomic>
-#include <chrono>
 #include <cstdio>
 #include <filesystem>
-#include <optional>
 #include <set>
 #include <string>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -44,42 +40,6 @@ std::vector<float> WithGain(std::vector<float> pcm) {
   audio.Finish();
   ApplyGain(LoudnessGain(audio), pcm);
   return pcm;
-}
-
-// Runs `work` and requests a stop after `delay`. Returns the time from the
-// request to `work` ending with Cancelled, or nothing when `work` finished
-// before the request.
-template <typename Work>
-std::optional<std::chrono::duration<double>> TimeToCancel(Work work,
-                                                          std::chrono::milliseconds delay) {
-  using Clock = std::chrono::steady_clock;
-  StopSource source;
-  StopSource done;
-  std::atomic<Clock::rep> requested{0};
-  std::thread stopper([&] {
-    const auto until = Clock::now() + delay;
-    while (!done.StopRequested() && Clock::now() < until) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    if (done.StopRequested()) return;
-    requested = Clock::now().time_since_epoch().count();
-    source.RequestStop();
-  });
-  try {
-    work(source.Token());
-  } catch (const Cancelled&) {
-    const Clock::time_point at{Clock::duration{requested.load()}};
-    const auto elapsed = Clock::now() - at;
-    stopper.join();
-    return elapsed;
-  } catch (...) {
-    done.RequestStop();
-    stopper.join();
-    throw;
-  }
-  done.RequestStop();
-  stopper.join();
-  return std::nullopt;
 }
 
 class ModelsTest : public ::testing::Test {
@@ -119,10 +79,12 @@ TEST_F(ModelsTest, TranscribesEnglish) {
   pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
   auto transcriber = Models()->OpenTranscriber();
   std::string text;
-  for (const TokenSegment& segment :
-       transcriber->Transcribe({.pcm = pcm, .language = "en", .prompt = ""}, {})) {
-    for (const Token& token : segment.tokens) text += token.text;
-  }
+  transcriber->Transcribe(
+      {.pcm = pcm, .language = "en", .prompt = ""},
+      [&](const TokenSegment& segment) {
+        for (const Token& token : segment.tokens) text += token.text;
+      },
+      {});
   for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge"}) {
     EXPECT_NE(text.find(word), std::string::npos) << text;
   }
@@ -135,25 +97,6 @@ TEST_F(ModelsTest, DetectsLanguage) {
   const auto scores = transcriber->DetectLanguage(pcm, candidates, {});
   ASSERT_EQ(scores.size(), 2u);
   EXPECT_GT(scores[0].probability, scores[1].probability);
-}
-
-// Needs patches/whisper.cpp: whisper.cpp itself checks for an abort only
-// between encoder passes, which take half a minute on a slow CPU.
-TEST_F(ModelsTest, CancelsInTheMiddleOfAnEncoderPassOnCpu) {
-  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 28.0);
-  auto transcriber = Models(Device::kCpu)->OpenTranscriber();
-  const std::vector<std::string> candidates = {"ko", "en"};
-  const auto detect = TimeToCancel(
-      [&](StopToken stop) { transcriber->DetectLanguage(pcm, candidates, stop); },
-      std::chrono::milliseconds(300));
-  const auto transcribe = TimeToCancel(
-      [&](StopToken stop) {
-        transcriber->Transcribe({.pcm = pcm, .language = "en", .prompt = ""}, stop);
-      },
-      std::chrono::milliseconds(300));
-  if (!detect || !transcribe) GTEST_SKIP() << "finished before the cancel request";
-  EXPECT_LT(detect->count(), 2.0);
-  EXPECT_LT(transcribe->count(), 2.0);
 }
 
 TEST_F(ModelsTest, DiarizesMeeting) {

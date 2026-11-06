@@ -56,34 +56,6 @@ std::size_t ChooseSplit(const std::vector<Word>& words) {
 
 }  // namespace
 
-float SpeechCoverage(std::span<const float> probabilities, int frame_samples,
-                     SampleRange range, float threshold) {
-  const auto frames = static_cast<SampleIndex>(probabilities.size());
-  const SampleIndex first =
-      std::clamp<SampleIndex>(range.begin / frame_samples, 0, frames);
-  const SampleIndex last = std::clamp<SampleIndex>(
-      (range.end + frame_samples - 1) / frame_samples, first, frames);
-  if (first == last) return 0.0f;
-  SampleIndex speech_frames = 0;
-  for (SampleIndex i = first; i < last; ++i) {
-    if (probabilities[static_cast<std::size_t>(i)] >= threshold)
-      ++speech_frames;
-  }
-  return static_cast<float>(speech_frames) / static_cast<float>(last - first);
-}
-
-std::vector<Segment> RemoveSilenceHallucinations(
-    std::vector<Segment> segments, std::span<const float> probabilities,
-    int frame_samples, const PostprocessOptions& options) {
-  std::erase_if(segments, [&](const Segment& segment) {
-    const SampleRange range{ToSamples(segment.start), ToSamples(segment.end)};
-    return SpeechCoverage(probabilities, frame_samples, range,
-                          options.speech_threshold) <
-           options.min_speech_coverage;
-  });
-  return segments;
-}
-
 std::vector<Segment> SplitLongSegments(std::vector<Segment> segments,
                                        const PostprocessOptions& options) {
   std::vector<Segment> out;

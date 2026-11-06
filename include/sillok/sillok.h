@@ -203,8 +203,8 @@ SILLOK_API sillok_status sillok_job_save_audio(sillok_job* job, const char* path
 /* Segments of the transcript as the transcription stage finishes them, for
  * the app to show while the job runs: `segments_json` is an array of
  * segments as in the transcript document (below), without "speaker". They
- * are previews; the transcript sillok_job_run() returns then drops
- * hallucinations in silence, adds speakers and splits long segments. Called
+ * are previews; the transcript sillok_job_run() returns then adds speakers
+ * and splits long segments. Called
  * on the thread running sillok_job_run(); the string lives for the call. */
 typedef void (*sillok_segments_fn)(void* user_data, const char* segments_json);
 

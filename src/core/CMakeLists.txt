@@ -4,15 +4,12 @@ add_library(sillok_core STATIC
     audio_buffer.cpp
     export.cpp
     files.cpp
-    language.cpp
     level.cpp
     pipeline.cpp
     postprocess.cpp
-    prompt.cpp
     segmenter.cpp
     sha256.cpp
     speakers.cpp
-    stitcher.cpp
     utf8.cpp
     words.cpp)
 target_include_directories(sillok_core PUBLIC "${PROJECT_SOURCE_DIR}/src")

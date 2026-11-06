@@ -91,8 +91,8 @@ void main(List<String> args) async {
     }
 
     // Rebuild when the library's sources change. Directories count too, so an
-    // added file (a new patch, say) is noticed, not only edits to known ones.
-    for (final path in ['CMakeLists.txt', 'cmake', 'include', 'src', 'patches']) {
+    // added file is noticed, not only edits to known ones.
+    for (final path in ['CMakeLists.txt', 'cmake', 'include', 'src']) {
       final entity = FileSystemEntity.typeSync(root.resolve(path).toFilePath());
       if (entity == FileSystemEntityType.file) output.dependencies.add(root.resolve(path));
       if (entity != FileSystemEntityType.directory) continue;

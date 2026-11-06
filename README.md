@@ -25,16 +25,7 @@ apps/app/                 the Flutter app (Android, iOS, iPadOS, macOS, Windows)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
 scripts/                  fetching test audio, evaluation
-patches/                  local patches to the submodules (CMake applies them)
 ```
-
-`patches/whisper.cpp` lets a cancel stop a Whisper pass midway on the CPU
-(upstream checks only between passes), and reuses the encoder output when
-language detection and the transcription encode the same audio (auto
-language ran the encoder twice per window). After updating whisper.cpp, run
-the integration tests: one of them fails if the cancel patch no longer takes
-effect; compare an auto-language run's output and time with the previous
-version for the other.
 
 To update a submodule to a release, fetch and check out its tag, then commit
 the submodule's new commit. NeMo's llama.cpp follows the commit NeMo records,
@@ -46,10 +37,6 @@ git -C third_party/NeMo-Speech.cpp checkout v0.4.0
 git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
 git add third_party/NeMo-Speech.cpp
 ```
-
-whisper.cpp needs its patched files reset first
-(`git -C third_party/whisper.cpp checkout -- .`); CMake applies the patches
-again.
 
 After updating NeMo-Speech.cpp, compare the diarization (`ami` and
 `korean_speakers` in `scripts/eval/run_eval.py`) with the previous version, and
