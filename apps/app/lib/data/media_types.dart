@@ -6,19 +6,14 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:file_selector/file_selector.dart';
 
-/// Audio and video files: MIME types on Android, uniform types on Apple, and
-/// on Windows the extensions Windows perceives as audio or video (every file
-/// if it reports none).
+/// Audio and video files: uniform types on macOS, and on Windows the
+/// extensions Windows perceives as audio or video (every file if it reports
+/// none).
 List<XTypeGroup> mediaTypes(String label) {
   final extensions = Platform.isWindows ? windowsMediaExtensions() : null;
   if (extensions != null && extensions.isEmpty) return const [];
   return [
-    XTypeGroup(
-      label: label,
-      mimeTypes: const ['audio/*', 'video/*'],
-      uniformTypeIdentifiers: const ['public.audio', 'public.movie'],
-      extensions: extensions,
-    ),
+    XTypeGroup(label: label, uniformTypeIdentifiers: const ['public.audio', 'public.movie'], extensions: extensions),
   ];
 }
 

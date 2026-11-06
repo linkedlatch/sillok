@@ -134,8 +134,8 @@ class _RunningViewState extends State<RunningView> {
         );
         return LayoutBuilder(
           builder: (context, constraints) {
-            // A short screen (a phone held sideways) scrolls the header away
-            // with the sentences; a tall one keeps it in view.
+            // A short window scrolls the header away with the sentences; a
+            // tall one keeps it in view.
             if (constraints.maxHeight < 560) {
               return withLatest(
                 ListView.builder(

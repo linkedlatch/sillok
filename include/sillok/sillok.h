@@ -114,8 +114,7 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
  * "device". With "device": "cpu" and "npu": false, neither a GPU nor an NPU
  * is used.
  * Jobs keep their recording in a file in "temp_dir" (default: the system's
- * temporary directory), so memory does not grow with its length. Android has
- * no usable default: pass the app's cache directory there.
+ * temporary directory), so memory does not grow with its length.
  * Models are loaded while a job runs, one stage at a time, and freed
  * afterwards. Jobs keep the engine alive, so the engine may be destroyed
  * before its jobs. */
@@ -153,9 +152,7 @@ typedef void (*sillok_file_progress_fn)(void* user_data, double fraction);
  * first audio stream is read. Blocks until the file is read; `progress` may
  * be NULL, and sillok_job_cancel() stops the read (SILLOK_CANCELLED). The
  * recording stays open: end it with sillok_job_end_audio() or run the job.
- * SILLOK_MEDIA_ERROR when the file cannot be opened or decoded.
- * On Android, a document from a content URI can be read as
- * "/proc/self/fd/<n>" of a file descriptor the app opened for it. */
+ * SILLOK_MEDIA_ERROR when the file cannot be opened or decoded. */
 SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
                                               sillok_file_progress_fn progress,
                                               void* user_data);

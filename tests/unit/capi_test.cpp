@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -42,11 +41,9 @@ std::vector<float> ScriptPcm(int words, int first_id = 0) {
   return audio.Read({0, audio.size()});
 }
 
-// The committed media files (tests/data/media); SILLOK_TEST_MEDIA overrides
-// the directory where the tests run elsewhere, such as on a device.
+// The committed media files (tests/data/media).
 std::filesystem::path MediaFile(const char* name) {
-  const char* dir = std::getenv("SILLOK_TEST_MEDIA");
-  return std::filesystem::path(dir != nullptr ? dir : SILLOK_TEST_MEDIA_DIR) / name;
+  return std::filesystem::path(SILLOK_TEST_MEDIA_DIR) / name;
 }
 
 // Writes `seconds` of a 440 Hz tone as 16-bit PCM WAV.

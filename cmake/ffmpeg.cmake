@@ -57,20 +57,9 @@ set(ffmpeg_args
     --enable-encoder=aac --enable-muxer=ipod)
 
 if(APPLE)
-    list(APPEND ffmpeg_args --install-name-dir=@rpath)
-endif()
-if(ANDROID)
-    list(APPEND ffmpeg_args
-        --enable-cross-compile --target-os=android --arch=${CMAKE_SYSTEM_PROCESSOR}
-        --cc=${CMAKE_C_COMPILER} --ar=${CMAKE_AR} --nm=${CMAKE_NM}
-        --ranlib=${CMAKE_RANLIB} --strip=${CMAKE_STRIP} --sysroot=${CMAKE_SYSROOT}
-        --extra-cflags=--target=${CMAKE_C_COMPILER_TARGET}
-        # Android 15 devices may use 16 KB pages.
-        "--extra-ldflags=--target=${CMAKE_C_COMPILER_TARGET} -Wl,-z,max-page-size=16384")
-elseif(APPLE)
     # The SDK and architecture are given explicitly: the compiler may be the
     # toolchain's own clang (Flutter's build hook), which finds no SDK by
-    # itself. Flutter builds macOS apps for both architectures.
+    # itself.
     if(IS_ABSOLUTE "${CMAKE_OSX_SYSROOT}")
         set(sdk "${CMAKE_OSX_SYSROOT}")
     else()
@@ -89,21 +78,14 @@ elseif(APPLE)
     if(arch STREQUAL "aarch64")
         set(arch arm64)
     endif()
-    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-        set(target "${arch}-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        if(sdk MATCHES "Simulator")
-            string(APPEND target "-simulator")
-        endif()
+    set(target "${arch}-apple-macos${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    if(NOT arch STREQUAL CMAKE_HOST_SYSTEM_PROCESSOR)
         list(APPEND ffmpeg_args --enable-cross-compile)
-    else()
-        set(target "${arch}-apple-macos${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        if(NOT arch STREQUAL CMAKE_HOST_SYSTEM_PROCESSOR)
-            list(APPEND ffmpeg_args --enable-cross-compile)
-        endif()
     endif()
     # Tools FFmpeg builds for itself use the host's compiler, which finds the
     # SDK through xcode-select.
     list(APPEND ffmpeg_args
+        --install-name-dir=@rpath
         --target-os=darwin --arch=${arch} --cc=${CMAKE_C_COMPILER} --host-cc=/usr/bin/cc
         "--extra-cflags=-target ${target} -isysroot ${sdk}"
         # Room for Flutter to rewrite the libraries' install names.
@@ -166,8 +148,6 @@ foreach(lib IN LISTS ffmpeg_libs)
         set(runtime "${ffmpeg_install}/bin/${lib}-${major}.dll")
     elseif(APPLE)
         set(runtime "${ffmpeg_install}/lib/lib${lib}.${major}.dylib")
-    elseif(ANDROID)
-        set(runtime "${ffmpeg_install}/lib/lib${lib}.so")  # unversioned on Android
     else()
         set(runtime "${ffmpeg_install}/lib/lib${lib}.so.${major}")
     endif()

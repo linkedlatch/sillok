@@ -4,16 +4,15 @@
 // fixes the references between them where needed (Apple frameworks).
 //
 // CMake and Ninja come from the PATH; the compilers are the ones Flutter
-// names for the target: the NDK's for Android, Visual Studio's (through its
-// developer environment) for Windows, Xcode's for Apple. The CMake arguments
-// for each target are those of the core workflow's builds.
+// names for the target: Visual Studio's (through its developer environment)
+// for Windows, Xcode's for macOS. The CMake arguments for each target are
+// those of the core workflow's builds.
 //
 // Windows builds need MSYS2's make for FFmpeg (README, Build), and use
 // Vulkan when its SDK is found: hooks see only a few environment variables,
 // so the hook looks in C:\VulkanSDK unless the pubspec names the SDK
 // (hooks: user_defines: sillok: vulkan_sdk: <path>).
 import 'dart:io';
-import 'dart:math';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
@@ -39,21 +38,12 @@ void main(List<String> args) async {
       // Stated every time, so a build folder that once had it on (in its
       // CMake cache) does not keep it; Windows turns it on below.
       'SILLOK_VULKAN': 'OFF',
-      // Core ML for the NPU encoder: Apple silicon has the Neural Engine,
-      // Intel Macs have none, so their part of the app has no encoder to
-      // offer. Stated every time, as above.
-      'SILLOK_COREML': os == OS.iOS || (os == OS.macOS && code.targetArchitecture == Architecture.arm64) ? 'ON' : 'OFF',
-      // Phones: ARMv8.2 with dot product and fp16 (the app checks the CPU).
-      // x86_64 Android is only the emulator, which runs the host's AVX2.
-      if (os == OS.android && code.targetArchitecture == Architecture.arm64)
-        'GGML_CPU_ARM_ARCH': 'armv8.2-a+dotprod+fp16',
-      if (os == OS.android && code.targetArchitecture == Architecture.x64)
-        for (final feature in ['GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_FMA', 'GGML_F16C', 'GGML_BMI2'])
-          feature: 'ON',
-      // Apple: the default CPU of the target (Apple M1, A-series) rather
-      // than the build machine's, which may not be the target's at all
-      // (Intel Macs are built on Apple silicon).
-      if (os == OS.iOS || os == OS.macOS) 'GGML_NATIVE': 'OFF',
+      // Core ML for the NPU encoder, on Apple silicon's Neural Engine. Stated
+      // every time, as above.
+      'SILLOK_COREML': os == OS.macOS ? 'ON' : 'OFF',
+      // macOS: the default CPU of the target (Apple M1) rather than the
+      // build machine's.
+      if (os == OS.macOS) 'GGML_NATIVE': 'OFF',
       // Windows: AVX2 rather than the build machine's CPU, and the C runtime
       // inside the DLLs.
       if (os == OS.windows) ...{
@@ -109,7 +99,7 @@ void main(List<String> args) async {
 File _library(Directory dir, String name, OS os) {
   final pattern = switch (os) {
     OS.windows => RegExp('^(lib)?$name(-[0-9]+)?\\.dll\$'),
-    OS.macOS || OS.iOS => RegExp('^lib$name(\\.[0-9]+)*\\.dylib\$'),
+    OS.macOS => RegExp('^lib$name(\\.[0-9]+)*\\.dylib\$'),
     _ => RegExp('^lib$name\\.so(\\.[0-9]+)*\$'),
   };
   final files = dir
@@ -161,44 +151,15 @@ Future<void> _cmake(CodeConfig code, Uri root, Uri buildDir, Map<String, String>
 
 /// The CMake variables that choose the target platform and its compilers.
 Map<String, String> _target(CodeConfig code) {
-  final architecture = code.targetArchitecture;
-  String apple() => switch (architecture) {
-    Architecture.arm64 => 'arm64',
-    Architecture.x64 => 'x86_64',
-    _ => throw UnsupportedError('$architecture on Apple'),
-  };
-  switch (code.targetOS) {
-    case OS.android:
-      // Flutter names the NDK's clang, <ndk>/toolchains/llvm/prebuilt/<host>/bin/clang.
-      final clang = code.cCompiler?.compiler;
-      if (clang == null) throw StateError('Flutter found no Android NDK');
-      return {
-        'CMAKE_TOOLCHAIN_FILE': clang.resolve('../../../../../build/cmake/android.toolchain.cmake').toFilePath(),
-        'ANDROID_ABI': switch (architecture) {
-          Architecture.arm64 => 'arm64-v8a',
-          Architecture.x64 => 'x86_64',
-          Architecture.arm => 'armeabi-v7a',
-          _ => throw UnsupportedError('$architecture on Android'),
-        },
-        'ANDROID_PLATFORM': 'android-${max(code.android.targetNdkApi, 21)}',
-        'ANDROID_STL': 'c++_static',
-      };
-    case OS.iOS:
-      return {
-        'CMAKE_SYSTEM_NAME': 'iOS',
-        'CMAKE_OSX_SYSROOT': code.iOS.targetSdk == IOSSdk.iPhoneSimulator ? 'iphonesimulator' : 'iphoneos',
-        'CMAKE_OSX_ARCHITECTURES': apple(),
-        'CMAKE_OSX_DEPLOYMENT_TARGET': '${code.iOS.targetVersion}',
-      };
-    case OS.macOS:
-      return {
-        'CMAKE_OSX_SYSROOT': 'macosx',
-        'CMAKE_OSX_ARCHITECTURES': apple(),
-        'CMAKE_OSX_DEPLOYMENT_TARGET': '${code.macOS.targetVersion}',
-      };
-    default:
-      return {};
+  if (code.targetOS != OS.macOS) return {};
+  if (code.targetArchitecture != Architecture.arm64) {
+    throw UnsupportedError('${code.targetArchitecture} on macOS: only Apple silicon is supported');
   }
+  return {
+    'CMAKE_OSX_SYSROOT': 'macosx',
+    'CMAKE_OSX_ARCHITECTURES': 'arm64',
+    'CMAKE_OSX_DEPLOYMENT_TARGET': '${code.macOS.targetVersion}',
+  };
 }
 
 /// The full path of [tool] on the PATH.

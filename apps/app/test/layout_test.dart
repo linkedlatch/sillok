@@ -1,6 +1,6 @@
-// Every screen at phone, tablet and desktop sizes, both ways round: Flutter
-// reports a layout that does not fit (overflow) as an error, which fails
-// these tests. Uses the library (catalog) but no models.
+// Every screen in windows from small to desktop size, both ways round:
+// Flutter reports a layout that does not fit (overflow) as an error, which
+// fails these tests. Uses the library (catalog) but no models.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -81,10 +81,10 @@ class _ScriptedPlayback implements Playback {
 }
 
 const _sizes = {
-  'phone': Size(360, 780),
-  'phone landscape': Size(780, 360),
-  'tablet': Size(820, 1180),
-  'tablet landscape': Size(1180, 820),
+  'narrow window': Size(360, 780),
+  'short window': Size(780, 360),
+  'tall window': Size(820, 1180),
+  'wide window': Size(1180, 820),
   'desktop': Size(1440, 900),
   'small window': Size(640, 480),
 };
@@ -148,12 +148,10 @@ void main() {
   late Directory root;
   late AppState state;
 
-  Future<void> start(WidgetTester tester, Size size, {required bool result, double navigationBar = 0}) async {
+  Future<void> start(WidgetTester tester, Size size, {required bool result}) async {
     tester.view
       ..physicalSize = size
-      ..devicePixelRatio = 1
-      ..padding = FakeViewPadding(bottom: navigationBar)
-      ..viewPadding = FakeViewPadding(bottom: navigationBar);
+      ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     root = (await tester.runAsync(() => Directory.systemTemp.createTemp('sillok layout ')))!;
     addTearDown(() => root.delete(recursive: true));
@@ -374,52 +372,5 @@ void main() {
     await show(60);
     expect(position().pixels, position().maxScrollExtent);
     expect(find.text('Latest'), findsNothing);
-  });
-
-  // Android draws apps under its navigation bar (edge to edge); nothing the
-  // user taps may sit there.
-  group('phone with a navigation bar', () {
-    const size = Size(360, 780);
-    const bar = 48.0;
-    void clear(WidgetTester tester, Finder finder) =>
-        expect(tester.getRect(finder.first).bottom, lessThanOrEqualTo(size.height - bar));
-
-    testWidgets('library, running file and result', (tester) async {
-      await start(tester, size, result: true, navigationBar: bar);
-      clear(tester, find.byType(FloatingActionButton));
-      state.transcriber.showRunning(
-        const QueueItem(key: 'k', path: '/x/a.m4a', name: 'a.m4a', settings: JobSettings()),
-        const RunState(
-          key: 'k',
-          name: 'a.m4a',
-          settings: JobSettings(),
-          step: RunStep.transcribe,
-          stepFraction: 0.4,
-          remaining: null,
-          timingsMs: {},
-        ),
-        const [],
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('a.m4a').first);
-      await tester.pumpAndSettle();
-      clear(tester, find.text('Cancel'));
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용').first);
-      await _settle(tester);
-      clear(tester, find.byTooltip('Play'));
-      clear(tester, find.byType(Slider));
-    });
-
-    testWidgets('settings', (tester) async {
-      await start(tester, size, result: true, navigationBar: bar);
-      await tester.tap(find.byTooltip('Settings'));
-      await tester.pumpAndSettle();
-      await tester.dragUntilVisible(find.text('About'), find.byType(ListView).last, const Offset(0, -300));
-      await tester.drag(find.byType(ListView).last, const Offset(0, -2000));
-      await tester.pumpAndSettle();
-      clear(tester, find.text('About'));
-    });
   });
 }

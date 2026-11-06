@@ -1,6 +1,6 @@
-# Builds the core library on every target platform and runs the model-free
-# tests where the platform can run them. The real-model integration tests skip
-# here: CI has neither the models nor the recordings.
+# Builds the core library and the command-line app, which run on more platforms
+# than the Flutter app, and runs the model-free tests. The real-model
+# integration tests skip here: CI has neither the models nor the recordings.
 name: core
 
 on:
@@ -14,7 +14,6 @@ permissions:
 env:
   CMAKE_VERSION: "4.4.4"
   NINJA_VERSION: "1.13.2"
-  NDK_VERSION: "30.0.16248370"
 
 jobs:
   desktop:
@@ -75,65 +74,3 @@ jobs:
         run: cmake --build build
       - name: Test
         run: ctest --test-dir build --output-on-failure -LE integration
-
-  ios:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
-      - name: Fetch NeMo's llama.cpp
-        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
-      - name: Install CMake and Ninja
-        run: scripts/ci/install-cmake.sh
-      - name: Build for devices and the simulator
-        run: |
-          for sdk in iphoneos iphonesimulator; do
-            cmake -S . -B "build/$sdk" -G Ninja -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=$sdk -DCMAKE_OSX_ARCHITECTURES=arm64 \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
-              -DSILLOK_COREML=ON -DSILLOK_BUILD_CLI=OFF -DSILLOK_BUILD_TESTS=OFF -DSILLOK_WERROR=ON
-            cmake --build "build/$sdk" --target sillok_static
-          done
-
-  android:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
-      - name: Fetch NeMo's llama.cpp
-        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
-      - name: Install CMake, Ninja and the NDK
-        run: |
-          scripts/ci/install-cmake.sh
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
-      - name: Build for arm64 (phones) and x86_64 (the emulator)
-        run: |
-          for abi in arm64-v8a x86_64; do
-            arch=""
-            [[ $abi == arm64-v8a ]] && arch="-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16"
-            cmake -S . -B "build/$abi" -G Ninja -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/$NDK_VERSION/build/cmake/android.toolchain.cmake" \
-              -DANDROID_ABI=$abi -DANDROID_PLATFORM=android-29 -DSILLOK_WERROR=ON $arch
-            cmake --build "build/$abi"
-          done
-      - name: Allow the emulator to use KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Test on the emulator
-        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        with:
-          api-level: 36
-          arch: x86_64
-          target: google_apis
-          disable-animations: true
-          script: |
-            adb push build/x86_64/tests/sillok_unit_tests build/x86_64/tests/sillok_capi_tests build/x86_64/third_party/ffmpeg/install/lib/*.so /data/local/tmp/
-            adb push tests/data/media /data/local/tmp/
-            adb shell 'cd /data/local/tmp && export TMPDIR=/data/local/tmp LD_LIBRARY_PATH=/data/local/tmp SILLOK_TEST_MEDIA=/data/local/tmp/media && ./sillok_unit_tests && ./sillok_capi_tests; echo "exit=$?"' | tee android-tests.log
-            grep -q '^exit=0' android-tests.log

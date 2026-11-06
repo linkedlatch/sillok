@@ -21,7 +21,7 @@ src/backends/             one directory per model; models.cpp picks the models
 src/media/                FFmpeg: reading audio and video files, converting audio to 16 kHz mono
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
-apps/app/                 the Flutter app (Android, iOS, iPadOS, macOS, Windows)
+apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
 scripts/                  fetching test audio, evaluation
@@ -67,11 +67,9 @@ Options: `SILLOK_VULKAN` (GPU on Linux, Windows), `SILLOK_COREML`
 (Apple), `SILLOK_WITH_MODELS=OFF` (core, C ABI and tests only, no
 third-party model code), `SILLOK_WERROR`.
 
-Products: `libsillok` (shared, exports only `sillok_*`) and
-`libsillok_static` (one archive including the third-party code; the app links
-the system libraries: OpenMP, Vulkan or Apple frameworks). Both need FFmpeg's
+Product: `libsillok` (shared, exports only `sillok_*`). It needs FFmpeg's
 shared libraries (`libavformat`, `libavcodec`, `libavfilter`, `libswresample`, `libavutil`,
-in `build/third_party/ffmpeg/install`) beside them; FFmpeg is built under the
+in `build/third_party/ffmpeg/install`) beside it; FFmpeg is built under the
 LGPL, without GPL or nonfree parts, and stays replaceable that way.
 
 ## CLI
@@ -92,8 +90,8 @@ FFmpeg's logs.
 
 ## App
 
-`apps/app` is one Flutter app for every platform except Linux, over the C ABI
-through `dart:ffi`. Its build hook (`apps/app/hook/build.dart`) builds the
+`apps/app` is one Flutter app for Windows (x86_64) and macOS (Apple silicon),
+over the C ABI through `dart:ffi`. Its build hook (`apps/app/hook/build.dart`) builds the
 library with this repository's CMake project for the target and bundles it
 with FFmpeg's libraries, so a plain `flutter run` or `flutter build` is
 enough once the library's own requirements are met (see Build; on Windows,
@@ -105,12 +103,12 @@ cd apps/app
 flutter test                                    # the hook builds the library for this machine
 SILLOK_TEST_MODELS=../../models \
     SILLOK_TEST_AUDIO=../../tests/data/audio/fleurs/en_us/1003119935936341070.wav flutter test
-flutter build apk --target-platform android-arm64,android-x64
-flutter test integration_test -d <device>      # the built app on a device or desktop
+flutter build windows                           # or macos
+flutter test integration_test -d windows        # the built app; or -d macos
 ```
 
-Each push builds the apps in CI (the `app` workflow): `sillok-android`,
-`sillok-windows-x64` and `sillok-macos` under the run's artifacts. The macOS
+Each push builds the apps in CI (the `app` workflow): `sillok-windows-x64` and
+`sillok-macos` under the run's artifacts. The macOS
 app has an ad-hoc signature but is not notarized, so macOS refuses to open it
 the first time it comes from a download. Try to open it once, then choose
 Open Anyway in System Settings > Privacy & Security and enter your password;
