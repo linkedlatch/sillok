@@ -67,7 +67,6 @@ class _ModelCardState extends State<_ModelCard> {
     final state = widget.state;
     final model = _model;
     final ready = state.models[model.id] is ModelReady;
-    final inUse = (state.defaults.transcriptionModel ?? state.recommendedTranscription.id) == model.id;
     // Apple builds offer the NPU encoder (Neural Engine) for a model that is here.
     final accelerator = ready ? state.accelerators[model.id] : null;
     return Card.outlined(
@@ -104,22 +103,14 @@ class _ModelCardState extends State<_ModelCard> {
             Text(modelSummary(l, model), style: Theme.of(context).textTheme.bodySmall),
             if (accelerator != null) _AcceleratorControl(state: state, model: model, status: accelerator),
             if (ready)
-              Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Chosen under Defaults for new files; shown here as a state.
-                  if (inUse) Chip(avatar: const Icon(Icons.check), label: Text(l.modelDefault)),
-                  TextButton(
-                    onPressed: () async {
-                      if (await confirm(context, l.deleteConfirm(modelName(model)), l.delete)) {
-                        await state.deleteModel(model.id);
-                        widget.onChanged?.call();
-                      }
-                    },
-                    child: Text(l.delete),
-                  ),
-                ],
+              TextButton(
+                onPressed: () async {
+                  if (await confirm(context, l.deleteConfirm(modelName(model)), l.delete)) {
+                    await state.deleteModel(model.id);
+                    widget.onChanged?.call();
+                  }
+                },
+                child: Text(l.delete),
               )
             else
               ModelDownloadControl(state: state, model: model),

@@ -336,9 +336,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelRecommended => 'Recommended';
 
   @override
-  String get modelDefault => 'Default for new files';
-
-  @override
   String modelSummary(String accuracy, String speed, String quantization, String size) {
     return 'Accuracy $accuracy · speed $speed · $quantization · $size';
   }

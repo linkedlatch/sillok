@@ -632,12 +632,6 @@ abstract class AppLocalizations {
   /// **'Recommended'**
   String get modelRecommended;
 
-  /// No description provided for @modelDefault.
-  ///
-  /// In en, this message translates to:
-  /// **'Default for new files'**
-  String get modelDefault;
-
   /// No description provided for @modelSummary.
   ///
   /// In en, this message translates to:

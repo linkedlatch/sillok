@@ -331,9 +331,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get modelRecommended => '권장';
 
   @override
-  String get modelDefault => '새 파일 기본 모델';
-
-  @override
   String modelSummary(String accuracy, String speed, String quantization, String size) {
     return '정확도 $accuracy · 속도 $speed · $quantization · $size';
   }

@@ -83,7 +83,6 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Transcription models'), findsOneWidget);
-    expect(find.text('Default for new files'), findsOneWidget);
     await tester.dragUntilVisible(find.text('large-v3'), find.byType(ListView).last, const Offset(0, -300));
     expect(find.text('q5_0'), findsNWidgets(2));
   });
