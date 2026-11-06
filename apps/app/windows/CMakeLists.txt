@@ -87,6 +87,16 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# The C++ runtime the app and its plugins load, so that the folder runs on a
+# machine without the Redistributable. sillok.dll has its own, built in.
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+include(InstallRequiredSystemLibraries)
+foreach(lib ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
+  if(lib MATCHES "/(msvcp140|vcruntime140|vcruntime140_1)\\.dll$")
+    install(FILES "${lib}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
+  endif()
+endforeach()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"
