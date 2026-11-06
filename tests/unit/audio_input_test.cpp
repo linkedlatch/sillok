@@ -32,7 +32,7 @@ double Rms(std::span<const float> pcm) {
 std::vector<float> Convert(int rate, std::span<const float> input, std::size_t block,
                            int channels = 1) {
   AudioBuffer audio;
-  AudioInput converter(audio);
+  AudioInput converter(audio, AudioInput::Loudness::kAsRecorded);
   const std::size_t step = block * static_cast<std::size_t>(channels);
   for (std::size_t i = 0; i < input.size(); i += step) {
     converter.Push(input.subspan(i, std::min(step, input.size() - i)), rate, channels);
@@ -102,6 +102,60 @@ TEST(AudioInputTest, RemovesContentAboveNewNyquist) {
 TEST(AudioInputTest, BlockSizeDoesNotChangeOutput) {
   const auto input = Sine(44100, 523.0, 0.7);
   EXPECT_EQ(Convert(44100, input, input.size()), Convert(44100, input, 333));
+}
+
+// `pcm` at 16 kHz with its loudness evened out, in blocks of `block`.
+std::vector<float> EvenOut(std::span<const float> pcm, std::size_t block = 4096) {
+  AudioBuffer audio;
+  AudioInput input(audio);
+  for (std::size_t i = 0; i < pcm.size(); i += block) {
+    input.Push(pcm.subspan(i, std::min(block, pcm.size() - i)), 16000, 1);
+  }
+  input.Finish();
+  return audio.Read({0, audio.size()});
+}
+
+std::vector<float> Scaled(std::vector<float> pcm, float factor) {
+  for (float& x : pcm) x *= factor;
+  return pcm;
+}
+
+TEST(LoudnessTest, RaisesAShortQuietRecordingAndKeepsItsLength) {
+  // 0.5 peak lowered by 46 dB, 5 s long.
+  const auto quiet = Scaled(Sine(16000, 300.0, 5.0), 0.005f);
+  const auto out = EvenOut(quiet);
+  ASSERT_EQ(out.size(), quiet.size());
+  EXPECT_GT(Rms(out), Rms(quiet) * 9.0);  // nearly the filter's 20 dB
+  EXPECT_LT(*std::max_element(out.begin(), out.end()), 1.0f);
+}
+
+TEST(LoudnessTest, RaisesAQuietPassageTowardsTheRest) {
+  // A minute of 0.5 peak with 30 s at a tenth of it in the middle.
+  auto pcm = Sine(16000, 300.0, 60.0);
+  const std::size_t begin = 16000 * 15;
+  const std::size_t end = 16000 * 45;
+  for (std::size_t i = begin; i < end; ++i) pcm[i] *= 0.1f;
+  const auto out = EvenOut(pcm);
+  ASSERT_EQ(out.size(), pcm.size());
+  const std::span<const float> quiet(out.data() + 16000 * 28, 16000 * 4);
+  const std::span<const float> loud(out.data() + 16000 * 2, 16000 * 4);
+  // Was a tenth. It needs 19 times the gain to catch up and gets the 10 the
+  // filter allows.
+  EXPECT_GT(Rms(quiet), Rms(loud) * 0.45);
+}
+
+TEST(LoudnessTest, LeavesSilenceSilentAndKeepsShortInput) {
+  const std::vector<float> silence(16000, 0.0f);
+  const auto out = EvenOut(silence);
+  ASSERT_EQ(out.size(), silence.size());
+  EXPECT_EQ(*std::max_element(out.begin(), out.end()), 0.0f);
+  EXPECT_EQ(EvenOut(std::vector<float>(10, 0.1f)).size(), 10u);
+  EXPECT_TRUE(EvenOut({}).empty());
+}
+
+TEST(LoudnessTest, BlockSizeDoesNotChangeOutput) {
+  const auto input = Scaled(Sine(16000, 300.0, 3.0), 0.1f);
+  EXPECT_EQ(EvenOut(input, input.size()), EvenOut(input, 333));
 }
 
 TEST(AudioInputTest, RejectsUnsupportedRates) {

@@ -8,10 +8,10 @@
 namespace sillok::testing {
 namespace {
 
-// Loud enough that LoudnessGain() leaves a recording as it is: amplitude
-// carries the word id.
-constexpr float kBaseAmplitude = 0.2f;
-constexpr float kAmplitudeStep = 0.0005f;
+// The length of a half wave carries the word id, since the input evens out
+// amplitudes.
+constexpr float kAmplitude = 0.2f;
+constexpr int kShortestHalfWave = 4;
 constexpr float kSilence = 0.05f;
 
 struct Burst {
@@ -32,15 +32,17 @@ std::vector<Burst> FindBursts(std::span<const float> pcm,
       continue;
     }
     const SampleIndex begin = i;
-    float peak = 0.0f;
+    SampleIndex half_wave = 0;  // the longest: the first and last may be cut
+    SampleIndex run = 0;
     while (i < n && std::abs(pcm[static_cast<std::size_t>(i)]) > kSilence) {
-      peak = std::max(peak, std::abs(pcm[static_cast<std::size_t>(i)]));
+      const bool same_sign = i > begin && (pcm[static_cast<std::size_t>(i)] > 0.0f) ==
+                                              (pcm[static_cast<std::size_t>(i - 1)] > 0.0f);
+      run = same_sign ? run + 1 : 1;
+      half_wave = std::max(half_wave, run);
       ++i;
     }
     if (i - begin < min_samples) continue;
-    const int id = static_cast<int>(
-        std::lround((peak - kBaseAmplitude) / kAmplitudeStep));
-    bursts.push_back({begin, i, id});
+    bursts.push_back({begin, i, static_cast<int>(half_wave) - kShortestHalfWave});
   }
   return bursts;
 }
@@ -182,10 +184,9 @@ AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
                          Milliseconds duration) {
   std::vector<float> pcm(static_cast<std::size_t>(ToSamples(duration)), 0.0f);
   for (const ScriptWord& word : words) {
-    const float amplitude =
-        kBaseAmplitude + kAmplitudeStep * static_cast<float>(word.id);
+    const SampleIndex half_wave = kShortestHalfWave + word.id;
     for (SampleIndex i = ToSamples(word.start); i < ToSamples(word.end); ++i) {
-      pcm[static_cast<std::size_t>(i)] = (i / 20) % 2 == 0 ? amplitude : -amplitude;
+      pcm[static_cast<std::size_t>(i)] = (i / half_wave) % 2 == 0 ? kAmplitude : -kAmplitude;
     }
   }
   AudioBuffer audio;

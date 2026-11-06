@@ -15,14 +15,14 @@ namespace sillok::testing {
 
 // One spoken word of a synthetic recording.
 struct ScriptWord {
-  int id = 0;  // 0 <= id < 800, encoded in the burst amplitude
+  int id = 0;  // 0 <= id < 800, encoded in the burst wavelength
   Milliseconds start{0};
   Milliseconds end{0};
   std::string language = "en";
   int speaker = 0;
 };
 
-// Synthetic recording: each word is a square-wave burst whose amplitude
+// Synthetic recording: each word is a square-wave burst whose wavelength
 // encodes its id; everything else is silence.
 AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
                          Milliseconds duration);

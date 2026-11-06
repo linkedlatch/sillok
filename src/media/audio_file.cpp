@@ -21,7 +21,6 @@ extern "C" {
 
 #include "core/audio.hpp"
 #include "core/files.hpp"
-#include "core/level.hpp"
 
 namespace sillok {
 namespace {
@@ -206,7 +205,7 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
   if (progress) progress(1.0);
 }
 
-void WriteAacFile(const AudioBuffer& audio, double gain, const std::filesystem::path& path,
+void WriteAacFile(const AudioBuffer& audio, const std::filesystem::path& path,
                   const std::function<void(double)>& progress,
                   const StopToken& stop) {
   ConfigureLogging();
@@ -269,8 +268,7 @@ void WriteAacFile(const AudioBuffer& audio, double gain, const std::filesystem::
   double reported = 0.0;
   for (SampleIndex begin = 0; begin < total; begin += block) {
     ThrowIfStopped(stop);
-    std::vector<float> samples = audio.Read({begin, begin + block});
-    ApplyGain(gain, samples);
+    const std::vector<float> samples = audio.Read({begin, begin + block});
     for (std::size_t offset = 0; offset < samples.size();
          offset += static_cast<std::size_t>(frame_size)) {
       const std::size_t count =

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/audio_buffer.hpp"
+#include "media/loudness_filter.hpp"
 
 struct SwrContext;
 
@@ -15,9 +16,13 @@ namespace sillok {
 // 16 kHz mono of an AudioBuffer: the channels are averaged, and FFmpeg's
 // libswresample changes the rate. Output sample n sits at input position
 // n * input_rate / kSampleRate, and the output lasts as long as the input.
+// LoudnessFilter then evens out the loudness, so that everything reading the
+// buffer hears the same sound; it holds back about 15 s until Finish().
 class AudioInput {
  public:
-  explicit AudioInput(AudioBuffer& audio);
+  enum class Loudness { kEvenedOut, kAsRecorded };
+
+  explicit AudioInput(AudioBuffer& audio, Loudness loudness = Loudness::kEvenedOut);
   ~AudioInput();
   AudioInput(const AudioInput&) = delete;
   AudioInput& operator=(const AudioInput&) = delete;
@@ -38,6 +43,7 @@ class AudioInput {
   void Convert(const float* mono, int count);
 
   AudioBuffer& audio_;
+  std::unique_ptr<LoudnessFilter> filter_;
   std::unique_ptr<SwrContext, SwrFree> swr_;
   int sample_rate_ = 0;
   int channels_ = 0;

@@ -144,30 +144,4 @@ std::vector<float> AudioBuffer::Read(SampleRange range) const {
   return out;
 }
 
-std::vector<float> AudioBuffer::FrameEnergy(int frame) const {
-  if (frame <= 0) throw std::invalid_argument("frame must be positive");
-  std::vector<float> energy;
-  energy.reserve(static_cast<std::size_t>((size() + frame - 1) / frame));
-  // Read whole frames in large pieces so the file is scanned once.
-  const SampleIndex piece = SampleIndex{frame} * 4096;
-  std::vector<std::int16_t> samples;
-  for (SampleIndex start = 0; start < size(); start += piece) {
-    samples.resize(static_cast<std::size_t>(std::min(piece, size() - start)));
-    file_->Read(start, samples);
-    for (std::size_t first = 0; first < samples.size();
-         first += static_cast<std::size_t>(frame)) {
-      const std::size_t last =
-          std::min(first + static_cast<std::size_t>(frame), samples.size());
-      double sum = 0.0;
-      for (std::size_t i = first; i < last; ++i) {
-        const double value = samples[i] / 32768.0;
-        sum += value * value;
-      }
-      energy.push_back(
-          static_cast<float>(sum / static_cast<double>(last - first)));
-    }
-  }
-  return energy;
-}
-
 }  // namespace sillok

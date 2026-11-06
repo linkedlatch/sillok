@@ -14,8 +14,8 @@
 
 #include "backends/models.hpp"
 #include "core/cancel.hpp"
-#include "core/level.hpp"
 #include "media/audio_file.hpp"
+#include "media/audio_input.hpp"
 
 namespace sillok {
 namespace {
@@ -33,13 +33,13 @@ std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1
   return audio.Read({0, std::min(audio.size(), static_cast<SampleIndex>(seconds * 16000))});
 }
 
-// `pcm` with the gain the pipeline gives a recording of it alone.
-std::vector<float> WithGain(std::vector<float> pcm) {
+// `pcm` as the pipeline hears a recording of it alone.
+std::vector<float> EvenedOut(std::span<const float> pcm) {
   AudioBuffer audio;
-  audio.Push(pcm);
-  audio.Finish();
-  ApplyGain(LoudnessGain(audio), pcm);
-  return pcm;
+  AudioInput input(audio);
+  input.Push(pcm, kSampleRate, 1);
+  input.Finish();
+  return audio.Read({0, audio.size()});
 }
 
 class ModelsTest : public ::testing::Test {
@@ -61,7 +61,7 @@ TEST_F(ModelsTest, VoiceDetectionFindsQuietSpeechAndIsDeterministic) {
   // the pipeline raises it.
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 30.0);
   for (float& x : pcm) x *= 0.1f;
-  pcm = WithGain(std::move(pcm));
+  pcm = EvenedOut(pcm);
   pcm.resize(pcm.size() / 512 * 512);
   auto models = Models();
   const auto first = models->OpenVoiceDetector()->Detect(pcm);

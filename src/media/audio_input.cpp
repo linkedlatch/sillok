@@ -16,7 +16,12 @@ namespace sillok {
 
 void AudioInput::SwrFree::operator()(SwrContext* context) const { swr_free(&context); }
 
-AudioInput::AudioInput(AudioBuffer& audio) : audio_(audio) {}
+AudioInput::AudioInput(AudioBuffer& audio, Loudness loudness) : audio_(audio) {
+  if (loudness == Loudness::kEvenedOut) {
+    filter_ = std::make_unique<LoudnessFilter>(
+        [this](std::span<const float> samples) { audio_.Push(samples); });
+  }
+}
 
 AudioInput::~AudioInput() = default;
 
@@ -64,6 +69,7 @@ void AudioInput::Push(std::span<const float> interleaved, int sample_rate,
 void AudioInput::Finish() {
   if (audio_.finished()) return;
   if (swr_) Convert(nullptr, 0);
+  if (filter_) filter_->Finish();
   audio_.Finish();
   swr_.reset();
   mono_ = {};
@@ -78,7 +84,11 @@ void AudioInput::Convert(const float* mono, int count) {
                                mono != nullptr ? &in : nullptr, count);
   if (made < 0) throw std::runtime_error("cannot resample the audio");
   resampled_.resize(static_cast<std::size_t>(made));
-  audio_.Push(resampled_);
+  if (filter_) {
+    filter_->Push(resampled_);
+  } else {
+    audio_.Push(resampled_);
+  }
 }
 
 }  // namespace sillok

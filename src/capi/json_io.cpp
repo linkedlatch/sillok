@@ -184,7 +184,6 @@ std::string TranscriptToJson(const Transcript& transcript) {
   }
   return Dump({{"version", 1},
                {"duration_ms", Ms(transcript.duration)},
-               {"gain_db", std::round(transcript.gain_db * 10.0) / 10.0},
                {"speakers", std::move(speakers)},
                {"segments", std::move(segments)},
                {"models", std::move(models)}});
@@ -197,7 +196,6 @@ Transcript TranscriptFromJson(std::string_view text) {
   }
   Transcript transcript;
   transcript.duration = Milliseconds{Get<long long>(json, "duration_ms", 0)};
-  transcript.gain_db = Get<double>(json, "gain_db", 0.0);
   for (const Json& speaker : Get<Json>(json, "speakers", Json::array())) {
     const auto name = Get<std::string>(speaker, "name", "");
     if (!name.empty()) transcript.speaker_names[Get<int>(speaker, "id", -1)] = name;

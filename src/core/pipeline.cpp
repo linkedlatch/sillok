@@ -1,7 +1,6 @@
 #include "core/pipeline.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <tuple>
@@ -10,7 +9,6 @@
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/diarizer.hpp"
-#include "core/level.hpp"
 #include "core/transcriber.hpp"
 #include "core/words.hpp"
 
@@ -21,15 +19,7 @@ constexpr SampleIndex kDiarizationChunk = SampleIndex{kSampleRate} * 10;
 // Whisper's window, which the language detection hears.
 constexpr SampleIndex kLanguageSample = SampleIndex{kSampleRate} * 30;
 
-// Samples of `range` with the recording's gain (LoudnessGain).
-std::vector<float> ReadWithGain(const AudioBuffer& audio, SampleRange range,
-                                double gain) {
-  std::vector<float> pcm = audio.Read(range);
-  ApplyGain(gain, pcm);
-  return pcm;
-}
-
-std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio, double gain,
+std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio,
                                       const SegmenterOptions& options,
                                       ModelProvider& models,
                                       const ProgressCallback& progress,
@@ -47,7 +37,7 @@ std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio, double gain,
   for (SampleIndex begin = 0; begin < audio.size(); begin += chunk) {
     ThrowIfStopped(stop);
     const std::vector<float> part =
-        detector->Detect(ReadWithGain(audio, {begin, begin + chunk}, gain));
+        detector->Detect(audio.Read({begin, begin + chunk}));
     probabilities.insert(probabilities.end(), part.begin(), part.end());
     progress(Stage::kAnalyze,
              static_cast<double>(std::min(begin + chunk, audio.size())) /
@@ -58,7 +48,7 @@ std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio, double gain,
 }
 
 // The most likely of the candidates in the first speech of the recording.
-std::string DetectLanguage(const AudioBuffer& audio, double gain,
+std::string DetectLanguage(const AudioBuffer& audio,
                            std::span<const SampleRange> speech,
                            const PipelineOptions& options,
                            Transcriber& transcriber, const StopToken& stop) {
@@ -70,8 +60,8 @@ std::string DetectLanguage(const AudioBuffer& audio, double gain,
   for (const SampleRange& region : speech) {
     const SampleIndex room = kLanguageSample - static_cast<SampleIndex>(pcm.size());
     if (room <= 0) break;
-    const std::vector<float> part = ReadWithGain(
-        audio, {region.begin, std::min(region.end, region.begin + room)}, gain);
+    const std::vector<float> part =
+        audio.Read({region.begin, std::min(region.end, region.begin + room)});
     pcm.insert(pcm.end(), part.begin(), part.end());
   }
   const std::vector<LanguageScore> scores =
@@ -93,7 +83,7 @@ std::string JoinGlossary(const std::vector<std::string>& glossary) {
 }
 
 std::vector<Segment> TranscribeSpeech(
-    const AudioBuffer& audio, double gain, std::span<const SampleRange> speech,
+    const AudioBuffer& audio, std::span<const SampleRange> speech,
     const PipelineOptions& options, ModelProvider& models,
     const ProgressCallback& progress, const SegmentsCallback& on_segments,
     const StopToken& stop, Transcript& transcript) {
@@ -102,7 +92,7 @@ std::vector<Segment> TranscribeSpeech(
   const auto transcriber = models.OpenTranscriber();
   const std::string language =
       options.language == "auto"
-          ? DetectLanguage(audio, gain, speech, options, *transcriber, stop)
+          ? DetectLanguage(audio, speech, options, *transcriber, stop)
           : options.language;
   const std::string prompt = JoinGlossary(options.glossary);
 
@@ -118,7 +108,7 @@ std::vector<Segment> TranscribeSpeech(
     const JoinedSpeech joined(group);
     std::vector<float> pcm(static_cast<std::size_t>(joined.size()), 0.0f);
     for (std::size_t i = 0; i < group.size(); ++i) {
-      const std::vector<float> part = ReadWithGain(audio, group[i], gain);
+      const std::vector<float> part = audio.Read(group[i]);
       std::copy(part.begin(), part.end(),
                 pcm.begin() + static_cast<std::ptrdiff_t>(joined.Offset(i)));
     }
@@ -185,17 +175,14 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   transcript.duration = ToMilliseconds(audio.size());
   if (audio.size() == 0) return transcript;
 
-  const double gain = LoudnessGain(audio);
-  transcript.gain_db = 20.0 * std::log10(gain);
-  const std::vector<SampleRange> speech =
-      DetectSpeech(audio, gain, options.segmenter, models, progress, stop,
-                   transcript);
+  const std::vector<SampleRange> speech = DetectSpeech(
+      audio, options.segmenter, models, progress, stop, transcript);
 
   // Each stage opens its model in its own function, so the model is freed
   // before the next stage starts.
   std::vector<Segment> segments;
   if (!speech.empty()) {
-    segments = TranscribeSpeech(audio, gain, speech, options, models, progress,
+    segments = TranscribeSpeech(audio, speech, options, models, progress,
                                 on_segments, stop, transcript);
   }
   progress(Stage::kTranscribe, 1.0);

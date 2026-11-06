@@ -86,7 +86,7 @@ void main(List<String> args) async {
     }
 
     add('engine/native.dart', place(_library(dir, 'sillok', os)));
-    for (final lib in ['avformat', 'avcodec', 'swresample', 'avutil']) {
+    for (final lib in ['avformat', 'avcodec', 'avfilter', 'swresample', 'avutil']) {
       add('ffmpeg/$lib', place(_library(Directory('${ffmpeg.path}${os == OS.windows ? 'bin' : 'lib'}'), lib, os)));
     }
 

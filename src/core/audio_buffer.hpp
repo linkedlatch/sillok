@@ -33,9 +33,6 @@ class AudioBuffer {
 
   // Samples in `range` (clamped to the buffer) as floats in [-1, 1).
   std::vector<float> Read(SampleRange range) const;
-  // Mean square of consecutive frames of `frame` samples; the last frame may
-  // be shorter.
-  std::vector<float> FrameEnergy(int frame) const;
 
  private:
   class File;

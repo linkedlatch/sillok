@@ -161,14 +161,14 @@ SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
                                               void* user_data);
 
 /* --- The job's recording ---------------------------------------------------
- * A job converts the pushed audio to mono at SILLOK_SAMPLE_RATE: the
- * recording it transcribes, which the transcript's times refer to. Sample n
- * lies at n * 1000 / SILLOK_SAMPLE_RATE milliseconds. Apps read it to keep a
- * copy for listening back, so that a segment plays exactly what was
- * transcribed without converting the audio a second time.
+ * A job converts the pushed audio to mono at SILLOK_SAMPLE_RATE and evens out
+ * its loudness: the recording it transcribes, which the transcript's times
+ * refer to. Sample n lies at n * 1000 / SILLOK_SAMPLE_RATE milliseconds. Apps
+ * read it to keep a copy for listening back, so that a segment plays exactly
+ * what was transcribed without converting the audio a second time.
  *
- * Samples become available as audio is pushed; the conversion holds back the
- * last few milliseconds until sillok_job_end_audio() (or sillok_job_run())
+ * Samples become available as audio is pushed; the conversion holds back
+ * about the last 15 seconds until sillok_job_end_audio() (or sillok_job_run())
  * ends the recording. Available samples never change. These functions must
  * not be called while sillok_job_run() is executing on the job. */
 #define SILLOK_SAMPLE_RATE 16000
@@ -189,10 +189,8 @@ SILLOK_API sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
 
 /* Writes the recording to `path` as AAC in an M4A file (16 kHz mono,
  * 32 kbit/s, about 14 MB an hour) for the app to keep for listening back:
- * transcript times are positions in it. A quiet recording is raised by the
- * same gain the transcription hears it with (the transcript's "gain_db"),
- * so the copy sounds as loud as speech usually does. Call after the
- * recording ended.
+ * transcript times are positions in it, and it sounds as the transcription
+ * heard it, with quiet passages raised. Call after the recording ended.
  * Blocks until written; `progress` may be NULL, and sillok_job_cancel() stops
  * it (SILLOK_CANCELLED). An unfinished file is removed. SILLOK_MEDIA_ERROR
  * when the file cannot be written. */
@@ -219,7 +217,7 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *
  * `out_json` receives the transcript document. Times are milliseconds in the
  * original recording; speakers are ids, named by the app:
- * {"version": 1, "duration_ms": 61000, "gain_db": 14.4,
+ * {"version": 1, "duration_ms": 61000,
  *  "speakers": [{"id": 0, "name": null}, ...],
  *  "segments": [{"start_ms": 0, "end_ms": 2300, "text": "...",
  *                "language": "ko", "speaker": 0,
@@ -227,8 +225,7 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *                           "confidence": 0.93, "speaker": 0}, ...]}, ...],
  *  "models": {"transcription": {"name": "...", "device": "...",
  *                               "fell_back_to_cpu": false}, ...}}
- * "speaker" is absent without diarization. "gain_db" is how much the
- * recording was raised for transcription and in the saved copy, 0 to 30 dB.
+ * "speaker" is absent without diarization.
  * Times locate sentences well enough to listen back to them; word times are
  * approximate. To play a segment, start about a second before "start_ms":
  * a segment occasionally starts later than its first word. */

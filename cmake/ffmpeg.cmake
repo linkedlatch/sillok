@@ -1,14 +1,15 @@
 # FFmpeg (third_party/ffmpeg, release n9.0.2) reads the apps' audio and video
-# files, converts pushed audio to 16 kHz, and writes the AAC copy of a job's
-# recording: only its demuxers, audio decoders and parsers, libswresample, and
-# its AAC encoder and M4A muxer, without GPL or nonfree parts. It is built as
+# files, converts pushed audio to 16 kHz, evens out its loudness, and writes the
+# AAC copy of a job's recording: only its demuxers, audio decoders and parsers,
+# libswresample, the dynaudnorm filter, and its AAC encoder and M4A muxer,
+# without GPL or nonfree parts. It is built as
 # shared libraries next to sillok, which keeps the LGPL simple: users can
 # replace them. FFmpeg builds with its own configure script
 # and make, so this needs a POSIX shell: on Windows, MSYS2's (with make and
 # diffutils installed), run from an MSVC developer environment.
 #
 # Defines sillok_ffmpeg, an interface target with libavformat, libavcodec,
-# libswresample and libavutil, and SILLOK_FFMPEG_RUNTIME, the shared libraries
+# libavfilter, libswresample and libavutil, and SILLOK_FFMPEG_RUNTIME, the shared libraries
 # to ship.
 
 set(ffmpeg_source "${SILLOK_THIRD_PARTY_DIR}/ffmpeg")
@@ -45,13 +46,14 @@ set(ffmpeg_args
     --enable-shared --disable-static --enable-pic
     --disable-programs --disable-doc --disable-debug --disable-network
     --disable-autodetect --disable-everything
-    --disable-avdevice --disable-avfilter --disable-swscale
+    --disable-avdevice --disable-swscale
     # x86 assembly needs nasm; audio decoding is fast without it.
     --disable-x86asm
     --enable-protocol=file
     --enable-demuxer=${ffmpeg_demuxers}
     --enable-decoder=${ffmpeg_decoders}
     --enable-parser=${ffmpeg_parsers}
+    --enable-filter=abuffer,abuffersink,dynaudnorm
     --enable-encoder=aac --enable-muxer=ipod)
 
 if(APPLE)
@@ -141,10 +143,11 @@ file(CONFIGURE OUTPUT "${ffmpeg_dir}/build.sh"
     CONTENT "${shell_setup}make -j${jobs} && make install\n" @ONLY)
 
 # Library files, named with the major versions of this FFmpeg release.
-set(ffmpeg_libs avformat avcodec swresample avutil)
+set(ffmpeg_libs avformat avcodec avfilter swresample avutil)
 set(ffmpeg_version_files
     avformat version_major.h
     avcodec version_major.h
+    avfilter version_major.h
     swresample version_major.h
     avutil version.h)
 set(SILLOK_FFMPEG_RUNTIME "")

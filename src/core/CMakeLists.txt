@@ -4,7 +4,6 @@ add_library(sillok_core STATIC
     audio_buffer.cpp
     export.cpp
     files.cpp
-    level.cpp
     pipeline.cpp
     postprocess.cpp
     segmenter.cpp

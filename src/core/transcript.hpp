@@ -38,9 +38,6 @@ struct ModelInfo {
 
 struct Transcript {
   Milliseconds duration{0};
-  // The gain the recording was heard with and its copy saved with
-  // (LoudnessGain), in dB.
-  double gain_db = 0.0;
   std::vector<Segment> segments;
   // Display names chosen by the app, by speaker id. Export falls back to a
   // numbered label for speakers without a name.

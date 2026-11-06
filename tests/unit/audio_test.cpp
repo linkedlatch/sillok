@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "core/audio_buffer.hpp"
-#include "core/level.hpp"
 
 namespace sillok {
 namespace {
@@ -58,19 +57,6 @@ TEST(AudioBufferTest, ReadClampsAndSpansBlocks) {
   EXPECT_EQ(audio.Read({audio.size() - 2, audio.size() + 50}).size(), 2u);
 }
 
-TEST(AudioBufferTest, FrameEnergy) {
-  AudioBuffer audio;
-  std::vector<float> pcm(400, 0.0f);
-  std::fill(pcm.begin() + 160, pcm.begin() + 320, 0.5f);
-  audio.Push(pcm);
-  audio.Finish();
-  const auto energy = audio.FrameEnergy(160);
-  ASSERT_EQ(energy.size(), 3u);
-  EXPECT_FLOAT_EQ(energy[0], 0.0f);
-  EXPECT_FLOAT_EQ(energy[1], 0.25f);
-  EXPECT_FLOAT_EQ(energy[2], 0.0f);
-}
-
 std::filesystem::path FreshDirectory(const char* name) {
   const auto dir = std::filesystem::temp_directory_path() / name;
   std::filesystem::remove_all(dir);
@@ -115,47 +101,6 @@ TEST(AudioBufferTest, RemovesFilesLeftByEarlierRuns) {
 TEST(AudioBufferTest, NeedsAWritableDirectory) {
   EXPECT_THROW(AudioBuffer(std::filesystem::temp_directory_path() / "sillok-no-such-dir"),
                std::runtime_error);
-}
-
-AudioBuffer BufferOf(std::span<const float> pcm) {
-  AudioBuffer audio;
-  audio.Push(pcm);
-  audio.Finish();
-  return audio;
-}
-
-TEST(LevelTest, MeasuresTheSpeechWithoutThePauses) {
-  // Speech at -46 dBFS around a 5 s pause of noise at -69 dBFS.
-  const auto speech = Sine(16000, 300.0, 3.0, 0.007);
-  const auto noise = Sine(16000, 50.0, 5.0, 0.0005);
-  std::vector<float> pcm = speech;
-  pcm.insert(pcm.end(), noise.begin(), noise.end());
-  pcm.insert(pcm.end(), speech.begin(), speech.end());
-  const double to_reference = 0.05 / (0.007 / std::sqrt(2.0));  // -26 dBFS
-  EXPECT_NEAR(LoudnessGain(BufferOf(pcm)), to_reference, to_reference * 0.02);
-  EXPECT_NEAR(LoudnessGain(BufferOf(speech)), to_reference, to_reference * 0.02);
-}
-
-TEST(LevelTest, NeverLowersAndRaisesBy30dBAtMost) {
-  EXPECT_EQ(LoudnessGain(BufferOf(Sine(16000, 300.0, 3.0, 0.3))), 1.0);
-  EXPECT_NEAR(LoudnessGain(BufferOf(Sine(16000, 300.0, 3.0, 0.0005))), 31.6, 1e-9);
-  EXPECT_EQ(LoudnessGain(BufferOf(std::vector<float>(16000 * 3, 0.0f))), 1.0);
-  EXPECT_EQ(LoudnessGain(BufferOf(std::vector<float>{})), 1.0);
-}
-
-TEST(LevelTest, AppliesTheGainAndBendsPeaksBelowOne) {
-  std::vector<float> pcm = {0.01f, -0.05f, 0.2f, -0.3f, 0.6f};
-  ApplyGain(4.0, pcm);
-  EXPECT_FLOAT_EQ(pcm[0], 0.04f);
-  EXPECT_FLOAT_EQ(pcm[1], -0.2f);
-  EXPECT_FLOAT_EQ(pcm[2], 0.8f);
-  EXPECT_LT(pcm[3], -0.9f);  // -1.2, bent
-  EXPECT_GT(pcm[3], -1.0f);
-  EXPECT_GT(pcm[4], pcm[3] * -1.0f);  // still in order
-  EXPECT_LE(pcm[4], 1.0f);            // 2.4 comes as close to 1 as a float gets
-  std::vector<float> loud = {0.95f, -0.99f};
-  ApplyGain(1.0, loud);
-  EXPECT_EQ(loud, (std::vector<float>{0.95f, -0.99f}));
 }
 
 }  // namespace

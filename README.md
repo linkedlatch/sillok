@@ -70,7 +70,7 @@ third-party model code), `SILLOK_WERROR`.
 Products: `libsillok` (shared, exports only `sillok_*`) and
 `libsillok_static` (one archive including the third-party code; the app links
 the system libraries: OpenMP, Vulkan or Apple frameworks). Both need FFmpeg's
-shared libraries (`libavformat`, `libavcodec`, `libswresample`, `libavutil`,
+shared libraries (`libavformat`, `libavcodec`, `libavfilter`, `libswresample`, `libavutil`,
 in `build/third_party/ffmpeg/install`) beside them; FFmpeg is built under the
 LGPL, without GPL or nonfree parts, and stays replaceable that way.
 
@@ -141,8 +141,8 @@ sillok_export(transcript, "srt", "{\"speaker_label\": \"Speaker {n}\"}", &srt);
 The transcript is JSON with millisecond times in the original recording,
 words with confidence, and speaker ids that the app can name. Apps that
 keep a copy for listening back save the job's own 16 kHz mono recording
-(`sillok_job_save_audio`), the audio those times refer to, raised by the
-same gain the transcription hears a quiet recording with. See
+(`sillok_job_save_audio`), the audio those times refer to, with its loudness
+evened out as the transcription heard it. See
 `include/sillok/sillok.h` for the schemas and the threading rules.
 
 ## Evaluation
