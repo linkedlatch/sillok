@@ -275,6 +275,8 @@ class _QueueTile extends StatelessWidget {
         : Text(
             error != null
                 ? l.libraryFailed(errorText(l, error))
+                : item.paused
+                ? l.libraryPaused
                 : l.libraryWaiting(state.transcriber.waitingPosition(item.key)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -286,6 +288,8 @@ class _QueueTile extends StatelessWidget {
             ? Icons.error_outline
             : run != null
             ? Icons.graphic_eq
+            : item.paused
+            ? Icons.pause_circle_outline
             : Icons.schedule,
       ),
       title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -294,10 +298,14 @@ class _QueueTile extends StatelessWidget {
       trailing: PopupMenuButton<String>(
         onSelected: (action) => switch (action) {
           'retry' => state.transcriber.retry(item.key),
+          'unpause' => state.transcriber.unpause(item.key),
+          'pause' => state.transcriber.pause(),
           _ => state.transcriber.remove(item.key),
         },
         itemBuilder: (context) => [
           if (error != null) PopupMenuItem(value: 'retry', child: Text(l.retry)),
+          if (error == null && item.paused) PopupMenuItem(value: 'unpause', child: Text(l.unpause)),
+          if (run != null && !run.stopping) PopupMenuItem(value: 'pause', child: Text(l.runningPause)),
           PopupMenuItem(value: 'remove', child: Text(run != null ? l.runningCancel : l.remove)),
         ],
       ),
@@ -379,8 +387,9 @@ class DetailPane extends StatelessWidget {
             final run = state.transcriber.run;
             if (run?.key == key) return RunningView(state: state);
             final error = item.error;
+            // Scrolls in a short window.
             return Center(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -388,7 +397,11 @@ class DetailPane extends StatelessWidget {
                   children: [
                     Text(item.name, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
                     Text(
-                      error != null ? errorText(l, error) : l.detailWaiting(state.transcriber.waitingPosition(key)),
+                      error != null
+                          ? errorText(l, error)
+                          : item.paused
+                          ? l.detailPaused
+                          : l.detailWaiting(state.transcriber.waitingPosition(key)),
                       textAlign: TextAlign.center,
                     ),
                     Text(settingsSummary(l, state, item.settings), textAlign: TextAlign.center),
@@ -396,7 +409,9 @@ class DetailPane extends StatelessWidget {
                       spacing: 8,
                       children: [
                         if (error != null)
-                          FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry)),
+                          FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry))
+                        else if (item.paused)
+                          FilledButton(onPressed: () => state.transcriber.unpause(key), child: Text(l.unpause)),
                         OutlinedButton(onPressed: () => state.transcriber.remove(key), child: Text(l.remove)),
                       ],
                     ),

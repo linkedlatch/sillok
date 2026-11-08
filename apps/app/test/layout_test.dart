@@ -202,11 +202,14 @@ void main() {
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);
         await tester.pumpAndSettle();
         expect(find.text('Cancel'), findsOneWidget);
-        // Two panes: the add button stays off the detail's cancel.
+        expect(find.text('Pause'), findsOneWidget);
+        // Two panes: the add button stays off the detail's buttons.
         final add = find.byType(FloatingActionButton);
         if (add.evaluate().isNotEmpty) {
-          final cancel = find.ancestor(of: find.text('Cancel'), matching: find.bySubtype<ButtonStyleButton>());
-          expect(tester.getRect(add).overlaps(tester.getRect(cancel)), isFalse);
+          for (final label in ['Cancel', 'Pause']) {
+            final button = find.ancestor(of: find.text(label), matching: find.bySubtype<ButtonStyleButton>());
+            expect(tester.getRect(add).overlaps(tester.getRect(button)), isFalse);
+          }
         }
         if (find.byType(BackButton).evaluate().isNotEmpty) {
           await tester.tap(find.byType(BackButton));
@@ -221,6 +224,26 @@ void main() {
         await tester.enterText(find.byType(TextField).last, '합의');
         await tester.pumpAndSettle();
         expect(find.text('Play'), findsNothing); // a tooltip, not a label
+      });
+
+      testWidgets('paused file', (tester) async {
+        await start(tester, size, result: true);
+        state.transcriber.showQueue(const [
+          QueueItem(
+            key: 'p',
+            path: '/x/lecture.m4a',
+            name: '분산 시스템 4주차 강의 녹음.m4a',
+            settings: JobSettings(),
+            jobId: '20261109-100000',
+            paused: true,
+          ),
+        ]);
+        await tester.pumpAndSettle();
+        expect(find.text('Paused'), findsOneWidget);
+        await tester.tap(find.text('분산 시스템 4주차 강의 녹음.m4a').first);
+        await tester.pumpAndSettle();
+        expect(find.text('Paused. It continues where it stopped.'), findsOneWidget);
+        expect(find.text('Continue'), findsOneWidget);
       });
 
       testWidgets('settings', (tester) async {

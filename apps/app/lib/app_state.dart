@@ -104,13 +104,13 @@ class AppState extends ChangeNotifier {
     transcriber = Transcriber(
       store: store,
       queueFile: File('${_support.path}${Platform.pathSeparator}queue.json'),
-      request: (item, copyPath) => JobRequest(
+      request: (item, copyPath, checkpointPath) => JobRequest(
         modelsDir: modelsDir.path,
         tempDir: cache.path,
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
-        options: item.settings.options,
+        options: {...item.settings.options, 'checkpoint': checkpointPath},
         source: item.path,
         copyPath: copyPath,
       ),
@@ -124,8 +124,6 @@ class AppState extends ChangeNotifier {
     catalog = Sillok.catalog();
     gpus = Sillok.devices().where((d) => d.isGpu).toList();
     await _loadSettings();
-    // Nothing runs yet, so folders without meta.json were left by a stop.
-    await store.removeUnfinished();
     await _loadLibrary();
     started = true;
     notifyListeners();

@@ -194,6 +194,21 @@ class AppLocalizationsKo extends AppLocalizations {
   String get runningCancelling => '취소하는 중…';
 
   @override
+  String get runningPause => '일시 정지';
+
+  @override
+  String get runningPausing => '멈추는 중…';
+
+  @override
+  String get libraryPaused => '일시 정지됨';
+
+  @override
+  String get detailPaused => '일시 정지했습니다. 이어 하면 멈춘 곳부터 전사합니다.';
+
+  @override
+  String get unpause => '이어 하기';
+
+  @override
   String runningStep(String step, int number, int count, int percent) {
     return '$step($number/$count단계) · $percent%';
   }

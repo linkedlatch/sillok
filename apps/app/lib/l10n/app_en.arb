@@ -151,6 +151,11 @@
   "transcriptionModel": "Transcription model",
   "runningCancel": "Cancel",
   "runningCancelling": "Cancelling…",
+  "runningPause": "Pause",
+  "runningPausing": "Pausing…",
+  "libraryPaused": "Paused",
+  "detailPaused": "Paused. It continues where it stopped.",
+  "unpause": "Continue",
   "runningStep": "{step} (step {number} of {count}) · {percent}%",
   "@runningStep": {
     "placeholders": {

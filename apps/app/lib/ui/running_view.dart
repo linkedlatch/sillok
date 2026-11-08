@@ -103,9 +103,19 @@ class _RunningViewState extends State<RunningView> {
           padding: const EdgeInsets.all(16),
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: OutlinedButton(
-              onPressed: run.cancelling ? null : widget.state.transcriber.cancel,
-              child: Text(run.cancelling ? l.runningCancelling : l.runningCancel),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: run.stopping ? null : widget.state.transcriber.pause,
+                  child: Text(run.pausing ? l.runningPausing : l.runningPause),
+                ),
+                OutlinedButton(
+                  onPressed: run.stopping ? null : widget.state.transcriber.cancel,
+                  child: Text(run.cancelling ? l.runningCancelling : l.runningCancel),
+                ),
+              ],
             ),
           ),
         );

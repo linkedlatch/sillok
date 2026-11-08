@@ -1,7 +1,8 @@
 // Finished transcriptions on disk (docs/APP-NOTES.md, storage format): one
 // folder per job, <jobs>/<yyyyMMdd-HHmmss[-n]>/, with transcript.json, the
 // copy for listening back (audio.m4a) and meta.json, written last. A folder
-// without meta.json is unfinished.
+// without meta.json is unfinished; while its file is paused or failed, it
+// holds the library's checkpoint (checkpoint.jsonl) and maybe the copy.
 import 'dart:convert';
 import 'dart:io';
 
@@ -76,6 +77,7 @@ class JobStore {
   File _file(String id, String name) => File('${dirOf(id).path}${Platform.pathSeparator}$name');
 
   File audioOf(String id) => _file(id, 'audio.m4a');
+  File checkpointOf(String id) => _file(id, 'checkpoint.jsonl');
 
   /// A new, empty folder named after [time].
   Future<String> create(DateTime time) async {
@@ -106,11 +108,14 @@ class JobStore {
     return entries;
   }
 
-  /// Removes folders without meta.json; only while no job is running.
-  Future<void> removeUnfinished() async {
+  /// Removes folders without meta.json but those in [keep]; only while no
+  /// job is running.
+  Future<void> removeUnfinished({Set<String> keep = const {}}) async {
     if (!root.existsSync()) return;
     await for (final dir in root.list()) {
-      if (dir is Directory && !File('${dir.path}${Platform.pathSeparator}meta.json').existsSync()) {
+      if (dir is! Directory) continue;
+      final id = dir.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+      if (!keep.contains(id) && !File('${dir.path}${Platform.pathSeparator}meta.json').existsSync()) {
         await dir.delete(recursive: true);
       }
     }

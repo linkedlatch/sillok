@@ -1,5 +1,6 @@
 // The app on the real library and models: first start, a file through the
-// queue into the library, and the settings. The run is skipped without
+// queue into the library, a paused file continued, and the settings. The runs
+// are skipped without
 // SILLOK_TEST_MODELS and SILLOK_TEST_AUDIO (see engine_test.dart).
 import 'dart:io';
 
@@ -10,6 +11,7 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:sillok/app_state.dart';
 import 'package:sillok/data/settings.dart';
+import 'package:sillok/engine/job_run.dart';
 import 'package:sillok/main.dart';
 
 class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
@@ -52,11 +54,11 @@ void main() {
     expect(find.byType(FilledButton), findsNWidgets(2));
   });
 
-  testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {
+  // The app in a folder of its own, with the models linked into it.
+  Future<AppState> started(WidgetTester tester) async {
     final root = await tester.runAsync(() => Directory.systemTemp.createTemp('sillok app '));
     addTearDown(() => root!.delete(recursive: true));
     PathProviderPlatform.instance = _Paths(root!);
-    // The models, linked into the app's folder.
     await tester.runAsync(() async {
       final dir = await Directory('${root.path}/support/models').create(recursive: true);
       await for (final file in Directory(models!).list()) {
@@ -67,6 +69,36 @@ void main() {
     await tester.runAsync(state.start);
     await tester.pumpWidget(SillokApp(state: state));
     await tester.pump();
+    return state;
+  }
+
+  testWidgets('a paused file continues in its folder', skip: skip, (tester) async {
+    final state = await started(tester);
+    await tester.runAsync(
+      () => state.enqueue([(audio!, 'fleurs.wav')], const JobSettings(language: 'en', diarize: false)),
+    );
+    // Paused as transcription starts, after the copy for listening back.
+    await _waitFor(tester, () => state.transcriber.run?.step == RunStep.transcribe);
+    state.transcriber.pause();
+    await _waitFor(tester, () => state.transcriber.run == null);
+    final item = state.transcriber.queue.single;
+    expect(item.paused, isTrue);
+    final copy = state.store.audioOf(item.jobId!);
+    expect(copy.existsSync(), isTrue);
+    final copied = copy.lastModifiedSync();
+    await tester.pump();
+    expect(find.text('Paused'), findsOneWidget);
+
+    await tester.runAsync(() => state.transcriber.unpause(item.key));
+    await _waitFor(tester, () => state.library.isNotEmpty);
+    expect(state.transcriber.queue, isEmpty);
+    expect(state.library.single.id, item.jobId);
+    expect(copy.lastModifiedSync(), copied); // kept, not written again
+    expect(state.store.checkpointOf(item.jobId!).existsSync(), isFalse);
+  });
+
+  testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {
+    final state = await started(tester);
     expect(find.text('Open an audio or video file to transcribe it.'), findsOneWidget);
 
     await tester.runAsync(

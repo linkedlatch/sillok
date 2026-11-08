@@ -199,6 +199,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runningCancelling => 'Cancelling…';
 
   @override
+  String get runningPause => 'Pause';
+
+  @override
+  String get runningPausing => 'Pausing…';
+
+  @override
+  String get libraryPaused => 'Paused';
+
+  @override
+  String get detailPaused => 'Paused. It continues where it stopped.';
+
+  @override
+  String get unpause => 'Continue';
+
+  @override
   String runningStep(String step, int number, int count, int percent) {
     return '$step (step $number of $count) · $percent%';
   }

@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sillok/data/transcriber.dart';
+import 'package:sillok/engine/native.dart';
 import 'package:sillok/data/media_types.dart';
 import 'package:sillok/data/settings.dart';
 import 'package:sillok/data/store.dart';
@@ -98,6 +101,47 @@ void main() {
     final library = await store.list();
     expect(library.map((e) => e.meta.title), ['Lecture']);
     expect((await store.readTranscript(first))!.segments, hasLength(3));
+  });
+
+  test('the queue keeps a stopped file paused with its folder', () async {
+    final root = await Directory.systemTemp.createTemp('sillok queue ');
+    addTearDown(() => root.delete(recursive: true));
+    final store = JobStore(Directory('${root.path}/jobs'));
+    final stopped = await store.create(DateTime(2026, 11, 9, 10));
+    await store.checkpointOf(stopped).writeAsString('{}\n');
+    final leftover = await store.create(DateTime(2026, 11, 9, 11));
+    final queueFile = File('${root.path}/queue.json');
+    // The app closed while the first file ran; the second one failed.
+    await queueFile.writeAsString(
+      jsonEncode([
+        QueueItem(key: 'a', path: '/x/a.m4a', name: 'a.m4a', settings: const JobSettings(), jobId: stopped),
+        QueueItem(
+          key: 'b',
+          path: '/x/b.m4a',
+          name: 'b.m4a',
+          settings: const JobSettings(),
+          error: const RunError(Status.mediaError, 'cannot read'),
+        ),
+      ]),
+    );
+    final transcriber = Transcriber(
+      store: store,
+      queueFile: queueFile,
+      request: (item, copyPath, checkpointPath) => throw StateError('nothing should run'),
+    );
+    addTearDown(transcriber.dispose);
+    await transcriber.resume();
+
+    expect([for (final item in transcriber.queue) item.paused], [true, false]);
+    expect(transcriber.run, isNull);
+    expect(store.checkpointOf(stopped).existsSync(), isTrue);
+    expect(store.dirOf(leftover).existsSync(), isFalse);
+    expect(transcriber.waitingPosition('a'), 0);
+
+    // Removed, a paused file takes its folder along.
+    await transcriber.remove('a');
+    expect(store.dirOf(stopped).existsSync(), isFalse);
+    expect((jsonDecode(await queueFile.readAsString()) as List).single['key'], 'b');
   });
 
   test('Windows perceives the common recording formats as audio or video', () {

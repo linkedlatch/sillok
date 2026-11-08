@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
@@ -11,7 +12,8 @@ import 'package:ffi/ffi.dart';
 import 'native.dart';
 
 /// What a run needs: the engine's configuration, the job's options, the file
-/// to read and where to keep the copy for listening back.
+/// to read and where to keep the copy for listening back. A copy already
+/// there is complete (it is written under another name first) and kept.
 class JobRequest {
   const JobRequest({
     required this.modelsDir,
@@ -198,9 +200,13 @@ Future<void> _work((SendPort, JobRequest) start) async {
     native.check(native.jobEndAudio(job));
     fileStep = RunStep.copy;
     report(RunStep.copy, 0);
-    native.check(
-      withUtf8(request.copyPath, (path) => native.jobSaveAudio(job, path, fileProgress.nativeFunction, nullptr)),
-    );
+    final copy = File(request.copyPath);
+    if (!copy.existsSync()) {
+      final part = '${request.copyPath}.part';
+      native.check(withUtf8(part, (path) => native.jobSaveAudio(job, path, fileProgress.nativeFunction, nullptr)));
+      File(part).renameSync(copy.path);
+    }
+    report(RunStep.copy, 1);
     final transcript = native.takeString((json) => native.jobRun(job, stageProgress.nativeFunction, nullptr, json));
     enter(null);
     out.send(JobDone(transcript, timings));

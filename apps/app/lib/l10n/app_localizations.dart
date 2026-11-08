@@ -416,6 +416,36 @@ abstract class AppLocalizations {
   /// **'Cancelling…'**
   String get runningCancelling;
 
+  /// No description provided for @runningPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get runningPause;
+
+  /// No description provided for @runningPausing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pausing…'**
+  String get runningPausing;
+
+  /// No description provided for @libraryPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get libraryPaused;
+
+  /// No description provided for @detailPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused. It continues where it stopped.'**
+  String get detailPaused;
+
+  /// No description provided for @unpause.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get unpause;
+
   /// No description provided for @runningStep.
   ///
   /// In en, this message translates to:

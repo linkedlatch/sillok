@@ -1,6 +1,12 @@
 // The queue of files to transcribe, run one at a time. The queue is saved,
 // so files added before the app closed are transcribed when it opens again;
 // a failed file stays with its error until it is retried or removed.
+//
+// A file keeps its job folder from its first start, with the library's
+// checkpoint in it (DESIGN D34): pausing stops the run and keeps both, and
+// continuing, retrying or opening the app again picks up after the last group
+// of speech transcribed. A file the app closed on while it ran comes back
+// paused.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -14,7 +20,15 @@ import 'store.dart';
 import 'transcript.dart';
 
 class QueueItem {
-  const QueueItem({required this.key, required this.path, required this.name, required this.settings, this.error});
+  const QueueItem({
+    required this.key,
+    required this.path,
+    required this.name,
+    required this.settings,
+    this.error,
+    this.jobId,
+    this.paused = false,
+  });
 
   factory QueueItem.fromJson(Map<String, dynamic> json) => QueueItem(
     key: json['key'] as String,
@@ -22,6 +36,8 @@ class QueueItem {
     name: json['name'] as String,
     settings: JobSettings.fromJson(json['settings'] as Map<String, dynamic>),
     error: json['error'] == null ? null : RunError.fromJson(json['error'] as Map<String, dynamic>),
+    jobId: json['job'] as String?,
+    paused: json['paused'] as bool? ?? false,
   );
 
   final String key;
@@ -30,7 +46,27 @@ class QueueItem {
   final JobSettings settings;
   final RunError? error;
 
-  QueueItem withError(RunError? error) => QueueItem(key: key, path: path, name: name, settings: settings, error: error);
+  /// The job folder, once the file started.
+  final String? jobId;
+
+  /// Stopped by the user, or by the app closing while it ran.
+  final bool paused;
+
+  QueueItem withError(RunError? error) => _copy(error: error);
+  QueueItem withJob(String? jobId) => _copy(jobId: jobId);
+  QueueItem withPaused(bool paused) => _copy(paused: paused);
+
+  QueueItem _copy({Object? error = _same, Object? jobId = _same, bool? paused}) => QueueItem(
+    key: key,
+    path: path,
+    name: name,
+    settings: settings,
+    error: identical(error, _same) ? this.error : error as RunError?,
+    jobId: identical(jobId, _same) ? this.jobId : jobId as String?,
+    paused: paused ?? this.paused,
+  );
+
+  static const _same = Object();
 
   Map<String, Object?> toJson() => {
     'key': key,
@@ -38,6 +74,8 @@ class QueueItem {
     'name': name,
     'settings': settings.toJson(),
     'error': error?.toJson(),
+    'job': jobId,
+    'paused': paused,
   };
 }
 
@@ -67,6 +105,7 @@ class RunState {
     required this.remaining,
     required this.timingsMs,
     this.cancelling = false,
+    this.pausing = false,
   });
 
   final String key;
@@ -86,6 +125,22 @@ class RunState {
   /// Milliseconds of the steps done so far.
   final Map<RunStep, int> timingsMs;
   final bool cancelling;
+  final bool pausing;
+
+  /// A cancel or pause was asked for and the run is stopping.
+  bool get stopping => cancelling || pausing;
+
+  RunState _stopping({required bool pause}) => RunState(
+    key: key,
+    name: name,
+    settings: settings,
+    step: step,
+    stepFraction: stepFraction,
+    remaining: remaining,
+    timingsMs: timingsMs,
+    cancelling: !pause,
+    pausing: pause,
+  );
 }
 
 class Transcriber extends ChangeNotifier {
@@ -94,8 +149,9 @@ class Transcriber extends ChangeNotifier {
   final JobStore store;
   final File queueFile;
 
-  /// The library request for a file, given its job folder.
-  final JobRequest Function(QueueItem item, String copyPath) request;
+  /// The library request for a file, given the copy for listening back and
+  /// the checkpoint in its job folder.
+  final JobRequest Function(QueueItem item, String copyPath, String checkpointPath) request;
 
   List<QueueItem> _queue = [];
   RunState? _run;
@@ -116,7 +172,9 @@ class Transcriber extends ChangeNotifier {
   /// The job id of a file that finished and left the queue.
   String? finishedId(String key) => _finishedIds[key];
 
-  /// Loads the saved queue and continues with it.
+  /// Loads the saved queue and continues with it. A file that was running
+  /// when the app closed stays paused; folders no file in the queue keeps are
+  /// left over from a stop and removed.
   Future<void> resume() async {
     try {
       _queue = [
@@ -126,6 +184,9 @@ class Transcriber extends ChangeNotifier {
     } on Object {
       _queue = [];
     }
+    _queue = [for (final item in _queue) item.jobId != null && item.error == null ? item.withPaused(true) : item];
+    await store.removeUnfinished(keep: {for (final item in _queue) ?item.jobId});
+    await _save();
     notifyListeners();
     unawaited(_pump());
   }
@@ -141,35 +202,48 @@ class Transcriber extends ChangeNotifier {
     unawaited(_pump());
   }
 
-  Future<void> retry(String key) async {
-    _queue = [for (final item in _queue) item.key == key ? item.withError(null) : item];
+  /// Runs a failed file again, from where it stopped.
+  Future<void> retry(String key) => _update(key, (item) => item.withError(null));
+
+  /// Continues a paused file from where it stopped.
+  Future<void> unpause(String key) => _update(key, (item) => item.withPaused(false));
+
+  Future<void> _update(String key, QueueItem Function(QueueItem item) change) async {
+    _queue = [for (final item in _queue) item.key == key ? change(item) : item];
     await _save();
     notifyListeners();
     unawaited(_pump());
   }
 
-  /// Removes a waiting or failed file; the running one is cancelled instead.
+  /// Removes a waiting, paused or failed file with its job folder; the
+  /// running one is cancelled instead.
   Future<void> remove(String key) async {
     if (_run?.key == key) return cancel();
+    final jobId = _queue.where((item) => item.key == key).firstOrNull?.jobId;
     _queue.removeWhere((item) => item.key == key);
     await _save();
+    if (jobId != null) await store.delete(jobId);
     notifyListeners();
   }
 
-  void cancel() {
+  /// Stops the running file and removes it.
+  void cancel() => _stop(pause: false);
+
+  /// Stops the running file and keeps it, paused, to continue later.
+  void pause() => _stop(pause: true);
+
+  void _stop({required bool pause}) {
     final run = _run;
-    if (run == null) return;
-    _run = RunState(
-      key: run.key,
-      name: run.name,
-      settings: run.settings,
-      step: run.step,
-      stepFraction: run.stepFraction,
-      remaining: run.remaining,
-      timingsMs: run.timingsMs,
-      cancelling: true,
-    );
+    if (run == null || run.stopping) return;
+    _run = run._stopping(pause: pause);
     _job?.cancel();
+    notifyListeners();
+  }
+
+  /// Shows [items] as the queue, for tests of the screens; nothing runs.
+  @visibleForTesting
+  void showQueue(List<QueueItem> items) {
+    _queue = items;
     notifyListeners();
   }
 
@@ -187,7 +261,7 @@ class Transcriber extends ChangeNotifier {
   int waitingPosition(String key) {
     var position = 0;
     for (final item in _queue) {
-      if (item.error != null || item.key == _run?.key) continue;
+      if (item.error != null || item.paused || item.key == _run?.key) continue;
       position++;
       if (item.key == key) return position;
     }
@@ -199,7 +273,7 @@ class Transcriber extends ChangeNotifier {
     _pumping = true;
     try {
       while (true) {
-        final next = _queue.where((item) => item.error == null).firstOrNull;
+        final next = _queue.where((item) => item.error == null && !item.paused).firstOrNull;
         if (next == null) break;
         await _runItem(next);
       }
@@ -209,7 +283,15 @@ class Transcriber extends ChangeNotifier {
   }
 
   Future<void> _runItem(QueueItem item) async {
-    final id = await store.create(DateTime.now());
+    var id = item.jobId;
+    if (id == null || !store.dirOf(id).existsSync()) {
+      // Saved with the file before the run starts, so that a run the app
+      // closes on can be found again.
+      id = await store.create(DateTime.now());
+      item = item.withJob(id);
+      _queue = [for (final q in _queue) q.key == item.key ? item : q];
+      await _save();
+    }
     final created = DateTime.now().millisecondsSinceEpoch;
     final clock = Stopwatch()..start();
     final timings = <RunStep, int>{};
@@ -226,7 +308,7 @@ class Transcriber extends ChangeNotifier {
     );
     notifyListeners();
 
-    final job = _job = JobRun.start(request(item, store.audioOf(id).path));
+    final job = _job = JobRun.start(request(item, store.audioOf(id).path, store.checkpointOf(id).path));
     JobEvent? last;
     await for (final event in job.events) {
       last = event;
@@ -247,6 +329,7 @@ class Transcriber extends ChangeNotifier {
             remaining: fraction >= 0.03 && elapsed.inSeconds >= 20 ? elapsed * ((1 - fraction) / fraction) : null,
             timingsMs: Map.unmodifiable(timings),
             cancelling: previous.cancelling,
+            pausing: previous.pausing,
           );
           notifyListeners();
         case Previews(:final segmentsJson):
@@ -256,6 +339,7 @@ class Transcriber extends ChangeNotifier {
           break;
       }
     }
+    final paused = _run?.pausing ?? false;
     _job = null;
     _run = null;
     _previews = [];
@@ -278,14 +362,16 @@ class Transcriber extends ChangeNotifier {
         _finishedIds[item.key] = id;
         _queue.removeWhere((q) => q.key == item.key);
         _finished.add((item.key, id));
-      case JobFailed(:final status, :final message):
+      case JobFailed(:final status) when status == Status.cancelled && paused:
+        _queue = [for (final q in _queue) q.key == item.key ? q.withPaused(true) : q];
+      case JobFailed(:final status) when status == Status.cancelled:
+        _queue.removeWhere((q) => q.key == item.key);
         await store.delete(id);
-        if (status == Status.cancelled) {
-          _queue.removeWhere((q) => q.key == item.key);
-        } else {
-          _queue = [for (final q in _queue) q.key == item.key ? q.withError(RunError(status, message)) : q];
-        }
+      case JobFailed(:final status, :final message):
+        // The folder stays, so that a retry continues where this run stopped.
+        _queue = [for (final q in _queue) q.key == item.key ? q.withError(RunError(status, message)) : q];
       default:
+        _queue = [for (final q in _queue) q.key == item.key ? q.withJob(null) : q];
         await store.delete(id);
     }
     await _save();
