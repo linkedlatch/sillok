@@ -112,8 +112,7 @@ class AppState extends ChangeNotifier {
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
-        // The copy is evened out already (DESIGN D20-5).
-        options: {...item.settings.options, 'checkpoint': checkpointPath, 'even_loudness': false},
+        options: jobOptions(item.settings, lane, checkpointPath),
         source: item.path,
         copyPath: copyPath,
         prepare: lane == Lane.prepare,

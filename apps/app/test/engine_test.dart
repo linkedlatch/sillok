@@ -20,7 +20,7 @@ void main() {
     gpuIndex: null,
     npu: false,
     transcriptionModel: null,
-    options: {...options, 'checkpoint': '${dir.path}/checkpoint.jsonl', 'even_loudness': false},
+    options: prepare ? const {} : {...options, 'checkpoint': '${dir.path}/checkpoint.jsonl', 'even_loudness': false},
     source: audio!,
     copyPath: '${dir.path}/audio.m4a',
     prepare: prepare,

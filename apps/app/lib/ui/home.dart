@@ -492,8 +492,7 @@ class _AddSheetState extends State<AddSheet> {
               title: Text(l.addLater),
             ),
             FilledButton(
-              // Files to transcribe later need the model only when they start.
-              onPressed: ready || _later
+              onPressed: ready
                   ? () {
                       state.enqueue(widget.files, _settings, later: _later);
                       Navigator.of(context).pop();

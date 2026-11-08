@@ -114,6 +114,16 @@ void main() {
     expect((await store.readTranscript(first))!.segments, hasLength(3));
   });
 
+  test('preparing evens out the original, transcribing takes the copy as it is', () {
+    const settings = JobSettings(language: 'ko', diarize: true, glossary: ['Raft']);
+    expect(jobOptions(settings, Lane.prepare, '/j/checkpoint.jsonl'), isEmpty);
+    final transcribe = jobOptions(settings, Lane.transcribe, '/j/checkpoint.jsonl');
+    expect(transcribe, containsPair('even_loudness', false));
+    expect(transcribe, containsPair('checkpoint', '/j/checkpoint.jsonl'));
+    expect(transcribe, containsPair('language', 'ko'));
+    expect(transcribe, containsPair('diarize', true));
+  });
+
   test('the queue keeps a stopped file paused with its folder', () async {
     final root = await Directory.systemTemp.createTemp('sillok queue ');
     addTearDown(() => root.delete(recursive: true));

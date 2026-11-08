@@ -190,6 +190,15 @@ class RunState {
 /// Which work a library request is for.
 enum Lane { prepare, transcribe }
 
+/// The library's job options for [lane] (DESIGN D20-5). Preparing reads the
+/// original with the defaults, which even out its loudness, as the copy keeps
+/// it; transcribing reads the copy as it is, with the file's settings and the
+/// checkpoint in its folder.
+Map<String, Object?> jobOptions(JobSettings settings, Lane lane, String checkpointPath) => switch (lane) {
+  Lane.prepare => const {},
+  Lane.transcribe => {...settings.options, 'checkpoint': checkpointPath, 'even_loudness': false},
+};
+
 class Transcriber extends ChangeNotifier {
   Transcriber({
     required this.store,
