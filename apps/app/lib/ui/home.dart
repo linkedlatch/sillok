@@ -254,7 +254,9 @@ class _QueueTile extends StatelessWidget {
             spacing: 4,
             children: [
               Text(
-                run.remaining == null
+                run.preparing
+                    ? l.runningPreparing
+                    : run.remaining == null
                     ? l.libraryRunning(
                         stepName(l, run.step),
                         run.stepNumber,
@@ -269,14 +271,16 @@ class _QueueTile extends StatelessWidget {
                         formatTime(run.remaining!.inMilliseconds),
                       ),
               ),
-              LinearProgressIndicator(value: run.stepFraction),
+              LinearProgressIndicator(value: run.preparing ? null : run.stepFraction),
             ],
           )
         : Text(
             error != null
                 ? l.libraryFailed(errorText(l, error))
+                : state.transcriber.preparing == item.key
+                ? l.runningPreparing
                 : item.paused
-                ? l.libraryPaused
+                ? (item.started ? l.libraryPaused : l.libraryLater)
                 : l.libraryWaiting(state.transcriber.waitingPosition(item.key)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -304,7 +308,8 @@ class _QueueTile extends StatelessWidget {
         },
         itemBuilder: (context) => [
           if (error != null) PopupMenuItem(value: 'retry', child: Text(l.retry)),
-          if (error == null && item.paused) PopupMenuItem(value: 'unpause', child: Text(l.unpause)),
+          if (error == null && item.paused)
+            PopupMenuItem(value: 'unpause', child: Text(item.started ? l.unpause : l.addStart)),
           if (run != null && !run.stopping) PopupMenuItem(value: 'pause', child: Text(l.runningPause)),
           PopupMenuItem(value: 'remove', child: Text(run != null ? l.runningCancel : l.remove)),
         ],
@@ -399,8 +404,10 @@ class DetailPane extends StatelessWidget {
                     Text(
                       error != null
                           ? errorText(l, error)
+                          : state.transcriber.preparing == key
+                          ? l.detailPreparing
                           : item.paused
-                          ? l.detailPaused
+                          ? (item.started ? l.detailPaused : l.detailLater)
                           : l.detailWaiting(state.transcriber.waitingPosition(key)),
                       textAlign: TextAlign.center,
                     ),
@@ -411,7 +418,10 @@ class DetailPane extends StatelessWidget {
                         if (error != null)
                           FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry))
                         else if (item.paused)
-                          FilledButton(onPressed: () => state.transcriber.unpause(key), child: Text(l.unpause)),
+                          FilledButton(
+                            onPressed: () => state.transcriber.unpause(key),
+                            child: Text(item.started ? l.unpause : l.addStart),
+                          ),
                         OutlinedButton(onPressed: () => state.transcriber.remove(key), child: Text(l.remove)),
                       ],
                     ),
@@ -443,6 +453,7 @@ class AddSheet extends StatefulWidget {
 class _AddSheetState extends State<AddSheet> {
   late JobSettings _settings = widget.state.defaults;
   bool _options = false;
+  bool _later = false;
 
   @override
   Widget build(BuildContext context) {
@@ -474,14 +485,21 @@ class _AddSheetState extends State<AddSheet> {
                 l.addModelMissing(modelName(missing.first)),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _later,
+              onChanged: (value) => setState(() => _later = value ?? false),
+              title: Text(l.addLater),
+            ),
             FilledButton(
-              onPressed: ready
+              // Files to transcribe later need the model only when they start.
+              onPressed: ready || _later
                   ? () {
-                      state.enqueue(widget.files, _settings);
+                      state.enqueue(widget.files, _settings, later: _later);
                       Navigator.of(context).pop();
                     }
                   : null,
-              child: Text(l.addStart),
+              child: Text(_later ? l.addKeep : l.addStart),
             ),
           ],
         ),

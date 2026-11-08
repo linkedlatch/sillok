@@ -214,6 +214,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unpause => 'Continue';
 
   @override
+  String get runningPreparing => 'Preparing…';
+
+  @override
+  String get libraryLater => 'To transcribe later';
+
+  @override
+  String get detailLater => 'Kept to transcribe later: start it when you like. The original is no longer needed.';
+
+  @override
+  String get detailPreparing => 'Reading the file and saving its copy for listening back.';
+
+  @override
+  String get addLater => 'Transcribe later';
+
+  @override
+  String get addKeep => 'Add';
+
+  @override
   String runningStep(String step, int number, int count, int percent) {
     return '$step (step $number of $count) · $percent%';
   }

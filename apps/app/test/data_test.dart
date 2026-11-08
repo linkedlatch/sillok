@@ -125,7 +125,15 @@ void main() {
     // The app closed while the first file ran; the second one failed.
     await queueFile.writeAsString(
       jsonEncode([
-        QueueItem(key: 'a', path: '/x/a.m4a', name: 'a.m4a', settings: const JobSettings(), jobId: stopped),
+        QueueItem(
+          key: 'a',
+          path: '/x/a.m4a',
+          name: 'a.m4a',
+          settings: const JobSettings(),
+          jobId: stopped,
+          ready: true,
+          started: true,
+        ),
         QueueItem(
           key: 'b',
           path: '/x/b.m4a',
@@ -139,7 +147,7 @@ void main() {
     final transcriber = Transcriber(
       store: store,
       queueFile: queueFile,
-      request: (item, copyPath, checkpointPath) => throw StateError('nothing should run'),
+      request: (item, lane, copyPath, checkpointPath) => throw StateError('nothing should run'),
       keepAwake: awake,
     );
     addTearDown(transcriber.dispose);

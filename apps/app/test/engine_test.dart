@@ -13,6 +13,21 @@ void main() {
   final models = Platform.environment['SILLOK_TEST_MODELS'];
   final audio = Platform.environment['SILLOK_TEST_AUDIO'];
 
+  // A request on the real models for [audio], with its copy in [dir].
+  JobRequest request(Directory dir, {required bool prepare, required Map<String, Object?> options}) => JobRequest(
+    modelsDir: models!,
+    tempDir: dir.path,
+    gpuIndex: null,
+    npu: false,
+    transcriptionModel: null,
+    options: {...options, 'checkpoint': '${dir.path}/checkpoint.jsonl', 'even_loudness': false},
+    source: audio!,
+    copyPath: '${dir.path}/audio.m4a',
+    prepare: prepare,
+  );
+
+  Future<List<JobEvent>> events(JobRun run) => run.events.toList();
+
   group('library', () {
     test('catalog, engine models and devices', () {
       expect(Sillok.version, startsWith('sillok '));
@@ -44,6 +59,7 @@ void main() {
           options: const {'language': 'auto', 'diarize': false, 'glossary': <String>[]},
           source: '${dir.path}/missing.m4a',
           copyPath: '${dir.path}/audio.m4a',
+          prepare: true,
         ),
       );
       final last = await run.events.last;
@@ -51,24 +67,28 @@ void main() {
     });
 
     test(
-      'transcribes a file with the real models',
+      'prepares a file, then transcribes its copy with the real models',
       skip: models == null || audio == null ? 'no models or audio' : null,
       () async {
         final dir = await Directory.systemTemp.createTemp('sillok run ');
         addTearDown(() => dir.delete(recursive: true));
-        final copy = '${dir.path}/audio.m4a';
-        final run = JobRun.start(
-          JobRequest(
-            modelsDir: models!,
-            tempDir: dir.path,
-            gpuIndex: null,
-            npu: false,
-            transcriptionModel: null,
-            options: const {'language': 'en', 'diarize': true, 'glossary': <String>[]},
-            source: audio!,
-            copyPath: copy,
-          ),
+        const options = {'language': 'en', 'diarize': true, 'glossary': <String>[]};
+        final prepared = await events(JobRun.start(request(dir, prepare: true, options: options)));
+        expect(
+          prepared.last,
+          isA<Prepared>(),
+          reason: prepared.last is JobFailed ? (prepared.last as JobFailed).message : null,
         );
+        expect((prepared.last as Prepared).timings.keys.toSet(), {'read', 'copy'});
+        final copy = File('${dir.path}/audio.m4a');
+        expect(copy.lengthSync(), greaterThan(1000));
+        expect(File('${copy.path}.part').existsSync(), isFalse);
+
+        // Again: the copy is there, so nothing is read.
+        final again = await events(JobRun.start(request(dir, prepare: true, options: options)));
+        expect((again.last as Prepared).timings, isEmpty);
+
+        final run = JobRun.start(request(dir, prepare: false, options: options));
         final steps = <RunStep>{};
         var previews = 0;
         JobEvent? last;
@@ -82,9 +102,8 @@ void main() {
         final transcript = Transcript.parse(done.transcriptJson);
         expect(transcript.segments, isNotEmpty);
         expect(previews, greaterThan(0));
-        expect(steps, RunStep.values.toSet());
-        expect(done.timings.keys.toSet(), {for (final s in RunStep.values) s.name});
-        expect(File(copy).lengthSync(), greaterThan(1000));
+        expect(steps, {RunStep.read, RunStep.analyze, RunStep.transcribe, RunStep.diarize});
+        expect(File('${dir.path}/checkpoint.jsonl').existsSync(), isFalse);
       },
       timeout: const Timeout(Duration(minutes: 10)),
     );
@@ -92,18 +111,9 @@ void main() {
     test('cancelling stops the run', skip: models == null || audio == null ? 'no models or audio' : null, () async {
       final dir = await Directory.systemTemp.createTemp('sillok run ');
       addTearDown(() => dir.delete(recursive: true));
-      final run = JobRun.start(
-        JobRequest(
-          modelsDir: models!,
-          tempDir: dir.path,
-          gpuIndex: null,
-          npu: false,
-          transcriptionModel: null,
-          options: const {'language': 'auto', 'diarize': true, 'glossary': <String>[]},
-          source: audio!,
-          copyPath: '${dir.path}/audio.m4a',
-        ),
-      );
+      const options = {'language': 'auto', 'diarize': true, 'glossary': <String>[]};
+      await events(JobRun.start(request(dir, prepare: true, options: options)));
+      final run = JobRun.start(request(dir, prepare: false, options: options));
       JobEvent? last;
       await for (final event in run.events) {
         last = event;

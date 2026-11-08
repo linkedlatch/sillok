@@ -196,7 +196,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // The step's own progress, not a share of the whole run.
-        expect(find.text('Transcribing (4/5) · 40% · about 42:00 left'), findsOneWidget);
+        expect(find.text('Transcribing (2/3) · 40% · about 42:00 left'), findsOneWidget);
 
         // The running file.
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);
@@ -226,7 +226,7 @@ void main() {
         expect(find.text('Play'), findsNothing); // a tooltip, not a label
       });
 
-      testWidgets('paused file', (tester) async {
+      testWidgets('paused, later and preparing files', (tester) async {
         await start(tester, size, result: true);
         state.transcriber.showQueue(const [
           QueueItem(
@@ -236,14 +236,41 @@ void main() {
             settings: JobSettings(),
             jobId: '20261109-100000',
             paused: true,
+            ready: true,
+            started: true,
           ),
-        ]);
+          QueueItem(
+            key: 'l',
+            path: '/x/later.m4a',
+            name: '분산 시스템 5주차 강의 녹음.m4a',
+            settings: JobSettings(),
+            jobId: '20261109-110000',
+            paused: true,
+            ready: true,
+          ),
+          QueueItem(key: 'r', path: '/x/new.m4a', name: '세미나 녹음.m4a', settings: JobSettings()),
+        ], preparing: 'r');
         await tester.pumpAndSettle();
         expect(find.text('Paused'), findsOneWidget);
-        await tester.tap(find.text('분산 시스템 4주차 강의 녹음.m4a').first);
-        await tester.pumpAndSettle();
+        expect(find.text('To transcribe later'), findsOneWidget);
+        expect(find.text('Preparing…'), findsOneWidget);
+        Future<void> open(String name) async {
+          if (find.byType(BackButton).evaluate().isNotEmpty) {
+            await tester.tap(find.byType(BackButton));
+            await tester.pumpAndSettle();
+          }
+          await tester.tap(find.text(name).first);
+          await tester.pumpAndSettle();
+        }
+
+        await open('분산 시스템 4주차 강의 녹음.m4a');
         expect(find.text('Paused. It continues where it stopped.'), findsOneWidget);
         expect(find.text('Continue'), findsOneWidget);
+        await open('분산 시스템 5주차 강의 녹음.m4a');
+        expect(find.textContaining('Kept to transcribe later'), findsOneWidget);
+        expect(find.text('Start'), findsOneWidget);
+        await open('세미나 녹음.m4a');
+        expect(find.text('Reading the file and saving its copy for listening back.'), findsOneWidget);
       });
 
       testWidgets('settings', (tester) async {

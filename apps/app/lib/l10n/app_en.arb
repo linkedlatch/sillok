@@ -156,6 +156,12 @@
   "libraryPaused": "Paused",
   "detailPaused": "Paused. It continues where it stopped.",
   "unpause": "Continue",
+  "runningPreparing": "Preparing…",
+  "libraryLater": "To transcribe later",
+  "detailLater": "Kept to transcribe later: start it when you like. The original is no longer needed.",
+  "detailPreparing": "Reading the file and saving its copy for listening back.",
+  "addLater": "Transcribe later",
+  "addKeep": "Add",
   "runningStep": "{step} (step {number} of {count}) · {percent}%",
   "@runningStep": {
     "placeholders": {

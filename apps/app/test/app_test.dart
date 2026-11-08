@@ -97,6 +97,32 @@ void main() {
     expect(state.store.checkpointOf(item.jobId!).existsSync(), isFalse);
   });
 
+  testWidgets('a file added for later outlives its original', skip: skip, (tester) async {
+    final state = await started(tester);
+    final original = await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('sillok original ');
+      addTearDown(() => dir.delete(recursive: true));
+      return File(audio!).copy('${dir.path}/fleurs.wav');
+    });
+    await tester.runAsync(
+      () => state.enqueue(
+        [(original!.path, 'fleurs.wav')],
+        const JobSettings(language: 'en', diarize: false),
+        later: true,
+      ),
+    );
+    await _waitFor(tester, () => state.transcriber.queue.single.ready);
+    expect(state.transcriber.run, isNull);
+    await tester.pump();
+    expect(find.text('To transcribe later'), findsOneWidget);
+
+    await tester.runAsync(() => original!.delete());
+    await tester.runAsync(() => state.transcriber.unpause(state.transcriber.queue.single.key));
+    await _waitFor(tester, () => state.library.isNotEmpty);
+    final transcript = await tester.runAsync(() => state.store.readTranscript(state.library.single.id));
+    expect(transcript!.segments, isNotEmpty);
+  });
+
   testWidgets('a file goes through the queue into the library', skip: skip, (tester) async {
     final state = await started(tester);
     expect(find.text('Open an audio or video file to transcribe it.'), findsOneWidget);

@@ -209,6 +209,24 @@ class AppLocalizationsKo extends AppLocalizations {
   String get unpause => '이어 하기';
 
   @override
+  String get runningPreparing => '준비 중…';
+
+  @override
+  String get libraryLater => '나중에 전사';
+
+  @override
+  String get detailLater => '나중에 전사하도록 넣어 두었습니다. 원할 때 시작하세요. 원본 파일은 이제 없어도 됩니다.';
+
+  @override
+  String get detailPreparing => '파일을 읽고 다시 듣기 사본을 저장하는 중입니다.';
+
+  @override
+  String get addLater => '나중에 전사';
+
+  @override
+  String get addKeep => '추가';
+
+  @override
   String runningStep(String step, int number, int count, int percent) {
     return '$step($number/$count단계) · $percent%';
   }

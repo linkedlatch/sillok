@@ -11,9 +11,11 @@ import 'package:ffi/ffi.dart';
 
 import 'native.dart';
 
-/// What a run needs: the engine's configuration, the job's options, the file
-/// to read and where to keep the copy for listening back. A copy already
-/// there is complete (it is written under another name first) and kept.
+/// What a run needs: the engine's configuration, the job's options, the
+/// original and the copy for listening back. A run that [prepare]s reads the
+/// original and saves the copy, then ends with [Prepared]; a copy already there
+/// is complete (it is written under another name first), so it ends at once.
+/// Otherwise the run transcribes the copy.
 class JobRequest {
   const JobRequest({
     required this.modelsDir,
@@ -24,6 +26,7 @@ class JobRequest {
     required this.options,
     required this.source,
     required this.copyPath,
+    required this.prepare,
   });
 
   final String modelsDir;
@@ -38,6 +41,7 @@ class JobRequest {
   final Map<String, Object?> options;
   final String source;
   final String copyPath;
+  final bool prepare;
 
   String get engineConfig => jsonEncode({
     'models_dir': modelsDir,
@@ -67,6 +71,13 @@ final class Previews extends JobEvent {
   Previews(this.segmentsJson);
 
   final String segmentsJson;
+}
+
+/// The copy is saved, and how long each step took in milliseconds.
+final class Prepared extends JobEvent {
+  Prepared(this.timings);
+
+  final Map<String, int> timings;
 }
 
 /// The transcript document, and how long each step took in milliseconds.
@@ -121,6 +132,8 @@ class JobRun {
           if (run._cancelled) NativeApi.instance.jobCancel(Pointer.fromAddress(job));
         case final JobDone done:
           finish(done);
+        case final Prepared prepared:
+          finish(prepared);
         case final JobFailed failed:
           finish(failed);
         case final JobEvent event:
@@ -179,6 +192,11 @@ Future<void> _work((SendPort, JobRequest) start) async {
   out.send(release.sendPort);
   try {
     report(RunStep.read, 0);
+    final copy = File(request.copyPath);
+    if (request.prepare && copy.existsSync()) {
+      out.send(Prepared(const {}));
+      return;
+    }
     final engineOut = calloc<Pointer<SillokEngine>>();
     final jobOut = calloc<Pointer<SillokJob>>();
     try {
@@ -194,19 +212,19 @@ Future<void> _work((SendPort, JobRequest) start) async {
     out.send(job.address);
 
     native.check(native.jobOnSegments(job, segments.nativeFunction, nullptr));
-    native.check(
-      withUtf8(request.source, (path) => native.jobPushFile(job, path, fileProgress.nativeFunction, nullptr)),
-    );
+    final input = request.prepare ? request.source : request.copyPath;
+    native.check(withUtf8(input, (path) => native.jobPushFile(job, path, fileProgress.nativeFunction, nullptr)));
     native.check(native.jobEndAudio(job));
-    fileStep = RunStep.copy;
-    report(RunStep.copy, 0);
-    final copy = File(request.copyPath);
-    if (!copy.existsSync()) {
+    if (request.prepare) {
+      fileStep = RunStep.copy;
+      report(RunStep.copy, 0);
       final part = '${request.copyPath}.part';
       native.check(withUtf8(part, (path) => native.jobSaveAudio(job, path, fileProgress.nativeFunction, nullptr)));
       File(part).renameSync(copy.path);
+      enter(null);
+      out.send(Prepared(timings));
+      return;
     }
-    report(RunStep.copy, 1);
     final transcript = native.takeString((json) => native.jobRun(job, stageProgress.nativeFunction, nullptr, json));
     enter(null);
     out.send(JobDone(transcript, timings));

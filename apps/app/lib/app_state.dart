@@ -106,15 +106,17 @@ class AppState extends ChangeNotifier {
       store: store,
       queueFile: File('${_support.path}${Platform.pathSeparator}queue.json'),
       keepAwake: KeepAwake.system(),
-      request: (item, copyPath, checkpointPath) => JobRequest(
+      request: (item, lane, copyPath, checkpointPath) => JobRequest(
         modelsDir: modelsDir.path,
         tempDir: cache.path,
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
-        options: {...item.settings.options, 'checkpoint': checkpointPath},
+        // The copy is evened out already (DESIGN D20-5).
+        options: {...item.settings.options, 'checkpoint': checkpointPath, 'even_loudness': false},
         source: item.path,
         copyPath: copyPath,
+        prepare: lane == Lane.prepare,
       ),
     );
     transcriber.addListener(notifyListeners);
@@ -402,8 +404,8 @@ class AppState extends ChangeNotifier {
 
   LibraryEntry? entry(String id) => library.where((e) => e.id == id).firstOrNull;
 
-  Future<void> enqueue(List<(String path, String name)> files, JobSettings settings) =>
-      transcriber.enqueue(files, settings);
+  Future<void> enqueue(List<(String path, String name)> files, JobSettings settings, {bool later = false}) =>
+      transcriber.enqueue(files, settings, later: later);
 
   Future<void> rename(String id, String title) async {
     final meta = await store.readMeta(id);

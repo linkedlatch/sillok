@@ -71,9 +71,16 @@ class _RunningViewState extends State<RunningView> {
             children: [
               Text(run.name, style: theme.textTheme.titleLarge, maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(settingsSummary(l, widget.state, run.settings), style: theme.textTheme.bodySmall),
-              LinearProgressIndicator(value: run.stepFraction),
+              LinearProgressIndicator(value: run.preparing ? null : run.stepFraction),
               Text(
-                l.runningStep(stepName(l, run.step), run.stepNumber, run.stepCount, (run.stepFraction * 100).round()),
+                run.preparing
+                    ? l.runningPreparing
+                    : l.runningStep(
+                        stepName(l, run.step),
+                        run.stepNumber,
+                        run.stepCount,
+                        (run.stepFraction * 100).round(),
+                      ),
               ),
               if (run.remaining != null) Text(l.runningLeft(formatTime(run.remaining!.inMilliseconds))),
               ExpansionTile(

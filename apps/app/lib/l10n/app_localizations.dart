@@ -446,6 +446,42 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get unpause;
 
+  /// No description provided for @runningPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing…'**
+  String get runningPreparing;
+
+  /// No description provided for @libraryLater.
+  ///
+  /// In en, this message translates to:
+  /// **'To transcribe later'**
+  String get libraryLater;
+
+  /// No description provided for @detailLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept to transcribe later: start it when you like. The original is no longer needed.'**
+  String get detailLater;
+
+  /// No description provided for @detailPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the file and saving its copy for listening back.'**
+  String get detailPreparing;
+
+  /// No description provided for @addLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribe later'**
+  String get addLater;
+
+  /// No description provided for @addKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addKeep;
+
   /// No description provided for @runningStep.
   ///
   /// In en, this message translates to:
