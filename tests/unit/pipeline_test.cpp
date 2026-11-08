@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <map>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>
@@ -246,6 +247,120 @@ TEST(PipelineTest, PromptIsTheGlossary) {
   pipeline.glossary = {"sillok", "Whisper"};
   RunFakes(RenderScript(script, Milliseconds{13000}), models, pipeline);
   EXPECT_EQ(prompts, (std::vector<std::string>{"sillok, Whisper", "sillok, Whisper"}));
+}
+
+// A checkpoint kept in memory, as the C ABI keeps one in a file.
+class MemoryCheckpoint final : public CheckpointSink {
+ public:
+  void Start(const std::string& key, const std::string& language) override {
+    checkpoint = {.key = key, .language = language};
+    ++starts;
+  }
+  void AddGroup(std::span<const Segment> segments) override {
+    checkpoint.segments.insert(checkpoint.segments.end(), segments.begin(), segments.end());
+    ++checkpoint.groups;
+  }
+
+  Checkpoint checkpoint;
+  int starts = 0;
+};
+
+// `count` groups of five words, 5 s apart, by two speakers.
+std::vector<ScriptWord> Groups(int count) {
+  std::vector<ScriptWord> script;
+  for (int i = 0; i < count; ++i) {
+    const auto group = Speech(10 * i, 5, Milliseconds{500 + 5000 * i});
+    script.insert(script.end(), group.begin(), group.end());
+  }
+  for (std::size_t i = 0; i < script.size(); ++i) script[i].speaker = i < 10 ? 0 : 1;
+  return script;
+}
+
+// What a transcript says, when and by whom.
+std::vector<std::string> Describe(const Transcript& transcript) {
+  std::vector<std::string> lines;
+  for (const Segment& segment : transcript.segments) {
+    lines.push_back(std::to_string(segment.start.count()) + "-" +
+                    std::to_string(segment.end.count()) + " " + segment.language + " " +
+                    std::to_string(segment.speaker.value_or(-1)) + " " + segment.text);
+  }
+  return lines;
+}
+
+TEST(PipelineTest, ContinuesFromACheckpointWithTheResultOfOneRun) {
+  const auto script = Groups(4);
+  const AudioBuffer audio = RenderScript(script, Milliseconds{21000});
+  PipelineOptions options;
+  options.diarize = true;
+  const auto quiet = [](Stage, double) {};
+  FakeModels whole_models(OptionsFor(script));
+  const Transcript whole = RunPipeline(audio, options, whole_models, quiet, {});
+
+  // Stopped while transcribing the third group.
+  FakeOptions stopping = OptionsFor(script);
+  StopSource source;
+  int calls = 0;
+  stopping.on_transcribe = [&](const TranscribeRequest&) {
+    if (++calls == 3) source.RequestStop();
+  };
+  FakeModels first(stopping);
+  MemoryCheckpoint saved;
+  EXPECT_THROW(RunPipeline(audio, options, first, quiet, source.Token(), {}, nullptr, &saved),
+               Cancelled);
+  EXPECT_EQ(saved.checkpoint.groups, 2u);
+  EXPECT_EQ(saved.starts, 1);
+
+  // Continued: only the last two groups are transcribed, the first two are
+  // previewed at once, and the transcript is the one of a single run.
+  FakeModels second(OptionsFor(script));
+  std::vector<std::size_t> previews;
+  const Checkpoint resume = saved.checkpoint;
+  const Transcript continued = RunPipeline(
+      audio, options, second, quiet, {},
+      [&](std::span<const Segment> segments) { previews.push_back(segments.size()); }, &resume,
+      &saved);
+  EXPECT_EQ(second.transcribe_calls(), 2);
+  ASSERT_FALSE(previews.empty());
+  EXPECT_EQ(previews.front(), resume.segments.size());
+  EXPECT_EQ(Describe(continued), Describe(whole));
+  EXPECT_EQ(saved.starts, 1);  // the checkpoint went on, not anew
+  EXPECT_EQ(saved.checkpoint.groups, 4u);
+
+  // A checkpoint of every group leaves only diarization.
+  FakeModels third(OptionsFor(script));
+  const Checkpoint done = saved.checkpoint;
+  EXPECT_EQ(Describe(RunPipeline(audio, options, third, quiet, {}, {}, &done, &saved)),
+            Describe(whole));
+  EXPECT_EQ(third.transcribe_calls(), 0);
+}
+
+TEST(PipelineTest, StartsAgainFromACheckpointOfOtherInput) {
+  const auto script = Groups(2);
+  const AudioBuffer audio = RenderScript(script, Milliseconds{11000});
+  const auto quiet = [](Stage, double) {};
+  MemoryCheckpoint saved;
+  FakeModels models(OptionsFor(script));
+  RunPipeline(audio, {}, models, quiet, {}, {}, nullptr, &saved);
+  const Checkpoint resume = saved.checkpoint;
+  ASSERT_EQ(resume.groups, 2u);
+
+  // Other options.
+  PipelineOptions glossary;
+  glossary.glossary = {"sillok"};
+  MemoryCheckpoint other;
+  FakeModels again(OptionsFor(script));
+  RunPipeline(audio, glossary, again, quiet, {}, {}, &resume, &other);
+  EXPECT_EQ(again.transcribe_calls(), 2);
+  EXPECT_EQ(other.starts, 1);
+
+  // Another recording.
+  const auto longer = Groups(3);
+  FakeModels third(OptionsFor(longer));
+  MemoryCheckpoint fresh;
+  RunPipeline(RenderScript(longer, Milliseconds{16000}), {}, third, quiet, {}, {}, &resume,
+              &fresh);
+  EXPECT_EQ(third.transcribe_calls(), 3);
+  EXPECT_EQ(fresh.starts, 1);
 }
 
 }  // namespace

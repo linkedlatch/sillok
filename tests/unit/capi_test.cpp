@@ -272,6 +272,72 @@ TEST_F(CapiTest, CancelFromAnotherThreadDuringRun) {
   EXPECT_EQ(calls, 1);
 }
 
+// Speech in four groups of five words, 5 s apart.
+std::vector<float> GroupsPcm() {
+  std::vector<ScriptWord> script;
+  for (int group = 0; group < 4; ++group) {
+    for (int i = 0; i < 5; ++i) {
+      const Milliseconds start{500 + 5000 * group + 400 * i};
+      script.push_back({10 * group + i, start, start + Milliseconds{300}, "en", 0});
+    }
+  }
+  const AudioBuffer audio = RenderScript(script, Milliseconds{21000});
+  return audio.Read({0, audio.size()});
+}
+
+TEST_F(CapiTest, PausedJobContinuesFromItsCheckpoint) {
+  const auto checkpoint = models_dir_ / PathFromUtf8("중간 저장.jsonl");
+  const Json options = {{"checkpoint", PathToUtf8(checkpoint)}};
+  const std::vector<float> pcm = GroupsPcm();
+
+  // The result of one run, without a checkpoint.
+  sillok_job* whole = Job(Engine());
+  Push(whole, pcm);
+  char* out = nullptr;
+  ASSERT_EQ(sillok_job_run(whole, nullptr, nullptr, &out), SILLOK_OK);
+  const Json expected = Json::parse(Take(out))["segments"];
+
+  // Paused in the third group: the checkpoint stays. The engine copies the
+  // fake options, so they are set before creating it.
+  sillok_job* paused = nullptr;
+  int calls = 0;
+  FakeBackendOptions().on_transcribe = [&](const TranscribeRequest&) {
+    if (++calls == 3) sillok_job_cancel(paused);
+  };
+  paused = Job(Engine(), options.dump().c_str());
+  Push(paused, pcm);
+  EXPECT_EQ(sillok_job_run(paused, nullptr, nullptr, &out), SILLOK_CANCELLED);
+  ASSERT_TRUE(std::filesystem::exists(checkpoint));
+
+  // A crash while writing leaves half a line, which is dropped.
+  std::ofstream(checkpoint, std::ios::binary | std::ios::app) << "[{\"start_ms\": 1";
+
+  // Continued: two groups left, the same transcript, and no checkpoint after.
+  calls = 0;
+  FakeBackendOptions().on_transcribe = [&](const TranscribeRequest&) { ++calls; };
+  sillok_job* continued = Job(Engine(), options.dump().c_str());
+  Push(continued, pcm);
+  ASSERT_EQ(sillok_job_run(continued, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  EXPECT_EQ(Json::parse(Take(out))["segments"], expected);
+  EXPECT_EQ(calls, 2);
+  EXPECT_FALSE(std::filesystem::exists(checkpoint));
+}
+
+TEST_F(CapiTest, IgnoresACheckpointItCannotRead) {
+  const auto checkpoint = models_dir_ / "checkpoint.jsonl";
+  std::ofstream(checkpoint, std::ios::binary) << "not a checkpoint\n";
+  int calls = 0;
+  FakeBackendOptions().on_transcribe = [&](const TranscribeRequest&) { ++calls; };
+  const Json options = {{"checkpoint", PathToUtf8(checkpoint)}};
+  sillok_job* job = Job(Engine(), options.dump().c_str());
+  Push(job, GroupsPcm());
+  char* out = nullptr;
+  ASSERT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  Take(out);
+  EXPECT_EQ(calls, 4);
+  EXPECT_FALSE(std::filesystem::exists(checkpoint));
+}
+
 TEST_F(CapiTest, EngineRunsOneJobAtATime) {
   sillok_job* second = nullptr;
   sillok_status second_status = SILLOK_OK;

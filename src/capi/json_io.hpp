@@ -25,13 +25,22 @@ struct EngineSettings {
 };
 
 EngineSettings ParseEngineConfig(std::string_view json);
-PipelineOptions ParseJobOptions(std::string_view json);
+
+// Job options of the C ABI.
+struct JobOptions {
+  PipelineOptions pipeline;
+  // The job's checkpoint file; empty for none.
+  std::filesystem::path checkpoint;
+};
+
+JobOptions ParseJobOptions(std::string_view json);
 // Empty input gives the defaults.
 ExportOptions ParseExportOptions(std::string_view json);
 
 std::string TranscriptToJson(const Transcript& transcript);
 // Segments as in a transcript document, as an array.
 std::string SegmentsToJson(std::span<const Segment> segments);
+std::vector<Segment> SegmentsFromJson(std::string_view json);
 Transcript TranscriptFromJson(std::string_view json);
 
 std::string CatalogToJson(const std::vector<CatalogModel>& catalog);

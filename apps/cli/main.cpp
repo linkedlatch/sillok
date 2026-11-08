@@ -54,6 +54,8 @@ constexpr const char* kUsage = R"(usage:
                               encoder for it (Core ML on Apple)
       --model ID              transcription model (default: the recommended one)
       --models DIR            model directory
+      --checkpoint FILE       record progress here; run again with the same
+                              file to continue after an interruption
       --quiet                 no progress output
   sillok export TRANSCRIPT.json --format txt|srt|json [--output FILE]
                 [--speaker-label TEXT]
@@ -364,9 +366,10 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
   Check(sillok_engine_create(config.dump().c_str(), &raw_engine), "engine");
   const Engine engine(raw_engine);
 
-  const Json options = {{"language", args.Get("language").value_or("auto")},
-                        {"diarize", args.Has("diarize")},
-                        {"glossary", GlossaryTerms(args)}};
+  Json options = {{"language", args.Get("language").value_or("auto")},
+                  {"diarize", args.Has("diarize")},
+                  {"glossary", GlossaryTerms(args)}};
+  if (const auto checkpoint = args.Get("checkpoint")) options["checkpoint"] = *checkpoint;
   sillok_job* raw_job = nullptr;
   Check(sillok_job_create(engine.get(), options.dump().c_str(), &raw_job), "job");
   const Job job(raw_job);

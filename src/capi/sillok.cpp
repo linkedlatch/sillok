@@ -6,10 +6,12 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <span>
 #include <string>
 #include <thread>
@@ -22,6 +24,7 @@
 #endif
 
 #include "backends/models.hpp"
+#include "capi/checkpoint.hpp"
 #include "capi/json_io.hpp"
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
@@ -93,14 +96,16 @@ static_assert(SILLOK_SAMPLE_RATE == sillok::kSampleRate);
 
 struct sillok_job {
   sillok_job(std::shared_ptr<sillok::EngineState> engine_state,
-             sillok::PipelineOptions pipeline_options)
+             sillok::JobOptions job_options)
       : engine(std::move(engine_state)),
-        options(std::move(pipeline_options)),
+        options(std::move(job_options.pipeline)),
+        checkpoint(std::move(job_options.checkpoint)),
         audio(engine->temp_dir),
         input(audio) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
+  std::filesystem::path checkpoint;  // empty for none
   sillok::AudioBuffer audio;  // kept in a temporary file
   sillok::AudioInput input;   // converts pushed audio into `audio`
   sillok::StopSource stop;
@@ -445,6 +450,12 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
 
     job->input.Finish();
     sillok::ExitSafeModels models(*job->engine->models);
+    std::optional<sillok::CheckpointFile> checkpoint;
+    std::optional<sillok::Checkpoint> resume;
+    if (!job->checkpoint.empty()) {
+      checkpoint.emplace(job->checkpoint, sillok_version());
+      resume = checkpoint->Load();
+    }
     const sillok::Transcript transcript = sillok::RunPipeline(
         job->audio, job->options, models,
         [&](sillok::Stage stage, double fraction) {
@@ -455,7 +466,9 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
           if (job->on_segments == nullptr) return;
           const std::string json = sillok::SegmentsToJson(segments);
           job->on_segments(job->segments_user_data, json.c_str());
-        });
+        },
+        resume ? &*resume : nullptr, checkpoint ? &*checkpoint : nullptr);
+    if (checkpoint) checkpoint->Remove();
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;
   });

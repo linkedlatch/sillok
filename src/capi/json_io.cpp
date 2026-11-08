@@ -105,11 +105,12 @@ EngineSettings ParseEngineConfig(std::string_view text) {
   return settings;
 }
 
-PipelineOptions ParseJobOptions(std::string_view text) {
-  PipelineOptions options;
-  if (text.empty()) return options;
+JobOptions ParseJobOptions(std::string_view text) {
+  JobOptions job;
+  if (text.empty()) return job;
+  PipelineOptions& options = job.pipeline;
   const Json json = Parse(text, "job options");
-  RejectUnknownKeys(json, "job options", {"language", "diarize", "glossary"});
+  RejectUnknownKeys(json, "job options", {"language", "diarize", "glossary", "checkpoint"});
   options.language = Get<std::string>(json, "language", "auto");
   if (options.language != "auto" && options.language != "ko" &&
       options.language != "en") {
@@ -117,7 +118,8 @@ PipelineOptions ParseJobOptions(std::string_view text) {
   }
   options.diarize = Get<bool>(json, "diarize", false);
   options.glossary = Get<std::vector<std::string>>(json, "glossary", {});
-  return options;
+  job.checkpoint = PathFromUtf8(Get<std::string>(json, "checkpoint", ""));
+  return job;
 }
 
 ExportOptions ParseExportOptions(std::string_view text) {
@@ -151,12 +153,42 @@ Json SegmentToJson(const Segment& segment) {
   return item;
 }
 
+Segment SegmentFromJson(const Json& item) {
+  Segment segment;
+  segment.start = ReadMs(item, "start_ms");
+  segment.end = ReadMs(item, "end_ms");
+  segment.text = Get<std::string>(item, "text", "");
+  segment.language = Get<std::string>(item, "language", "");
+  segment.speaker = ReadSpeaker(item);
+  for (const Json& word : Get<Json>(item, "words", Json::array())) {
+    segment.words.push_back({.text = Get<std::string>(word, "text", ""),
+                             .start = ReadMs(word, "start_ms"),
+                             .end = ReadMs(word, "end_ms"),
+                             .confidence = Get<float>(word, "confidence", 0.0f),
+                             .speaker = ReadSpeaker(word)});
+  }
+  return segment;
+}
+
 }  // namespace
 
 std::string SegmentsToJson(std::span<const Segment> segments) {
   Json items = Json::array();
   for (const Segment& segment : segments) items.push_back(SegmentToJson(segment));
   return Dump(items);
+}
+
+std::vector<Segment> SegmentsFromJson(std::string_view text) {
+  Json json;
+  try {
+    json = Json::parse(text.begin(), text.end());
+  } catch (const Json::exception& error) {
+    throw std::invalid_argument(std::string("segments: ") + error.what());
+  }
+  if (!json.is_array()) throw std::invalid_argument("segments must be a JSON array");
+  std::vector<Segment> segments;
+  for (const Json& item : json) segments.push_back(SegmentFromJson(item));
+  return segments;
 }
 
 std::string TranscriptToJson(const Transcript& transcript) {
@@ -201,20 +233,7 @@ Transcript TranscriptFromJson(std::string_view text) {
     if (!name.empty()) transcript.speaker_names[Get<int>(speaker, "id", -1)] = name;
   }
   for (const Json& item : Get<Json>(json, "segments", Json::array())) {
-    Segment segment;
-    segment.start = ReadMs(item, "start_ms");
-    segment.end = ReadMs(item, "end_ms");
-    segment.text = Get<std::string>(item, "text", "");
-    segment.language = Get<std::string>(item, "language", "");
-    segment.speaker = ReadSpeaker(item);
-    for (const Json& word : Get<Json>(item, "words", Json::array())) {
-      segment.words.push_back({.text = Get<std::string>(word, "text", ""),
-                               .start = ReadMs(word, "start_ms"),
-                               .end = ReadMs(word, "end_ms"),
-                               .confidence = Get<float>(word, "confidence", 0.0f),
-                               .speaker = ReadSpeaker(word)});
-    }
-    transcript.segments.push_back(std::move(segment));
+    transcript.segments.push_back(SegmentFromJson(item));
   }
   const Json models = Get<Json>(json, "models", Json::object());
   for (const auto& [stage, info] : models.items()) {

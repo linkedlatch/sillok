@@ -1,7 +1,7 @@
-# The C ABI over the core. An object library, so that the shared and static
-# products keep every exported function (cmake/library.cmake); the tests link
-# the same objects with fake models.
-add_library(sillok_capi OBJECT json_io.cpp sillok.cpp)
+# The C ABI over the core. An object library, so that the shared library
+# keeps every exported function (cmake/library.cmake); the tests link the same
+# objects with fake models.
+add_library(sillok_capi OBJECT checkpoint.cpp json_io.cpp sillok.cpp)
 target_include_directories(sillok_capi PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(sillok_capi
     PUBLIC sillok_core sillok_media

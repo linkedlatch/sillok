@@ -125,7 +125,15 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 /* --- Jobs ---------------------------------------------------------------- */
 
 /* One recording. `options_json`: {"language": "auto" | "ko" | "en",
- * "diarize": false, "glossary": ["term", ...]} */
+ * "diarize": false, "glossary": ["term", ...], "checkpoint": "<path>"}
+ * With "checkpoint", the job records in that file how far transcription got,
+ * one group of speech at a time (speech pausing for 2 s or more starts a new
+ * group). A job of the same recording and options, with the same file,
+ * continues after the groups it finds there, with the result one run would
+ * have given; otherwise it starts the file anew. Detecting speech and
+ * diarization run again in full. The file is removed when the job succeeds
+ * and kept when it fails or is cancelled, which is how an app pauses a job:
+ * sillok_job_cancel(), then a new job with the same file. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);
