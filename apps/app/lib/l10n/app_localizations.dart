@@ -497,14 +497,8 @@ abstract class AppLocalizations {
   /// No description provided for @runningPreviews.
   ///
   /// In en, this message translates to:
-  /// **'Sentences so far. When done, they are arranged with speakers.'**
+  /// **'arranged with speakers when done'**
   String get runningPreviews;
-
-  /// No description provided for @runningDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Details'**
-  String get runningDetails;
 
   /// No description provided for @stepTime.
   ///
@@ -649,6 +643,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No speech was found.'**
   String get resultEmpty;
+
+  /// No description provided for @transcriptNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No sentences transcribed yet.'**
+  String get transcriptNone;
 
   /// No description provided for @deleteConfirm.
   ///

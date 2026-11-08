@@ -237,10 +237,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get runningPreviews => '지금까지 받아쓴 문장입니다. 끝나면 화자와 함께 정리됩니다.';
-
-  @override
-  String get runningDetails => '자세히';
+  String get runningPreviews => '끝나면 화자와 함께 정리됩니다';
 
   @override
   String stepTime(String step, String time) {
@@ -329,6 +326,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get resultEmpty => '음성을 찾지 못했습니다.';
+
+  @override
+  String get transcriptNone => '아직 받아쓴 문장이 없습니다.';
 
   @override
   String deleteConfirm(String title) {

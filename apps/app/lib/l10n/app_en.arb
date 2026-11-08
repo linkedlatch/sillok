@@ -187,8 +187,7 @@
       }
     }
   },
-  "runningPreviews": "Sentences so far. When done, they are arranged with speakers.",
-  "runningDetails": "Details",
+  "runningPreviews": "arranged with speakers when done",
   "stepTime": "{step}: {time}",
   "@stepTime": {
     "placeholders": {
@@ -281,6 +280,7 @@
   },
   "resultMissing": "This result cannot be read.",
   "resultEmpty": "No speech was found.",
+  "transcriptNone": "No sentences transcribed yet.",
   "deleteConfirm": "Delete “{title}”?",
   "@deleteConfirm": {
     "placeholders": {

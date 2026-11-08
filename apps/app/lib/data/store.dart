@@ -130,6 +130,27 @@ class JobStore {
     }
   }
 
+  /// The segments a stopped run left in the checkpoint: its lines after the
+  /// first, one group of speech each (the library's format, DESIGN D34). A
+  /// last line cut short is left out.
+  Future<List<Segment>> readCheckpoint(String id) async {
+    final List<String> lines;
+    try {
+      lines = await checkpointOf(id).readAsLines();
+    } on Object {
+      return const [];
+    }
+    final segments = <Segment>[];
+    for (final line in lines.skip(1)) {
+      try {
+        segments.addAll(parseSegments(line));
+      } on Object {
+        break;
+      }
+    }
+    return segments;
+  }
+
   Future<Transcript?> readTranscript(String id) async {
     try {
       return Transcript.parse(await _file(id, 'transcript.json').readAsString());

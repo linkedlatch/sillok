@@ -242,10 +242,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get runningPreviews => 'Sentences so far. When done, they are arranged with speakers.';
-
-  @override
-  String get runningDetails => 'Details';
+  String get runningPreviews => 'arranged with speakers when done';
 
   @override
   String stepTime(String step, String time) {
@@ -334,6 +331,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultEmpty => 'No speech was found.';
+
+  @override
+  String get transcriptNone => 'No sentences transcribed yet.';
 
   @override
   String deleteConfirm(String title) {

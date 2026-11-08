@@ -18,7 +18,6 @@ import 'package:sillok/l10n/app_localizations.dart';
 import 'package:sillok/main.dart';
 import 'package:sillok/ui/home.dart';
 import 'package:sillok/ui/playback.dart';
-import 'package:sillok/ui/running_view.dart';
 import 'package:sillok/ui/transcript_view.dart';
 
 class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
@@ -254,13 +253,19 @@ void main() {
         expect(find.text('Paused'), findsOneWidget);
         expect(find.text('To transcribe later'), findsOneWidget);
         expect(find.text('Preparing…'), findsOneWidget);
-        Future<void> open(String name) async {
+        // Lets the view read its folder; a file being prepared shows a
+        // progress bar that never settles.
+        Future<void> open(String name, {bool settle = true}) async {
           if (find.byType(BackButton).evaluate().isNotEmpty) {
             await tester.tap(find.byType(BackButton));
-            await tester.pumpAndSettle();
+            await tester.pump(const Duration(seconds: 1));
           }
           await tester.tap(find.text(name).first);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 5; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+          if (settle) await tester.pumpAndSettle();
         }
 
         await open('분산 시스템 4주차 강의 녹음.m4a');
@@ -269,7 +274,7 @@ void main() {
         await open('분산 시스템 5주차 강의 녹음.m4a');
         expect(find.textContaining('Kept to transcribe later'), findsOneWidget);
         expect(find.text('Start'), findsOneWidget);
-        await open('세미나 녹음.m4a');
+        await open('세미나 녹음.m4a', settle: false);
         expect(find.text('Reading the file and saving its copy for listening back.'), findsOneWidget);
       });
 
@@ -329,6 +334,30 @@ void main() {
     await tester.tap(find.text('f16').first);
     await tester.pumpAndSettle();
     expect(find.text('Accuracy high · speed slow · uncompressed · 1.6 GB'), findsOneWidget);
+  });
+
+  testWidgets('dragging the slider shows the sentence there, letting go goes to it', (tester) async {
+    await start(tester, _sizes['desktop']!, result: true);
+    await tester.tap(find.text('분산 시스템 3주차 강의 녹음 — 합의 알고리즘과 장애 허용').first);
+    await _settle(tester);
+    final text = find.descendant(of: find.byType(TranscriptView), matching: find.byType(Scrollable));
+    ScrollPosition position() => tester.state<ScrollableState>(text).position;
+    expect(position().pixels, 0);
+
+    // Near the end of the five minutes.
+    final slider = tester.getRect(find.byType(Slider));
+    final gesture = await tester.startGesture(Offset(slider.left + 30, slider.center.dy));
+    await tester.pump();
+    await gesture.moveTo(Offset(slider.right - 30, slider.center.dy));
+    await tester.pump();
+    final preview = find.byKey(const ValueKey('seek preview'));
+    expect(preview, findsOneWidget);
+    expect(find.descendant(of: preview, matching: find.textContaining('4:')), findsOneWidget);
+    expect(position().pixels, 0); // the text stays while dragging
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(preview, findsNothing);
+    expect(position().pixels, greaterThan(0));
   });
 
   testWidgets('playback leaves the text where the reader put it', (tester) async {
@@ -403,7 +432,7 @@ void main() {
     await show(30);
     await tester.tap(find.text('a.m4a').first);
     await tester.pumpAndSettle();
-    final sentences = find.descendant(of: find.byType(RunningView), matching: find.byType(Scrollable));
+    final sentences = find.descendant(of: find.byType(TranscriptView), matching: find.byType(Scrollable));
     ScrollPosition position() => tester.state<ScrollableState>(sentences).position;
     await show(40);
     expect(position().pixels, position().maxScrollExtent);

@@ -9,7 +9,6 @@ import '../data/settings.dart';
 import '../data/transcriber.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
-import 'running_view.dart';
 import 'settings_fields.dart';
 import 'settings_page.dart';
 import 'transcript_view.dart';
@@ -385,50 +384,13 @@ class DetailPane extends StatelessWidget {
               final id = state.transcriber.finishedId(key);
               if (id == null) return gone();
               final entry = state.entry(id);
+              // Until the result is listed, the queued view stays, with its
+              // player; it shares the job folder's key with the result's.
               return entry == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? TranscriptView(key: ValueKey(id), state: state, queueKey: key, jobId: id)
                   : TranscriptView(key: ValueKey(id), state: state, entry: entry);
             }
-            final run = state.transcriber.run;
-            if (run?.key == key) return RunningView(state: state);
-            final error = item.error;
-            // Scrolls in a short window.
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 16,
-                  children: [
-                    Text(item.name, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
-                    Text(
-                      error != null
-                          ? errorText(l, error)
-                          : state.transcriber.preparing == key
-                          ? l.detailPreparing
-                          : item.paused
-                          ? (item.started ? l.detailPaused : l.detailLater)
-                          : l.detailWaiting(state.transcriber.waitingPosition(key)),
-                      textAlign: TextAlign.center,
-                    ),
-                    Text(settingsSummary(l, state, item.settings), textAlign: TextAlign.center),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        if (error != null)
-                          FilledButton(onPressed: () => state.transcriber.retry(key), child: Text(l.retry))
-                        else if (item.paused)
-                          FilledButton(
-                            onPressed: () => state.transcriber.unpause(key),
-                            child: Text(item.started ? l.unpause : l.addStart),
-                          ),
-                        OutlinedButton(onPressed: () => state.transcriber.remove(key), child: Text(l.remove)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return TranscriptView(key: ValueKey(item.jobId ?? key), state: state, queueKey: key, jobId: item.jobId);
           case ResultSelection(:final id):
             final entry = state.entry(id);
             if (entry == null) return gone();
