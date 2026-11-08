@@ -31,6 +31,9 @@ struct JobOptions {
   PipelineOptions pipeline;
   // The job's checkpoint file; empty for none.
   std::filesystem::path checkpoint;
+  // Whether pushed audio has its loudness evened out; not for audio that
+  // already has, such as a job's copy for listening back.
+  bool even_loudness = true;
 };
 
 JobOptions ParseJobOptions(std::string_view json);

@@ -101,7 +101,8 @@ struct sillok_job {
         options(std::move(job_options.pipeline)),
         checkpoint(std::move(job_options.checkpoint)),
         audio(engine->temp_dir),
-        input(audio) {}
+        input(audio, job_options.even_loudness ? sillok::AudioInput::Loudness::kEvenedOut
+                                               : sillok::AudioInput::Loudness::kAsRecorded) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;

@@ -110,7 +110,8 @@ JobOptions ParseJobOptions(std::string_view text) {
   if (text.empty()) return job;
   PipelineOptions& options = job.pipeline;
   const Json json = Parse(text, "job options");
-  RejectUnknownKeys(json, "job options", {"language", "diarize", "glossary", "checkpoint"});
+  RejectUnknownKeys(json, "job options",
+                    {"language", "diarize", "glossary", "checkpoint", "even_loudness"});
   options.language = Get<std::string>(json, "language", "auto");
   if (options.language != "auto" && options.language != "ko" &&
       options.language != "en") {
@@ -119,6 +120,7 @@ JobOptions ParseJobOptions(std::string_view text) {
   options.diarize = Get<bool>(json, "diarize", false);
   options.glossary = Get<std::vector<std::string>>(json, "glossary", {});
   job.checkpoint = PathFromUtf8(Get<std::string>(json, "checkpoint", ""));
+  job.even_loudness = Get<bool>(json, "even_loudness", true);
   return job;
 }
 

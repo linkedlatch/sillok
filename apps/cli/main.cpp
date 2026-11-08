@@ -56,6 +56,8 @@ constexpr const char* kUsage = R"(usage:
       --models DIR            model directory
       --checkpoint FILE       record progress here; run again with the same
                               file to continue after an interruption
+      --as-recorded           leave the loudness as it is, for audio evened
+                              out already
       --quiet                 no progress output
   sillok export TRANSCRIPT.json --format txt|srt|json [--output FILE]
                 [--speaker-label TEXT]
@@ -346,7 +348,7 @@ std::vector<std::string> GlossaryTerms(const Arguments& args) {
 }
 
 int RunTranscribe(const std::vector<std::string>& all_args) {
-  const Arguments args = Parse(all_args, 2, {"diarize", "npu", "quiet"});
+  const Arguments args = Parse(all_args, 2, {"diarize", "npu", "quiet", "as-recorded"});
   if (args.positional.size() != 1) throw UsageError("transcribe needs one input file");
   const auto input = FindFile(args.positional[0]);
   if (!input) throw std::runtime_error("file not found: " + args.positional[0]);
@@ -370,6 +372,7 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
                   {"diarize", args.Has("diarize")},
                   {"glossary", GlossaryTerms(args)}};
   if (const auto checkpoint = args.Get("checkpoint")) options["checkpoint"] = *checkpoint;
+  if (args.Has("as-recorded")) options["even_loudness"] = false;
   sillok_job* raw_job = nullptr;
   Check(sillok_job_create(engine.get(), options.dump().c_str(), &raw_job), "job");
   const Job job(raw_job);

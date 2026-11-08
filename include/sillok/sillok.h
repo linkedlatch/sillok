@@ -125,7 +125,11 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 /* --- Jobs ---------------------------------------------------------------- */
 
 /* One recording. `options_json`: {"language": "auto" | "ko" | "en",
- * "diarize": false, "glossary": ["term", ...], "checkpoint": "<path>"}
+ * "diarize": false, "glossary": ["term", ...], "checkpoint": "<path>",
+ * "even_loudness": true}
+ * "even_loudness": false leaves the pushed audio's loudness as it is, for a
+ * recording whose loudness was evened out already: a job's copy for
+ * listening back (sillok_job_save_audio) transcribes as the original did.
  * With "checkpoint", the job records in that file how far transcription got,
  * one group of speech at a time (speech pausing for 2 s or more starts a new
  * group). A job of the same recording and options, with the same file,
@@ -180,9 +184,11 @@ SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
 SILLOK_API sillok_status sillok_job_end_audio(sillok_job* job);
 
 /* Writes the recording to `path` as AAC in an M4A file (16 kHz mono,
- * 32 kbit/s, about 14 MB an hour) for the app to keep for listening back:
+ * 64 kbit/s, about 29 MB an hour) for the app to keep for listening back:
  * transcript times are positions in it, and it sounds as the transcription
- * heard it, with quiet passages raised. Call after the recording ended.
+ * heard it, with quiet passages raised. A job of the copy with
+ * "even_loudness": false transcribes as one of the original does, so the
+ * original is needed only once. Call after the recording ended.
  * Blocks until written; `progress` may be NULL, and sillok_job_cancel() stops
  * it (SILLOK_CANCELLED). An unfinished file is removed. SILLOK_MEDIA_ERROR
  * when the file cannot be written. */

@@ -61,7 +61,10 @@ class OutputFile {
   bool kept_ = false;
 };
 
-constexpr int kCopyBitRate = 32000;
+// Enough for the copy to transcribe as the original does (DESIGN D20-5): at
+// 32 kbit/s a lecture's character errors rose from 16.1% to 18.5%, at 64 they
+// were 16.2%.
+constexpr int kCopyBitRate = 64000;
 
 // FFmpeg is quiet unless SILLOK_LOG is set, like the model libraries.
 void ConfigureLogging() {

@@ -338,6 +338,16 @@ TEST_F(CapiTest, IgnoresACheckpointItCannotRead) {
   EXPECT_FALSE(std::filesystem::exists(checkpoint));
 }
 
+TEST_F(CapiTest, TakesAudioWithItsLoudnessAsItIs) {
+  // For a copy whose loudness was evened out already; the samples: AudioInputTest.
+  sillok_job* job = Job(Engine(), R"({"even_loudness": false})");
+  Push(job, ScriptPcm(3));
+  EXPECT_GT(DurationMs(job), 0);
+  sillok_job* bad = nullptr;
+  EXPECT_EQ(sillok_job_create(Engine(), R"({"even_loudness": "no"})", &bad),
+            SILLOK_INVALID_ARGUMENT);
+}
+
 TEST_F(CapiTest, EngineRunsOneJobAtATime) {
   sillok_job* second = nullptr;
   sillok_status second_status = SILLOK_OK;
@@ -514,7 +524,7 @@ TEST_F(CapiTest, SavesTheRecordingForListeningBack) {
   ASSERT_EQ(sillok_job_save_audio(job, PathToUtf8(copy).c_str(), progress, &last), SILLOK_OK)
       << sillok_last_error();
   EXPECT_EQ(last, 1.0);
-  EXPECT_LT(std::filesystem::file_size(copy), 8000u);  // 32 kbit/s
+  EXPECT_LT(std::filesystem::file_size(copy), 12000u);  // 64 kbit/s
 
   // Read back, the copy is as long as the recording. That it lines up with
   // it: AudioFileTest.
