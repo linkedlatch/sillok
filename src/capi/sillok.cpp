@@ -416,34 +416,6 @@ sillok_status sillok_job_end_audio(sillok_job* job) {
   });
 }
 
-sillok_status sillok_job_audio_length(const sillok_job* job, uint64_t* out_samples) {
-  return Guard([&] {
-    RequireArgument(job != nullptr && out_samples != nullptr,
-                    "job and out_samples are required");
-    *out_samples = static_cast<uint64_t>(job->audio.size());
-    return SILLOK_OK;
-  });
-}
-
-sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
-                                    float* samples, size_t count,
-                                    size_t* out_read) {
-  return Guard([&] {
-    RequireArgument(job != nullptr && (samples != nullptr || count == 0) &&
-                        out_read != nullptr,
-                    "job, samples and out_read are required");
-    *out_read = 0;
-    const auto length = static_cast<uint64_t>(job->audio.size());
-    RequireArgument(start <= length, "start is past the end of the recording");
-    const uint64_t end = start + std::min<uint64_t>(count, length - start);
-    const std::vector<float> read = job->audio.Read(
-        {static_cast<sillok::SampleIndex>(start), static_cast<sillok::SampleIndex>(end)});
-    std::copy(read.begin(), read.end(), samples);
-    *out_read = read.size();
-    return SILLOK_OK;
-  });
-}
-
 sillok_status sillok_job_on_segments(sillok_job* job, sillok_segments_fn callback,
                                      void* user_data) {
   return Guard([&] {

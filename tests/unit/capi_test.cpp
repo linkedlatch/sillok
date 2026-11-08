@@ -109,6 +109,14 @@ class CapiTest : public ::testing::Test {
         << sillok_last_error();
   }
 
+  // Runs `job` and returns the length of its recording, as the transcript
+  // reports it.
+  static long long DurationMs(sillok_job* job) {
+    char* out = nullptr;
+    EXPECT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+    return out != nullptr ? Json::parse(Take(out))["duration_ms"].get<long long>() : -1;
+  }
+
   std::filesystem::path models_dir_;
   std::vector<sillok_engine*> engines_;
   std::vector<sillok_job*> jobs_;
@@ -189,51 +197,19 @@ TEST_F(CapiTest, AcceptsAnyRateAndChannelCount) {
   EXPECT_EQ(Json::parse(Take(out))["duration_ms"], 1000);
 }
 
-TEST_F(CapiTest, ReadsTheRecordingWhileItIsPushed) {
+TEST_F(CapiTest, TakesNoAudioAfterTheRecordingEnds) {
   sillok_job* job = Job(Engine());
-  // 1 s of a 440 Hz tone at 44.1 kHz stereo, pushed in decoder-sized blocks.
-  std::vector<float> stereo(44100 * 2);
-  for (std::size_t i = 0; i < stereo.size(); ++i) {
-    stereo[i] = 0.5f * static_cast<float>(std::sin(2 * 3.14159265 * 440 * static_cast<double>(i / 2) / 44100));
-  }
-  std::vector<float> copy;
-  uint64_t length = 0;
-  const auto read_new = [&] {
-    ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
-    std::vector<float> block(static_cast<std::size_t>(length) - copy.size());
-    std::size_t read = 0;
-    ASSERT_EQ(sillok_job_read_audio(job, copy.size(), block.data(), block.size(), &read), SILLOK_OK);
-    ASSERT_EQ(read, block.size());
-    copy.insert(copy.end(), block.begin(), block.end());
-  };
+  // 1 s at 44.1 kHz stereo, pushed in decoder-sized blocks.
+  const std::vector<float> stereo(44100 * 2, 0.1f);
   for (std::size_t frame = 0; frame < 44100; frame += 1024) {
     const std::size_t frames = std::min<std::size_t>(1024, 44100 - frame);
     ASSERT_EQ(sillok_job_push_audio(job, stereo.data() + frame * 2, frames, 44100, 2), SILLOK_OK);
-    read_new();
   }
-  EXPECT_LT(copy.size(), 16000u);  // the end is held back until the recording ends
   ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
-  read_new();
-  EXPECT_EQ(copy.size(), 16000u);
-
-  // What was read piece by piece is what the job keeps.
-  std::vector<float> whole(16000);
-  std::size_t read = 0;
-  ASSERT_EQ(sillok_job_read_audio(job, 0, whole.data(), whole.size() + 100, &read), SILLOK_OK);
-  EXPECT_EQ(read, 16000u);
-  EXPECT_EQ(whole, copy);
-  ASSERT_EQ(sillok_job_read_audio(job, 16000, whole.data(), 10, &read), SILLOK_OK);
-  EXPECT_EQ(read, 0u);
-  EXPECT_EQ(sillok_job_read_audio(job, 16001, whole.data(), 10, &read), SILLOK_INVALID_ARGUMENT);
-
   EXPECT_EQ(sillok_job_push_audio(job, stereo.data(), 10, 44100, 2), SILLOK_INVALID_ARGUMENT);
   EXPECT_NE(std::string(sillok_last_error()).find("end_audio"), std::string::npos);
   ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);  // again: no effect
-  char* out = nullptr;
-  ASSERT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK);
-  EXPECT_EQ(Json::parse(Take(out))["duration_ms"], 1000);
-  ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
-  EXPECT_EQ(length, 16000u);
+  EXPECT_EQ(DurationMs(job), 1000);
 }
 
 TEST_F(CapiTest, RejectsBadInput) {
@@ -430,17 +406,9 @@ TEST_F(CapiTest, ReadsAudioAndVideoFiles) {
         << sillok_last_error();
     EXPECT_EQ(last, 1.0);
     ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
-    // One second, without the encoders' priming and padding.
-    uint64_t length = 0;
-    ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
-    EXPECT_NEAR(static_cast<double>(length), 16000, 100);
-    std::vector<float> pcm(static_cast<std::size_t>(length));
-    std::size_t read = 0;
-    ASSERT_EQ(sillok_job_read_audio(job, 0, pcm.data(), pcm.size(), &read), SILLOK_OK);
-    double energy = 0;
-    for (const float sample : pcm) energy += static_cast<double>(sample) * static_cast<double>(sample);
-    // A tone at -24 dBFS, raised towards the filter's peak.
-    EXPECT_GT(std::sqrt(energy / static_cast<double>(pcm.size())), 0.3);
+    // One second, without the encoders' priming and padding. The samples
+    // themselves: AudioFileTest.
+    EXPECT_NEAR(static_cast<double>(DurationMs(job)), 1000, 7);
   }
 }
 
@@ -451,9 +419,7 @@ TEST_F(CapiTest, ReadsWavFilesWithUnicodeNames) {
   ASSERT_EQ(sillok_job_push_file(job, PathToUtf8(path).c_str(), nullptr, nullptr), SILLOK_OK)
       << sillok_last_error();
   ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
-  uint64_t length = 0;
-  ASSERT_EQ(sillok_job_audio_length(job, &length), SILLOK_OK);
-  EXPECT_EQ(length, 8000u);
+  EXPECT_EQ(DurationMs(job), 500);
 }
 
 TEST_F(CapiTest, RefusesFilesWithoutAudio) {
@@ -484,32 +450,13 @@ TEST_F(CapiTest, SavesTheRecordingForListeningBack) {
   EXPECT_EQ(last, 1.0);
   EXPECT_LT(std::filesystem::file_size(copy), 8000u);  // 32 kbit/s
 
-  // Read back, the copy lines up with the recording: same length, same tone.
+  // Read back, the copy is as long as the recording. That it lines up with
+  // it: AudioFileTest.
   sillok_job* again = Job(Engine());
   ASSERT_EQ(sillok_job_push_file(again, PathToUtf8(copy).c_str(), nullptr, nullptr), SILLOK_OK)
       << sillok_last_error();
   ASSERT_EQ(sillok_job_end_audio(again), SILLOK_OK);
-  const auto samples = [](sillok_job* of) {
-    uint64_t length = 0;
-    EXPECT_EQ(sillok_job_audio_length(of, &length), SILLOK_OK);
-    std::vector<float> pcm(static_cast<std::size_t>(length));
-    std::size_t read = 0;
-    EXPECT_EQ(sillok_job_read_audio(of, 0, pcm.data(), pcm.size(), &read), SILLOK_OK);
-    return pcm;
-  };
-  const std::vector<float> original = samples(job);
-  const std::vector<float> decoded = samples(again);
-  ASSERT_EQ(decoded.size(), original.size());
-  double difference = 0;
-  double energy = 0;
-  for (std::size_t i = 2000; i < 14000; ++i) {
-    const double d = static_cast<double>(decoded[i]) - static_cast<double>(original[i]);
-    difference += d * d;
-    energy += static_cast<double>(original[i]) * static_cast<double>(original[i]);
-  }
-  // Aligned: a shifted tone would differ fully. Reading the copy back evens it
-  // out a second time, which changes the level a little.
-  EXPECT_LT(difference / energy, 0.3);
+  EXPECT_EQ(DurationMs(again), DurationMs(job));
 
   const auto missing_dir = models_dir_ / "no such dir" / "copy.m4a";
   EXPECT_EQ(sillok_job_save_audio(job, PathToUtf8(missing_dir).c_str(), nullptr, nullptr),

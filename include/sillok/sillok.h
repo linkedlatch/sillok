@@ -160,29 +160,16 @@ SILLOK_API sillok_status sillok_job_push_file(sillok_job* job, const char* path,
 /* --- The job's recording ---------------------------------------------------
  * A job converts the pushed audio to mono at SILLOK_SAMPLE_RATE and evens out
  * its loudness: the recording it transcribes, which the transcript's times
- * refer to. Sample n lies at n * 1000 / SILLOK_SAMPLE_RATE milliseconds. Apps
- * read it to keep a copy for listening back, so that a segment plays exactly
- * what was transcribed without converting the audio a second time.
- *
- * Samples become available as audio is pushed; the conversion holds back
- * about the last 15 seconds until sillok_job_end_audio() (or sillok_job_run())
- * ends the recording. Available samples never change. These functions must
- * not be called while sillok_job_run() is executing on the job. */
+ * refer to. Sample n lies at n * 1000 / SILLOK_SAMPLE_RATE milliseconds.
+ * sillok_job_save_audio() keeps a copy of it for listening back, so that a
+ * segment plays exactly what was transcribed without converting the audio a
+ * second time. These functions must not be called while sillok_job_run() is
+ * executing on the job. */
 #define SILLOK_SAMPLE_RATE 16000
 
-/* Ends the recording: no audio can be pushed afterwards, and every sample is
- * available. sillok_job_run() does this itself; calling it again is allowed. */
+/* Ends the recording: no audio can be pushed afterwards. sillok_job_run()
+ * does this itself; calling it again is allowed. */
 SILLOK_API sillok_status sillok_job_end_audio(sillok_job* job);
-
-/* Number of samples available so far. */
-SILLOK_API sillok_status sillok_job_audio_length(const sillok_job* job,
-                                                 uint64_t* out_samples);
-
-/* Copies up to `count` samples from sample `start` (at most the length) into
- * `samples`, as floats in [-1, 1); `out_read` receives how many. */
-SILLOK_API sillok_status sillok_job_read_audio(sillok_job* job, uint64_t start,
-                                               float* samples, size_t count,
-                                               size_t* out_read);
 
 /* Writes the recording to `path` as AAC in an M4A file (16 kHz mono,
  * 32 kbit/s, about 14 MB an hour) for the app to keep for listening back:

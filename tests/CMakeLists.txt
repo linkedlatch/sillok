@@ -22,9 +22,11 @@ target_link_libraries(sillok_unit_tests PRIVATE sillok_fakes GTest::gtest_main)
 sillok_set_warnings(sillok_unit_tests)
 gtest_discover_tests(sillok_unit_tests)
 
-# Converting pushed audio to 16 kHz mono with FFmpeg.
-add_executable(sillok_media_tests unit/audio_input_test.cpp)
+# FFmpeg: converting pushed audio to 16 kHz mono, reading and writing files.
+add_executable(sillok_media_tests unit/audio_input_test.cpp unit/audio_file_test.cpp)
 target_link_libraries(sillok_media_tests PRIVATE sillok_media GTest::gtest_main)
+target_compile_definitions(sillok_media_tests PRIVATE
+    SILLOK_TEST_MEDIA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/media")
 sillok_set_warnings(sillok_media_tests)
 sillok_copy_runtime_dlls(sillok_media_tests)
 gtest_discover_tests(sillok_media_tests)

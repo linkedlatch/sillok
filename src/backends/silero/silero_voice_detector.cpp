@@ -17,7 +17,7 @@ class SileroVoiceDetector final : public VoiceDetector {
       : context_(nullptr, whisper_vad_free),
         info_{.name = config.name, .device = "CPU", .fell_back_to_cpu = false} {
     whisper_vad_context_params params = whisper_vad_default_context_params();
-    params.n_threads = config.threads;
+    params.n_threads = 1;
     params.use_gpu = false;
     const std::string path = PathToUtf8(config.model);
     context_.reset(whisper_vad_init_from_file_with_params(path.c_str(), params));

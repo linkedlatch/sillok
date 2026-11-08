@@ -168,9 +168,7 @@ class Models final : public ModelProvider {
         diarizer_(FindModel("diarization", config.transcription_model)) {}
 
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
-    return OpenSilero({.model = Path(voice_detector_),
-                       .name = voice_detector_.id,
-                       .threads = std::min(threads_, 4)});
+    return OpenSilero({.model = Path(voice_detector_), .name = voice_detector_.id});
   }
 
   std::unique_ptr<Transcriber> OpenTranscriber() override {

@@ -1,9 +1,34 @@
 #include "backends/ggml_devices.hpp"
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+#include <cstdlib>
+#include <mutex>
+#endif
+
 #include <ggml-backend.h>
 
 namespace sillok {
 namespace {
+
+// sillok.dll loads Vulkan's loader (vulkan-1.dll, which GPU drivers install)
+// only when ggml first calls it (cmake/library.cmake), so that it opens on a
+// PC without one. ggml would still call it on listing its devices, and a
+// missing DLL there ends the process: ggml is told to skip Vulkan instead,
+// which leaves the CPU. Runs before ggml lists its devices, which it does
+// once.
+void SkipMissingVulkan() {
+#ifdef _WIN32
+  static std::once_flag once;
+  std::call_once(once, [] {
+    // Kept loaded, for ggml's calls to find.
+    if (LoadLibraryW(L"vulkan-1.dll") == nullptr) _putenv_s("GGML_DISABLE_VULKAN", "1");
+  });
+#endif
+}
 
 bool IsGpu(ggml_backend_dev_t device) {
   const auto type = ggml_backend_dev_type(device);
@@ -25,6 +50,7 @@ const char* TypeName(enum ggml_backend_dev_type type) {
 }  // namespace
 
 ComputeDevice ChooseDevice(Device device, int gpu_index) {
+  SkipMissingVulkan();
   if (device == Device::kGpu) {
     // whisper.cpp and NeMo-Speech.cpp both count GPU and integrated GPU
     // devices in ggml's order, so this index means the same to both.
@@ -47,6 +73,7 @@ ComputeDevice ChooseDevice(Device device, int gpu_index) {
 }
 
 std::vector<DeviceInfo> GgmlDevices() {
+  SkipMissingVulkan();
   std::vector<DeviceInfo> devices;
   for (std::size_t i = 0; i < ggml_backend_dev_count(); ++i) {
     const ggml_backend_dev_t device = ggml_backend_dev_get(i);

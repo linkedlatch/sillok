@@ -19,3 +19,10 @@ elseif(UNIX)
         "LINKER:--version-script=${CMAKE_CURRENT_LIST_DIR}/sillok.map"
         "LINKER:--exclude-libs,ALL")
 endif()
+if(MSVC AND SILLOK_VULKAN)
+    # Vulkan's loader comes with the GPU drivers. Loaded on first use, it lets
+    # the library open on a PC without one and run on the CPU
+    # (backends/ggml_devices.cpp).
+    target_link_options(sillok PRIVATE "/DELAYLOAD:vulkan-1.dll")
+    target_link_libraries(sillok PRIVATE delayimp)
+endif()
