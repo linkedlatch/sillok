@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'data/downloader.dart';
+import 'data/keep_awake.dart';
 import 'data/settings.dart';
 import 'data/store.dart';
 import 'data/transcriber.dart';
@@ -104,6 +105,7 @@ class AppState extends ChangeNotifier {
     transcriber = Transcriber(
       store: store,
       queueFile: File('${_support.path}${Platform.pathSeparator}queue.json'),
+      keepAwake: KeepAwake.system(),
       request: (item, copyPath, checkpointPath) => JobRequest(
         modelsDir: modelsDir.path,
         tempDir: cache.path,

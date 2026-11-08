@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sillok/data/transcriber.dart';
 import 'package:sillok/engine/native.dart';
+import 'package:sillok/data/keep_awake.dart';
 import 'package:sillok/data/media_types.dart';
 import 'package:sillok/data/settings.dart';
 import 'package:sillok/data/store.dart';
@@ -19,6 +20,16 @@ const _document = '''
  "models": {"transcription": {"name": "whisper", "device": "CPU", "fell_back_to_cpu": true}},
  "extra": {"kept": true}}
 ''';
+
+class _CountingKeepAwake implements KeepAwake {
+  var holds = 0;
+
+  @override
+  void hold() => holds++;
+
+  @override
+  void release() {}
+}
 
 void main() {
   test('paragraphs end at a new speaker, a pause or a minute', () {
@@ -124,10 +135,12 @@ void main() {
         ),
       ]),
     );
+    final awake = _CountingKeepAwake();
     final transcriber = Transcriber(
       store: store,
       queueFile: queueFile,
       request: (item, copyPath, checkpointPath) => throw StateError('nothing should run'),
+      keepAwake: awake,
     );
     addTearDown(transcriber.dispose);
     await transcriber.resume();
@@ -137,6 +150,7 @@ void main() {
     expect(store.checkpointOf(stopped).existsSync(), isTrue);
     expect(store.dirOf(leftover).existsSync(), isFalse);
     expect(transcriber.waitingPosition('a'), 0);
+    expect(awake.holds, 0); // nothing to run, so the computer may sleep
 
     // Removed, a paused file takes its folder along.
     await transcriber.remove('a');

@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 
 import '../engine/job_run.dart';
 import '../engine/native.dart';
+import 'keep_awake.dart';
 import 'settings.dart';
 import 'store.dart';
 import 'transcript.dart';
@@ -144,10 +145,18 @@ class RunState {
 }
 
 class Transcriber extends ChangeNotifier {
-  Transcriber({required this.store, required this.queueFile, required this.request});
+  Transcriber({
+    required this.store,
+    required this.queueFile,
+    required this.request,
+    this.keepAwake = const NoKeepAwake(),
+  });
 
   final JobStore store;
   final File queueFile;
+
+  /// Held while files run.
+  final KeepAwake keepAwake;
 
   /// The library request for a file, given the copy for listening back and
   /// the checkpoint in its job folder.
@@ -271,13 +280,17 @@ class Transcriber extends ChangeNotifier {
   Future<void> _pump() async {
     if (_pumping) return;
     _pumping = true;
+    var held = false;
     try {
       while (true) {
         final next = _queue.where((item) => item.error == null && !item.paused).firstOrNull;
         if (next == null) break;
+        if (!held) keepAwake.hold();
+        held = true;
         await _runItem(next);
       }
     } finally {
+      if (held) keepAwake.release();
       _pumping = false;
     }
   }
