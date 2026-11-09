@@ -4,6 +4,7 @@
 class JobSettings {
   const JobSettings({
     this.language = 'auto',
+    this.listedLanguage,
     this.diarize = true,
     this.glossary = const [],
     this.transcriptionModel,
@@ -13,6 +14,7 @@ class JobSettings {
 
   factory JobSettings.fromJson(Map<String, dynamic> json) => JobSettings(
     language: json['language'] as String? ?? 'auto',
+    listedLanguage: json['listed_language'] as String?,
     diarize: json['diarize'] as bool? ?? true,
     glossary: [for (final term in json['glossary'] as List? ?? const []) term as String],
     transcriptionModel: json['transcription_model'] as String?,
@@ -20,8 +22,13 @@ class JobSettings {
     npu: json['npu'] as bool? ?? true,
   );
 
-  /// "auto" (Korean and English), "ko" or "en".
+  /// "auto", told at each long pause, or one of the transcription model's
+  /// languages ("ko", "en", ...).
   final String language;
+
+  /// The language last chosen from the list of all, kept at hand beside the
+  /// others; null before one is.
+  final String? listedLanguage;
   final bool diarize;
   final List<String> glossary;
 
@@ -38,6 +45,7 @@ class JobSettings {
 
   JobSettings copyWith({
     String? language,
+    String? Function()? listedLanguage,
     bool? diarize,
     List<String>? glossary,
     String? Function()? transcriptionModel,
@@ -45,6 +53,7 @@ class JobSettings {
     bool? npu,
   }) => JobSettings(
     language: language ?? this.language,
+    listedLanguage: listedLanguage != null ? listedLanguage() : this.listedLanguage,
     diarize: diarize ?? this.diarize,
     glossary: glossary ?? this.glossary,
     transcriptionModel: transcriptionModel != null ? transcriptionModel() : this.transcriptionModel,
@@ -57,6 +66,7 @@ class JobSettings {
 
   Map<String, Object?> toJson() => {
     'language': language,
+    'listed_language': listedLanguage,
     'diarize': diarize,
     'glossary': glossary,
     'transcription_model': transcriptionModel,

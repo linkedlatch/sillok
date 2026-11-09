@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../data/settings.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
+import 'language_field.dart';
 
 /// Language, speakers, terms, model and device for a file or the defaults.
 class SettingsFields extends StatefulWidget {
@@ -33,17 +34,19 @@ class _SettingsFieldsState extends State<SettingsFields> {
     final state = widget.state;
     final models = state.readyTranscriptionModels;
     final model = settings.transcriptionModel ?? state.recommendedTranscription.id;
+    final languages = _languages(state, model);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,
       children: [
         Text(l.language, style: Theme.of(context).textTheme.titleSmall),
-        SegmentedButton<String>(
-          segments: [
-            for (final code in ['auto', 'ko', 'en']) ButtonSegment(value: code, label: Text(languageName(l, code))),
-          ],
-          selected: {settings.language},
-          onSelectionChanged: (value) => widget.onChanged(settings.copyWith(language: value.first)),
+        LanguageField(
+          value: settings.language,
+          listed: settings.listedLanguage,
+          languages: languages,
+          systemLocale: View.of(context).platformDispatcher.locale,
+          onChanged: (code, listed) =>
+              widget.onChanged(settings.copyWith(language: code, listedLanguage: () => listed)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -64,7 +67,15 @@ class _SettingsFieldsState extends State<SettingsFields> {
             initialValue: models.any((m) => m.id == model) ? model : null,
             decoration: InputDecoration(labelText: l.transcriptionModel),
             items: [for (final m in models) DropdownMenuItem(value: m.id, child: Text(modelName(m)))],
-            onChanged: (id) => widget.onChanged(settings.copyWith(transcriptionModel: () => id)),
+            // A language the new model does not know goes back to automatic.
+            onChanged: (id) => widget.onChanged(
+              settings.copyWith(
+                transcriptionModel: () => id,
+                language: _languages(state, id ?? state.recommendedTranscription.id).contains(settings.language)
+                    ? null
+                    : 'auto',
+              ),
+            ),
           ),
         if (state.gpus.isNotEmpty)
           DropdownButtonFormField<int>(
@@ -95,6 +106,11 @@ class _SettingsFieldsState extends State<SettingsFields> {
     );
   }
 }
+
+/// The languages transcription model [id] knows.
+List<String> _languages(AppState state, String id) =>
+    state.transcriptionModels.where((m) => m.id == id).firstOrNull?.languages ??
+    state.recommendedTranscription.languages;
 
 /// "Automatic · Tell speakers apart · large-v3 turbo / q5_0"
 String settingsSummary(AppLocalizations l, AppState state, JobSettings settings) {

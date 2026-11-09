@@ -161,10 +161,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get languageAuto => '자동';
 
   @override
-  String get languageKo => '한국어';
+  String get languageOther => '기타';
 
   @override
-  String get languageEn => '영어';
+  String get appLanguage => '앱 언어';
+
+  @override
+  String get appLanguageSystem => '시스템 설정';
+
+  @override
+  String get languageChoose => '언어 선택';
+
+  @override
+  String get languageSearch => '검색';
 
   @override
   String get diarize => '화자 구분';

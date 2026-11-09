@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../engine/sillok.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
+import 'languages.dart';
 import 'model_cards.dart';
 import 'settings_fields.dart';
 
@@ -68,6 +69,26 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(l.settingsMore, style: heading),
+                  const SizedBox(height: 8),
+                  Text(l.appLanguage, style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  ValueListenableBuilder(
+                    valueListenable: state.appLanguage,
+                    builder: (context, language, _) => SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(value: '', label: Text(l.appLanguageSystem)),
+                        // Each in its own language, to be found whatever the app shows.
+                        for (final locale in AppLocalizations.supportedLocales)
+                          ButtonSegment(
+                            value: locale.languageCode,
+                            label: Text(languageSelfName(locale.languageCode) ?? locale.languageCode),
+                          ),
+                      ],
+                      selected: {language ?? ''},
+                      onSelectionChanged: (value) => state.setAppLanguage(value.first.isEmpty ? null : value.first),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(l.verifyModels),

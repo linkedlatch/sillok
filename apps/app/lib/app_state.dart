@@ -83,6 +83,11 @@ class AppState extends ChangeNotifier {
   bool modelsChecked = false;
   String? modelsError;
   JobSettings defaults = const JobSettings();
+
+  /// The language of the app's own text ("ko", "en"), or null for the
+  /// system's. Apart from the state's other changes, as the whole app
+  /// follows it.
+  final appLanguage = ValueNotifier<String?>(null);
   List<LibraryEntry> library = const [];
   Notice? notice;
 
@@ -95,9 +100,11 @@ class AppState extends ChangeNotifier {
   Stream<(String key, String id)> get finished => _finished.stream;
 
   File get _settingsFile => File('${_support.path}${Platform.pathSeparator}settings.json');
+  File get _appFile => File('${_support.path}${Platform.pathSeparator}app.json');
 
   Future<void> start() async {
     _support = await getApplicationSupportDirectory();
+    await _loadAppLanguage();
     final cache = await getApplicationCacheDirectory();
     await cache.create(recursive: true);
     modelsDir = Directory('${_support.path}${Platform.pathSeparator}models');
@@ -387,6 +394,21 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadAppLanguage() async {
+    try {
+      final json = jsonDecode(await _appFile.readAsString()) as Map<String, dynamic>;
+      appLanguage.value = json['language'] as String?;
+    } on Object {
+      appLanguage.value = null;
+    }
+  }
+
+  Future<void> setAppLanguage(String? code) async {
+    appLanguage.value = code;
+    await _support.create(recursive: true);
+    await _appFile.writeAsString(jsonEncode({'language': code}));
+  }
+
   Future<void> setDefaults(JobSettings settings) async {
     defaults = settings;
     notifyListeners();
@@ -425,6 +447,7 @@ class AppState extends ChangeNotifier {
     _downloader.stop();
     _finished.close();
     transcriber.dispose();
+    appLanguage.dispose();
     super.dispose();
   }
 }

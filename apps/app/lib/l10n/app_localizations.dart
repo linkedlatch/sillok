@@ -350,17 +350,35 @@ abstract class AppLocalizations {
   /// **'Automatic'**
   String get languageAuto;
 
-  /// No description provided for @languageKo.
+  /// No description provided for @languageOther.
   ///
   /// In en, this message translates to:
-  /// **'Korean'**
-  String get languageKo;
+  /// **'Other'**
+  String get languageOther;
 
-  /// No description provided for @languageEn.
+  /// No description provided for @appLanguage.
   ///
   /// In en, this message translates to:
-  /// **'English'**
-  String get languageEn;
+  /// **'App language'**
+  String get appLanguage;
+
+  /// No description provided for @appLanguageSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get appLanguageSystem;
+
+  /// No description provided for @languageChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a language'**
+  String get languageChoose;
+
+  /// No description provided for @languageSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get languageSearch;
 
   /// No description provided for @diarize.
   ///

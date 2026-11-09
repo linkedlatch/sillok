@@ -35,6 +35,7 @@ class CatalogModel {
     required this.quantization,
     required this.recommended,
     required this.files,
+    this.languages = const [],
   });
 
   factory CatalogModel.fromJson(Map<String, dynamic> json) => CatalogModel(
@@ -44,6 +45,7 @@ class CatalogModel {
     quantization: json['quantization'] as String,
     recommended: json['recommended'] as bool,
     files: [for (final file in json['files'] as List) ModelFile.fromJson(file as Map<String, dynamic>)],
+    languages: [for (final code in json['languages'] as List? ?? const []) code as String],
   );
 
   final String id;
@@ -52,6 +54,9 @@ class CatalogModel {
   final String quantization;
   final bool recommended;
   final List<ModelFile> files;
+
+  /// Of a transcription model: the languages a job may name.
+  final List<String> languages;
 
   bool get isTranscription => role == 'transcription';
 

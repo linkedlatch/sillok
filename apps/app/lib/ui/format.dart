@@ -3,6 +3,7 @@ import '../engine/job_run.dart';
 import '../engine/native.dart';
 import '../engine/sillok.dart';
 import '../l10n/app_localizations.dart';
+import 'languages.dart';
 
 /// "1:02:03" or "2:03".
 String formatTime(int ms) {
@@ -41,12 +42,8 @@ String stepName(AppLocalizations l, RunStep step) => switch (step) {
   RunStep.diarize => l.stepDiarize,
 };
 
-String languageName(AppLocalizations l, String code) => switch (code) {
-  'auto' => l.languageAuto,
-  'ko' => l.languageKo,
-  'en' => l.languageEn,
-  _ => code,
-};
+String languageName(AppLocalizations l, String code) =>
+    code == 'auto' ? l.languageAuto : languageNameOf(code, l.localeName);
 
 String errorText(AppLocalizations l, RunError error) => switch (error.status) {
   Status.mediaError => l.errorUnsupportedFile(error.message),

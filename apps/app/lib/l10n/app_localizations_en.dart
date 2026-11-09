@@ -166,10 +166,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageAuto => 'Automatic';
 
   @override
-  String get languageKo => 'Korean';
+  String get languageOther => 'Other';
 
   @override
-  String get languageEn => 'English';
+  String get appLanguage => 'App language';
+
+  @override
+  String get appLanguageSystem => 'System';
+
+  @override
+  String get languageChoose => 'Choose a language';
+
+  @override
+  String get languageSearch => 'Search';
 
   @override
   String get diarize => 'Tell speakers apart';

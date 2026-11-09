@@ -54,8 +54,14 @@ class _SillokAppState extends State<SillokApp> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder(valueListenable: state.appLanguage, builder: (context, language, _) => _app(language));
+
+  /// The app in [language], or the system's when null or not one of the
+  /// app's own.
+  Widget _app(String? language) => MaterialApp(
     scaffoldMessengerKey: _messenger,
+    locale: AppLocalizations.supportedLocales.where((l) => l.languageCode == language).firstOrNull,
     onGenerateTitle: (context) => AppLocalizations.of(context).appName,
     // The platform's look as Material 3 offers it, without a theme of our own.
     theme: ThemeData(),
