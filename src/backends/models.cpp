@@ -51,7 +51,8 @@ CatalogModel Whisper(const char* family, const char* quantization,
                      .family = family,
                      .quantization = quantization,
                      .recommended = recommended,
-                     .files = {std::move(model)}};
+                     .files = {std::move(model)},
+                     .languages = WhisperLanguages()};
 #ifdef SILLOK_COREML
   entry.files.push_back(std::move(encoder));
 #else
@@ -167,7 +168,7 @@ class Models final : public ModelProvider {
         transcriber_(FindModel("transcription", config.transcription_model)),
         diarizer_(FindModel("diarization", config.transcription_model)) {}
 
-  std::vector<std::string> Languages() const override { return WhisperLanguages(); }
+  std::vector<std::string> Languages() const override { return transcriber_.languages; }
 
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
     return OpenSilero({.model = Path(voice_detector_), .name = voice_detector_.id});

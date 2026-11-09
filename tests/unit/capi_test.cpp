@@ -416,6 +416,7 @@ TEST_F(CapiTest, ChecksModelFiles) {
   EXPECT_EQ(catalog[0]["quantization"], "q5_0");
   EXPECT_TRUE(catalog[0]["recommended"].get<bool>());
   EXPECT_FALSE(catalog[1]["recommended"].get<bool>());
+  EXPECT_EQ(catalog[0]["languages"], Json::array({"en", "ko"}));
   ASSERT_EQ(catalog[0]["files"].size(), 2u);
   EXPECT_EQ(catalog[0]["files"][1]["zip"], true);
 

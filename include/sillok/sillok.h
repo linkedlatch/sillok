@@ -74,12 +74,15 @@ SILLOK_API void sillok_free_string(char* text);
  * [{"id": "whisper-large-v3-turbo-q5_0", "role": "transcription",
  *   "family": "large-v3-turbo", "quantization": "q5_0", "recommended": true,
  *   "files": [{"file": "...", "url": "...", "size": 574041195,
- *              "sha256": "...", "zip": false}, ...]}, ...]
+ *              "sha256": "...", "zip": false}, ...],
+ *   "languages": ["en", "zh", "de", ...]}, ...]
  * Roles are "voice_detection", "transcription" and "diarization"; an engine
  * needs one model of each, the recommended one unless the engine config
  * names another transcription model. A "zip" file is an optional
  * accelerator (the Core ML encoder on Apple) that the app extracts into the
- * directory. Files may be shared between models. */
+ * directory. Files may be shared between models. A transcription model lists
+ * the "languages" a job's "language" may name (ISO 639-1; a few, such as
+ * "yue" and "haw", have longer codes). */
 SILLOK_API sillok_status sillok_model_catalog(char** out_json);
 
 /* The catalog entries an engine uses, one per role, for the app to download
@@ -129,7 +132,7 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * "even_loudness": true}
  * "language": "auto" tells the language of each group of speech (below) from
  * its first 30 s, so a recording may switch language at a pause; a code
- * (ISO 639-1, such as "ko" or "en", as the transcription model names it)
+ * (one of the transcription model's "languages" in the catalog)
  * transcribes everything in that language. SILLOK_INVALID_ARGUMENT for a
  * language the model does not know. Each segment of the transcript carries
  * the language it was transcribed in.

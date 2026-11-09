@@ -53,6 +53,9 @@ struct CatalogModel {
   std::string quantization;  // e.g. "q5_0", "q8_0", "f16"
   bool recommended = false;  // its role's default
   std::vector<CatalogFile> files;
+  // Of a transcription model: the languages it can be told to transcribe in,
+  // ISO 639-1 (a few have longer codes), in the model's own order.
+  std::vector<std::string> languages;
 };
 
 // The models of this build; one model of each role is recommended.

@@ -255,12 +255,14 @@ std::string CatalogToJson(const std::vector<CatalogModel>& catalog) {
                        {"sha256", file.sha256},
                        {"zip", file.zip}});
     }
-    models.push_back({{"id", model.id},
-                      {"role", model.role},
-                      {"family", model.family},
-                      {"quantization", model.quantization},
-                      {"recommended", model.recommended},
-                      {"files", std::move(files)}});
+    Json entry = {{"id", model.id},
+                  {"role", model.role},
+                  {"family", model.family},
+                  {"quantization", model.quantization},
+                  {"recommended", model.recommended},
+                  {"files", std::move(files)}};
+    if (model.role == "transcription") entry["languages"] = model.languages;
+    models.push_back(std::move(entry));
   }
   return Dump(models);
 }

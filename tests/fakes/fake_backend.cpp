@@ -25,7 +25,8 @@ std::vector<CatalogModel> ModelCatalog() {
                       .url = "https://example.invalid/fake-encoder.zip",
                       .size = 3,
                       .sha256 = abc,
-                      .zip = true}}},
+                      .zip = true}},
+           .languages = {"en", "ko"}},
           {.id = "fake-small",
            .role = "transcription",
            .family = "fake-small",
@@ -35,7 +36,8 @@ std::vector<CatalogModel> ModelCatalog() {
                       .url = "https://example.invalid/fake-small.bin",
                       .size = 3,
                       .sha256 = abc,
-                      .zip = false}}}};
+                      .zip = false}},
+           .languages = {"en", "ko"}}};
 }
 
 std::vector<DeviceInfo> ListDevices() {
