@@ -183,7 +183,8 @@ class Models final : public ModelProvider {
                         .name = transcriber_.id,
                         .device = device_,
                         .threads = threads_,
-                        .core_ml = core_ml});
+                        .core_ml = core_ml,
+                        .family = transcriber_.family});
   }
 
   std::unique_ptr<Diarizer> OpenDiarizer() override {

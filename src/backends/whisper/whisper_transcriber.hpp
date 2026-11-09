@@ -19,6 +19,9 @@ struct WhisperConfig {
   // to `model` (builds with Core ML only), whatever `device` is. Off keeps
   // the Neural Engine unused.
   bool core_ml = false;
+  // "large-v3-turbo" or "large-v3": which of the decoder's attention heads
+  // follow the audio, for the word times.
+  std::string family;
 };
 
 // Whisper speech recognition through whisper.cpp. Throws ModelError if the
