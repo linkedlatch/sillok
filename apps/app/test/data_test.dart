@@ -114,6 +114,21 @@ void main() {
     expect((await store.readTranscript(first))!.segments, hasLength(3));
   });
 
+  test('a jump lands on the sentence spoken then, or the next one in a pause', () {
+    const segments = [
+      Segment(startMs: 1000, endMs: 3000, text: 'a', language: 'ko'),
+      Segment(startMs: 5000, endMs: 7000, text: 'b', language: 'ko'),
+    ];
+    int at(int ms, {bool complete = true}) => landingSegment(segments, ms, complete: complete);
+    expect(at(0), 0); // before the first
+    expect(at(2000), 0);
+    expect(at(3000), 1); // a pause: the next one
+    expect(at(6999), 1);
+    expect(at(9000), 1); // past the end of a finished transcript
+    expect(at(9000, complete: false), -1); // not transcribed yet
+    expect(landingSegment(const [], 0, complete: true), -1);
+  });
+
   test('preparing evens out the original, transcribing takes the copy as it is', () {
     const settings = JobSettings(language: 'ko', diarize: true, glossary: ['Raft']);
     expect(jobOptions(settings, Lane.prepare, '/j/checkpoint.jsonl'), isEmpty);

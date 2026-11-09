@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../app_state.dart';
@@ -49,6 +50,7 @@ class _TranscriptViewState extends State<TranscriptView> {
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _recognizers = <TapGestureRecognizer>[];
   final _paragraphKeys = <GlobalKey>[];
+  final _textKeys = <GlobalKey>[]; // each paragraph's text, to find a sentence in it
   final _search = TextEditingController();
   final _scroll = ScrollController();
 
@@ -202,9 +204,11 @@ class _TranscriptViewState extends State<TranscriptView> {
     }
     if (_paragraphKeys.length > _paragraphs.length) {
       _paragraphKeys.removeRange(_paragraphs.length, _paragraphKeys.length);
+      _textKeys.removeRange(_paragraphs.length, _textKeys.length);
     }
     while (_paragraphKeys.length < _paragraphs.length) {
       _paragraphKeys.add(GlobalKey());
+      _textKeys.add(GlobalKey());
     }
     if (_selected != null && _selected! >= segments.length) _selected = null;
     if (_current != null && _current! >= segments.length) _current = null;
@@ -225,13 +229,42 @@ class _TranscriptViewState extends State<TranscriptView> {
     super.dispose();
   }
 
-  /// The sentence playing at [ms]: the last one started by then.
-  int _segmentAt(int ms) {
-    var found = -1;
-    for (var i = 0; i < _segments.length && _segments[i].startMs <= ms; i++) {
-      found = i;
+  /// Where a jump to [ms] lands (DESIGN D36).
+  int _landing(int ms) => landingSegment(_segments, ms, complete: widget.entry != null);
+
+  /// Where [segment] is on the screen, if its paragraph is shown.
+  Rect? _sentenceRect(int segment) {
+    final index = _paragraphs.indexWhere((p) => p.segments.contains(segment));
+    final render = index >= 0 ? _textKeys[index].currentContext?.findRenderObject() : null;
+    if (render is! RenderParagraph || !render.attached) return null;
+    // The paragraph's text is its sentences, each followed by a space.
+    var offset = 0;
+    for (final s in _paragraphs[index].segments) {
+      if (s == segment) break;
+      offset += _segments[s].text.length + 1;
     }
-    return found;
+    final boxes = render.getBoxesForSelection(
+      TextSelection(baseOffset: offset, extentOffset: offset + _segments[segment].text.length),
+    );
+    if (boxes.isEmpty) return null;
+    var rect = boxes.first.toRect();
+    for (final box in boxes.skip(1)) {
+      rect = rect.expandToInclude(box.toRect());
+    }
+    return MatrixUtils.transformRect(render.getTransformTo(null), rect);
+  }
+
+  Rect? get _viewRect {
+    final view = _textKey.currentContext?.findRenderObject();
+    return view is RenderBox && view.attached ? view.localToGlobal(Offset.zero) & view.size : null;
+  }
+
+  /// Whether [segment] passes the search, so that its paragraph is shown.
+  bool _inSearch(int segment) {
+    final query = _search.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    final paragraph = _paragraphs.where((p) => p.segments.contains(segment)).firstOrNull;
+    return paragraph != null && paragraph.segments.any((s) => _segments[s].text.toLowerCase().contains(query));
   }
 
   void _onPosition(Duration position) {
@@ -248,23 +281,27 @@ class _TranscriptViewState extends State<TranscriptView> {
 
   void _checkCurrent() {
     if (!mounted) return;
-    final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(_current));
-    final box = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext?.findRenderObject() : null;
-    final view = _textKey.currentContext?.findRenderObject();
-    var hidden = false;
-    if (box is RenderBox && view is RenderBox && box.attached && view.attached) {
-      final rect = box.localToGlobal(Offset.zero) & box.size;
-      hidden = !rect.overlaps(view.localToGlobal(Offset.zero) & view.size);
-    }
+    final current = _current;
+    final rect = current == null ? null : _sentenceRect(current);
+    final view = _viewRect;
+    final hidden = rect != null && view != null && !rect.overlaps(view);
     if (hidden != _currentHidden) setState(() => _currentHidden = hidden);
   }
 
-  void _showSegment(int? segment) {
-    final paragraph = _paragraphs.indexWhere((p) => p.segments.contains(segment));
-    final context = paragraph >= 0 ? _paragraphKeys[paragraph].currentContext : null;
-    if (context != null) {
-      Scrollable.ensureVisible(context, alignment: 0.3, duration: const Duration(milliseconds: 200));
-    }
+  /// Scrolls [segment] to a third of the way down the text; with [ifHidden],
+  /// only when it is not in view already.
+  void _showSegment(int? segment, {bool ifHidden = false}) {
+    final rect = segment == null ? null : _sentenceRect(segment);
+    final view = _viewRect;
+    if (rect == null || view == null || !_scroll.hasClients) return;
+    final inView = rect.top >= view.top && (rect.bottom <= view.bottom || rect.height > view.height);
+    if (ifHidden && inView && rect.top < view.bottom) return;
+    final position = _scroll.position;
+    final target = (position.pixels + rect.top - view.top - view.height / 3).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    _scroll.animateTo(target, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
   }
 
   void _toEnd() {
@@ -283,19 +320,22 @@ class _TranscriptViewState extends State<TranscriptView> {
     _playFrom(_segments[segment].startMs);
   }
 
-  /// The slider let go at [ms]: plays from there and goes to its sentence.
+  /// The slider let go at [ms]: plays from there and goes to its sentence,
+  /// scrolling only when it is out of view. Past what is transcribed, or with
+  /// the sentence left out by the search, only the playback moves.
   void _land(double ms) {
-    final segment = _segmentAt(ms.round());
+    final segment = _landing(ms.round());
+    final goes = segment >= 0 && _inSearch(segment);
     setState(() {
       _dragging = null;
       _position = Duration(milliseconds: ms.round());
-      if (segment >= 0) {
+      if (goes) {
         _current = segment;
         _landed = segment;
       }
     });
     _player.seek(Duration(milliseconds: ms.round()));
-    if (segment >= 0) WidgetsBinding.instance.addPostFrameCallback((_) => _showSegment(segment));
+    if (goes) WidgetsBinding.instance.addPostFrameCallback((_) => _showSegment(segment, ifHidden: true));
   }
 
   String _speaker(AppLocalizations l, int id) => _transcript?.speakers[id] ?? l.speakerName('${id + 1}');
@@ -617,6 +657,7 @@ class _TranscriptViewState extends State<TranscriptView> {
             style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary),
           ),
           Text.rich(
+            key: _textKeys[index],
             TextSpan(
               children: [
                 for (final s in paragraph.segments) ...[
@@ -719,7 +760,7 @@ class _TranscriptViewState extends State<TranscriptView> {
       onChangeEnd: _land,
     );
     final time = Text('${formatTime(at.round())} / ${formatTime(known)}', maxLines: 1, overflow: TextOverflow.ellipsis);
-    final segment = dragging == null ? -1 : _segmentAt(dragging.round());
+    final segment = dragging == null ? -1 : _landing(dragging.round());
     return SafeArea(
       top: false,
       child: Padding(

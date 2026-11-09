@@ -85,6 +85,17 @@ class Paragraph {
   final List<int> segments;
 }
 
+/// The sentence a jump to [ms] lands on (DESIGN D36): the one spoken then,
+/// or in a pause the one that follows. Past the last one, the last when the
+/// transcript is [complete]; otherwise none, as the rest is not transcribed
+/// yet. -1 for none.
+int landingSegment(List<Segment> segments, int ms, {required bool complete}) {
+  for (var i = 0; i < segments.length; i++) {
+    if (ms < segments[i].endMs) return i;
+  }
+  return complete && segments.isNotEmpty ? segments.length - 1 : -1;
+}
+
 List<Paragraph> paragraphs(List<Segment> segments) {
   final result = <Paragraph>[];
   var current = <int>[];

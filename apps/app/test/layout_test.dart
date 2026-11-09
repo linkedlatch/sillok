@@ -357,7 +357,18 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(preview, findsNothing);
-    expect(position().pixels, greaterThan(0));
+    final there = position().pixels;
+    expect(there, greaterThan(0));
+
+    // Back near the start: that sentence is out of view, so the text goes
+    // to it; letting go again on a sentence in view leaves the text alone.
+    await tester.tapAt(Offset(slider.left + 30, slider.center.dy));
+    await tester.pumpAndSettle();
+    expect(position().pixels, lessThan(there));
+    final near = position().pixels;
+    await tester.tapAt(Offset(slider.left + 34, slider.center.dy));
+    await tester.pumpAndSettle();
+    expect(position().pixels, near);
   });
 
   testWidgets('playback leaves the text where the reader put it', (tester) async {
