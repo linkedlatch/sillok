@@ -23,20 +23,23 @@ src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
-third_party/              whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
+third_party/              llama.cpp, whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
 scripts/                  fetching test audio, evaluation
 ```
 
 To update a submodule to a release, fetch and check out its tag, then commit
-the submodule's new commit. NeMo's llama.cpp follows the commit NeMo records,
-so fetch it again after updating NeMo:
+the submodule's new commit:
 
 ```
 git -C third_party/NeMo-Speech.cpp fetch --depth 1 origin tag v0.4.0
 git -C third_party/NeMo-Speech.cpp checkout v0.4.0
-git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
 git add third_party/NeMo-Speech.cpp
 ```
+
+llama.cpp's ggml is the only ggml in the build: whisper.cpp and the NeMo
+sources are compiled against it. After updating llama.cpp (release tags
+`bNNNN`) or whisper.cpp, check that both still build and compare the results
+of `scripts/eval/run_eval.py` with the previous version.
 
 After updating NeMo-Speech.cpp, compare the diarization (`ami` and
 `korean_speakers` in `scripts/eval/run_eval.py`) with the previous version, and
@@ -49,15 +52,13 @@ shell for FFmpeg's own build (on Windows: MSYS2 at `C:\msys64` with
 `pacman -S make diffutils`, building from an MSVC developer prompt); Vulkan
 SDK headers and `glslc` for `-DSILLOK_VULKAN=ON`.
 
-Clone without `--recursive` (or `--recurse-submodules`): of NeMo-Speech.cpp's
-own submodules, only llama.cpp is used (its file reading, for NeMo's model
-loader; its ggml is not built, whisper.cpp's is the only one), so it is
-fetched by itself. Shallow submodules are enough.
+Clone without `--recursive` (or `--recurse-submodules`): none of the
+submodules' own submodules is used (NeMo's model loader reads files with the
+top-level llama.cpp). Shallow submodules are enough.
 
 ```
 git clone https://github.com/linkedlatch/sillok.git && cd sillok
 git submodule update --init --depth 1
-git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build

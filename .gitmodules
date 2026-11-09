@@ -18,3 +18,7 @@
 	path = third_party/json
 	url = https://github.com/nlohmann/json.git
 	shallow = true
+[submodule "third_party/llama.cpp"]
+	path = third_party/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+	shallow = true

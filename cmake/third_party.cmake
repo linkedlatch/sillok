@@ -28,14 +28,30 @@ if(NOT SILLOK_WITH_MODELS)
     return()
 endif()
 
-# whisper.cpp builds the only ggml in the process; the NeMo diarization sources
-# below link the same ggml target (docs/DESIGN.md D2). Everything is static so the
-# sillok library is self-contained.
+# llama.cpp, where ggml is developed, builds the only ggml in the process;
+# whisper.cpp and the NeMo diarization sources below link the same ggml target
+# (docs/DESIGN.md D2-2). Everything is static so the sillok library is
+# self-contained.
+sillok_require_third_party(llama.cpp)
 sillok_require_third_party(whisper.cpp)
-# whisper.cpp declares cmake_minimum_required(3.5), so without CMP0077 its
-# option(BUILD_SHARED_LIBS) would override the value set here.
+# whisper.cpp and llama.cpp declare old cmake_minimum_required versions, so
+# without CMP0077 their option(BUILD_SHARED_LIBS) would override the value set
+# here.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
+set(GGML_VULKAN ${SILLOK_VULKAN} CACHE INTERNAL "")
+# Windows has no OpenMP runtime the app could rely on (libomp.dll with clang-cl,
+# vcomp140.dll with MSVC); ggml's own thread pool saves the app from shipping one.
+if(WIN32)
+    set(GGML_OPENMP OFF CACHE INTERNAL "")
+endif()
+foreach(option LLAMA_BUILD_COMMON LLAMA_BUILD_TESTS LLAMA_BUILD_TOOLS LLAMA_BUILD_EXAMPLES
+               LLAMA_BUILD_SERVER LLAMA_BUILD_APP LLAMA_BUILD_MTMD LLAMA_OPENSSL)
+    set(${option} OFF CACHE INTERNAL "")
+endforeach()
+add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/llama.cpp" "${CMAKE_BINARY_DIR}/third_party/llama.cpp" EXCLUDE_FROM_ALL SYSTEM)
+
+# whisper.cpp builds no ggml of its own when the ggml target exists.
 set(WHISPER_BUILD_TESTS OFF CACHE INTERNAL "")
 set(WHISPER_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(WHISPER_BUILD_SERVER OFF CACHE INTERNAL "")
@@ -43,26 +59,16 @@ set(WHISPER_COREML ${SILLOK_COREML} CACHE INTERNAL "")
 # CPU runs load the model without a path so that no Core ML encoder is found;
 # whisper.cpp then has to fall back to its own encoder (see backends/whisper).
 set(WHISPER_COREML_ALLOW_FALLBACK ON CACHE INTERNAL "")
-set(GGML_VULKAN ${SILLOK_VULKAN} CACHE INTERNAL "")
-# Windows has no OpenMP runtime the app could rely on (libomp.dll with clang-cl,
-# vcomp140.dll with MSVC); ggml's own thread pool saves the app from shipping one.
-if(WIN32)
-    set(GGML_OPENMP OFF CACHE INTERNAL "")
-endif()
 add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/third_party/whisper.cpp" EXCLUDE_FROM_ALL SYSTEM)
 
 # NeMo-Speech.cpp: only the sources behind nemo_speech::asr::Diarizer, built
 # against the ggml above (docs/DESIGN.md D16). Its own CMake would add a second
 # ggml and pull in the NeMo ASR model and SentencePiece. Its model loader reads
-# files with llama.cpp's llama_file/llama_mmap, from NeMo's own llama.cpp
-# submodule, the only one of its submodules fetched; llama.cpp's ggml is not
-# used.
+# files with llama.cpp's llama_file/llama_mmap, taken from third_party/llama.cpp
+# (none of NeMo's own submodules is fetched).
 sillok_require_third_party(NeMo-Speech.cpp)
 set(nemo "${SILLOK_THIRD_PARTY_DIR}/NeMo-Speech.cpp/src")
-set(nemo_llama "${SILLOK_THIRD_PARTY_DIR}/NeMo-Speech.cpp/llama.cpp")
-if(NOT EXISTS "${nemo_llama}/src/llama-mmap.cpp")
-    message(FATAL_ERROR "${nemo_llama} is missing; run git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp")
-endif()
+set(nemo_llama "${SILLOK_THIRD_PARTY_DIR}/llama.cpp")
 add_library(nemo_diar STATIC
     "${nemo_llama}/src/llama-mmap.cpp"
     "${nemo}/runtime/ggml/llama_log_shim.cpp"

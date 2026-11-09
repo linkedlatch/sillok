@@ -25,9 +25,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
-      - name: Fetch NeMo's llama.cpp
-        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - name: Install CMake, Ninja and Flutter
         run: |
           scripts/ci/install-cmake.sh
@@ -55,9 +52,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
-      - name: Fetch NeMo's llama.cpp
-        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - uses: jakoch/install-vulkan-sdk-action@d17de7e2f5e50efb5d2123efed18497d3c58c533 # v1.7.0
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
@@ -94,9 +88,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      # The only one of NeMo-Speech.cpp's own submodules sillok uses.
-      - name: Fetch NeMo's llama.cpp
-        run: git -C third_party/NeMo-Speech.cpp submodule update --init --depth 1 llama.cpp
       - name: Install CMake, Ninja and Flutter
         run: |
           scripts/ci/install-cmake.sh
