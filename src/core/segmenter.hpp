@@ -21,6 +21,10 @@ struct SegmenterOptions {
   // Speech further apart than this is transcribed separately, so that what
   // follows a long pause is not heard together with what came before it.
   Milliseconds max_gap{2000};
+  // A group longer than this, joined, is split at its longest pause, until
+  // none is or one is a single stretch of speech. Qwen3-ForcedAligner takes
+  // up to 180 s.
+  Milliseconds max_group{180000};
 };
 
 // Speech regions from per-frame speech probabilities, with short pauses
@@ -30,9 +34,10 @@ std::vector<SampleRange> FindSpeech(std::span<const float> probabilities,
                                     const SegmenterOptions& options);
 
 // `speech` in groups transcribed together: a new one starts at each pause of
-// at least `max_gap`.
+// at least `max_gap`, and at the longest pause of a group longer than
+// `max_group` joined.
 std::vector<std::vector<SampleRange>> GroupSpeech(
-    std::span<const SampleRange> speech, Milliseconds max_gap);
+    std::span<const SampleRange> speech, Milliseconds max_gap, Milliseconds max_group);
 
 // Silence between the regions of joined speech, as in whisper.cpp.
 inline constexpr Milliseconds kJoinGap{100};

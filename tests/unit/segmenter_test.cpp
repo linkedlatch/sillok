@@ -67,11 +67,33 @@ TEST(GroupSpeechTest, StartsAGroupAtLongPauses) {
   // 31 999 samples is under 2 s, 32 000 is not.
   const std::vector<SampleRange> speech = {
       {0, 16000}, {47999, 64000}, {96000, 112000}, {112001, 128000}};
-  const auto groups = GroupSpeech(speech, Milliseconds{2000});
+  const auto groups = GroupSpeech(speech, Milliseconds{2000}, Milliseconds{180000});
   ASSERT_EQ(groups.size(), 2u);
   EXPECT_EQ(groups[0].size(), 2u);
   EXPECT_EQ(groups[1].size(), 2u);
-  EXPECT_TRUE(GroupSpeech({}, Milliseconds{2000}).empty());
+  EXPECT_TRUE(GroupSpeech({}, Milliseconds{2000}, Milliseconds{180000}).empty());
+}
+
+TEST(GroupSpeechTest, SplitsLongGroupsAtTheirLongestPause) {
+  // 0.8 s of speech each, 0.2 s apart but 0.7 s after 3.8 s and 0.8 s after
+  // 7.3 s; 8.3 s joined.
+  const auto at = [](int ms) { return ToSamples(Milliseconds{ms}); };
+  std::vector<SampleRange> speech;
+  for (const int start : {0, 1000, 2000, 3000, 4500, 5500, 6500, 8100, 9100}) {
+    speech.push_back({at(start), at(start + 800)});
+  }
+  // At most 4 s: split at the 0.8 s pause, then the first part at 0.7 s.
+  const auto groups = GroupSpeech(speech, Milliseconds{2000}, Milliseconds{4000});
+  ASSERT_EQ(groups.size(), 3u);
+  EXPECT_EQ(groups[0].size(), 4u);
+  EXPECT_EQ(groups[1].size(), 3u);
+  EXPECT_EQ(groups[2].size(), 2u);
+  EXPECT_EQ(groups[2][0].begin, at(8100));
+  // One stretch of speech too long stays whole.
+  EXPECT_EQ(GroupSpeech(std::vector<SampleRange>{{0, at(9000)}}, Milliseconds{2000},
+                        Milliseconds{4000})
+                .size(),
+            1u);
 }
 
 TEST(JoinedSpeechTest, MapsWordsBackToTheRecording) {

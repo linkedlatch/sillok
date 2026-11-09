@@ -58,14 +58,34 @@ std::vector<SampleRange> FindSpeech(std::span<const float> probabilities,
 }
 
 std::vector<std::vector<SampleRange>> GroupSpeech(
-    std::span<const SampleRange> speech, Milliseconds max_gap) {
-  std::vector<std::vector<SampleRange>> groups;
+    std::span<const SampleRange> speech, Milliseconds max_gap, Milliseconds max_group) {
+  std::vector<std::vector<SampleRange>> pending;
   for (const SampleRange& region : speech) {
-    if (groups.empty() ||
-        region.begin - groups.back().back().end >= ToSamples(max_gap)) {
-      groups.emplace_back();
+    if (pending.empty() ||
+        region.begin - pending.back().back().end >= ToSamples(max_gap)) {
+      pending.emplace_back();
     }
-    groups.back().push_back(region);
+    pending.back().push_back(region);
+  }
+  std::vector<std::vector<SampleRange>> groups;
+  std::reverse(pending.begin(), pending.end());
+  // Depth-first so that the groups stay in order.
+  while (!pending.empty()) {
+    std::vector<SampleRange> group = std::move(pending.back());
+    pending.pop_back();
+    if (group.size() < 2 || JoinedSpeech(group).size() <= ToSamples(max_group)) {
+      groups.push_back(std::move(group));
+      continue;
+    }
+    std::size_t split = 1;
+    for (std::size_t i = 2; i < group.size(); ++i) {
+      if (group[i].begin - group[i - 1].end > group[split].begin - group[split - 1].end) {
+        split = i;
+      }
+    }
+    pending.emplace_back(group.begin() + static_cast<std::ptrdiff_t>(split), group.end());
+    group.resize(split);
+    pending.push_back(std::move(group));
   }
   return groups;
 }

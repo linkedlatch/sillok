@@ -37,42 +37,44 @@ TEST(PostprocessTest, SplitsSegmentsIntoSentences) {
   EXPECT_EQ(out[2].start, Milliseconds{800});
 }
 
-TEST(PostprocessTest, SplitsLongSentencesAtCommas) {
-  PostprocessOptions options;
-  options.max_segment_duration = Milliseconds{5000};
-  const Segment long_segment = S({W("one", 0, 1000), W("two.", 1000, 2000),
-                                  W("three", 2000, 3000), W("four,", 3500, 4000),
-                                  W("five", 4100, 5000), W("six", 5000, 6000),
-                                  W("seven", 6000, 8000)});
-  const auto out = SplitSegments({long_segment}, options);
-  ASSERT_EQ(out.size(), 3u);
-  EXPECT_EQ(out[0].text, "one two.");
-  EXPECT_EQ(out[1].text, "three four,");
-  EXPECT_EQ(out[2].text, "five six seven");
-  EXPECT_EQ(out[2].start, Milliseconds{4100});
-}
-
-TEST(PostprocessTest, SplitsAtLongestPauseWithoutPunctuation) {
+TEST(PostprocessTest, SplitsLongSentencesAtTheLongestPause) {
   PostprocessOptions options;
   options.max_segment_duration = Milliseconds{4000};
+  // A comma is no place to split; the pause after "c" is.
   const Segment long_segment =
-      S({W("a", 0, 500), W("b", 600, 1000), W("c", 1100, 1500),
-         W("d", 2500, 3000), W("e", 3100, 3500), W("f", 3600, 4500)});
+      S({W("a,", 0, 500), W("b", 500, 1000), W("c", 1000, 1500),
+         W("d", 2500, 3000), W("e", 3000, 3500), W("f", 3600, 4500)});
   const auto out = SplitSegments({long_segment}, options);
   ASSERT_EQ(out.size(), 2u);
-  EXPECT_EQ(out[0].text, "a b c");
+  EXPECT_EQ(out[0].text, "a, b c");
+  EXPECT_EQ(out[1].text, "d e f");
 }
 
-TEST(PostprocessTest, SplitsByCharacterCount) {
+TEST(PostprocessTest, SplitsLongSentencesWithoutPausesNearTheMiddle) {
   PostprocessOptions options;
-  options.max_segment_characters = 10;
-  const auto out = SplitSegments(
-      {S({W("가나다", 0, 100), W("라마바", 100, 200), W("사아자", 200, 300),
-          W("차카", 300, 400)}, "ko")},
-      options);
-  for (const Segment& segment : out) {
-    EXPECT_LE(CountCodePoints(segment.text), 10u) << segment.text;
+  options.max_segment_duration = Milliseconds{4000};
+  // Middle at 2600 ms: "c" starts nearest it.
+  const Segment long_segment = S({W("a", 200, 1000), W("b", 1000, 2500),
+                                  W("c", 2500, 3000), W("d", 3000, 5000)});
+  const auto out = SplitSegments({long_segment}, options);
+  ASSERT_EQ(out.size(), 2u);
+  EXPECT_EQ(out[0].text, "a b");
+  EXPECT_EQ(out[1].text, "c d");
+}
+
+TEST(PostprocessTest, HalvesUntilShortEnough) {
+  PostprocessOptions options;
+  options.max_segment_duration = Milliseconds{2000};
+  std::vector<Word> words;
+  for (int i = 0; i < 8; ++i) {
+    words.push_back(W("w" + std::to_string(i), i * 1000, (i + 1) * 1000));
   }
+  const auto out = SplitSegments({S(std::move(words))}, options);
+  ASSERT_EQ(out.size(), 4u);
+  for (const Segment& segment : out) {
+    EXPECT_LE(segment.end - segment.start, Milliseconds{2000}) << segment.text;
+  }
+  EXPECT_EQ(out[0].text, "w0 w1");
 }
 
 TEST(SpeakersTest, MapsWordsAndKeepsShortInterjections) {
@@ -87,7 +89,7 @@ TEST(SpeakersTest, MapsWordsAndKeepsShortInterjections) {
       {{ToSamples(Milliseconds{1000}), ToSamples(Milliseconds{1200})}, 3},
       {{ToSamples(Milliseconds{1250}), ToSamples(Milliseconds{2100})}, 7},
       {{ToSamples(Milliseconds{4900}), ToSamples(Milliseconds{6100})}, 3}};
-  const auto out = AssignSpeakers(segments, turns, {});
+  const auto out = AssignSpeakers(segments, turns);
   ASSERT_EQ(out.size(), 4u);
   EXPECT_EQ(out[0].speaker, 0);  // renumbered by first appearance
   EXPECT_EQ(out[0].text, "hello there");
@@ -105,7 +107,7 @@ TEST(SpeakersTest, SplitsSegmentAtSpeakerChange) {
   const std::vector<SpeakerTurn> turns = {
       {{0, ToSamples(Milliseconds{2000})}, 1},
       {{ToSamples(Milliseconds{2900}), ToSamples(Milliseconds{5000})}, 0}};
-  const auto out = AssignSpeakers(segments, turns, {});
+  const auto out = AssignSpeakers(segments, turns);
   ASSERT_EQ(out.size(), 2u);
   EXPECT_EQ(out[0].text, "a b");
   EXPECT_EQ(out[0].speaker, 0);
@@ -114,14 +116,30 @@ TEST(SpeakersTest, SplitsSegmentAtSpeakerChange) {
   EXPECT_EQ(out[1].words[0].speaker, 1);
 }
 
-TEST(SpeakersTest, WordsBetweenTurnsTakeNeighbors) {
+TEST(SpeakersTest, WordsBetweenTurnsTakeTheNearest) {
   const std::vector<Segment> segments = {
       S({W("a", 0, 1000), W("b", 3000, 4000), W("c", 6000, 7000)})};
   const std::vector<SpeakerTurn> turns = {
       {{0, ToSamples(Milliseconds{1000})}, 4}, {{ToSamples(Milliseconds{6000}), ToSamples(Milliseconds{7000})}, 4}};
-  const auto out = AssignSpeakers(segments, turns, {});
+  const auto out = AssignSpeakers(segments, turns);
   ASSERT_EQ(out.size(), 1u);
   EXPECT_EQ(out[0].words[1].speaker, 0);
+
+  // However far, and from either side: "b" is closer to the turn after it.
+  const std::vector<SpeakerTurn> apart = {
+      {{0, ToSamples(Milliseconds{1000})}, 4},
+      {{ToSamples(Milliseconds{4500}), ToSamples(Milliseconds{7000})}, 2}};
+  const auto split = AssignSpeakers(segments, apart);
+  ASSERT_EQ(split.size(), 2u);
+  EXPECT_EQ(split[0].text, "a");
+  EXPECT_EQ(split[1].text, "b c");
+  EXPECT_EQ(split[1].speaker, 1);
+}
+
+TEST(SpeakersTest, NoTurnsLeaveWordsWithoutSpeakers) {
+  const auto out = AssignSpeakers({S({W("a", 0, 1000), W("b", 1000, 2000)})}, {});
+  ASSERT_EQ(out.size(), 1u);
+  EXPECT_FALSE(out[0].speaker.has_value());
 }
 
 Transcript TwoSpeakers() {
@@ -142,14 +160,6 @@ TEST(ExportTest, TextLabelsOnlyWithSeveralSpeakers) {
   EXPECT_EQ(ToText(transcript, korean), "화자 1: Hello\n김교수: Hi\n");
   transcript.segments[1].speaker = 0;
   EXPECT_EQ(ToText(transcript, korean), "Hello\nHi\n");
-}
-
-TEST(ExportTest, Srt) {
-  Transcript transcript = TwoSpeakers();
-  transcript.segments[1].text = "Hi\n\nthere";  // edited by the app
-  EXPECT_EQ(ToSrt(transcript, {}),
-            "1\n00:00:00,000 --> 00:00:01,500\nSpeaker 1: Hello\n\n"
-            "2\n00:01:01,000 --> 01:02:03,456\nSpeaker 2: Hi\nthere\n\n");
 }
 
 TEST(Sha256Test, KnownVectors) {

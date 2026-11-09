@@ -59,7 +59,7 @@ std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& optio
     hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
     hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
   };
-  add("sillok checkpoint 2");
+  add("sillok checkpoint 3");
   add(voice_detector);
   add(transcriber);
   add(options.language);
@@ -70,7 +70,8 @@ std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& optio
     add(std::to_string(threshold));
   }
   for (const Milliseconds time : {segmenter.min_speech, segmenter.min_silence, segmenter.padding,
-                                  segmenter.tail, segmenter.max_gap}) {
+                                  segmenter.tail, segmenter.max_gap,
+                                  segmenter.max_group}) {
     add(std::to_string(time.count()));
   }
   constexpr SampleIndex kBlock = SampleIndex{kSampleRate} * 60;
@@ -101,7 +102,7 @@ std::vector<Segment> TranscribeSpeech(
            0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
   const std::vector<std::vector<SampleRange>> groups =
-      GroupSpeech(speech, options.segmenter.max_gap);
+      GroupSpeech(speech, options.segmenter.max_gap, options.segmenter.max_group);
   const std::string key =
       resume != nullptr || checkpoints != nullptr
           ? CheckpointKey(audio, options, transcript.models.at("voice_detection").name,
@@ -230,7 +231,7 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   if (options.diarize && !segments.empty()) {
     const std::vector<SpeakerTurn> turns =
         Diarize(audio, models, progress, stop, transcript);
-    segments = AssignSpeakers(std::move(segments), turns, options.speakers);
+    segments = AssignSpeakers(std::move(segments), turns);
   }
   transcript.segments = SplitSegments(std::move(segments), options.postprocess);
   return transcript;

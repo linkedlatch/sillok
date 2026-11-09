@@ -19,8 +19,6 @@ std::string SpeakerLabel(const Transcript& transcript, int id,
 
 // One line per segment. Speaker labels appear only with two or more speakers.
 std::string ToText(const Transcript& transcript, const ExportOptions& options);
-// SubRip subtitles; same labeling rule as ToText.
-std::string ToSrt(const Transcript& transcript, const ExportOptions& options);
 
 }  // namespace sillok
 

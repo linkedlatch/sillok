@@ -36,7 +36,6 @@ struct PipelineOptions {
 
   SegmenterOptions segmenter;
   PostprocessOptions postprocess;
-  SpeakerOptions speakers;
 };
 
 // How far a run's transcription got: the segments of its first `groups`

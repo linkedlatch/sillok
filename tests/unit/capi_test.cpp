@@ -390,10 +390,7 @@ TEST_F(CapiTest, ExportsEditedDocuments) {
   ASSERT_EQ(sillok_export(edited.c_str(), "txt", R"({"speaker_label": "화자 {n}"})", &out),
             SILLOK_OK) << sillok_last_error();
   EXPECT_EQ(Take(out), "김교수: 안녕하세요\n화자 2: 질문 있습니다\n");
-  ASSERT_EQ(sillok_export(edited.c_str(), "srt", nullptr, &out), SILLOK_OK);
-  EXPECT_EQ(Take(out),
-            "1\n00:00:00,000 --> 00:00:01,200\n김교수: 안녕하세요\n\n"
-            "2\n00:00:01,500 --> 00:00:03,000\nSpeaker 2: 질문 있습니다\n\n");
+  EXPECT_EQ(sillok_export(edited.c_str(), "srt", nullptr, &out), SILLOK_INVALID_ARGUMENT);
   ASSERT_EQ(sillok_export(edited.c_str(), "json", nullptr, &out), SILLOK_OK);
   const Json round_trip = Json::parse(Take(out));
   EXPECT_EQ(round_trip["speakers"][0]["name"], "김교수");

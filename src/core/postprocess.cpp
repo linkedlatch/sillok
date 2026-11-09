@@ -1,63 +1,54 @@
 #include "core/postprocess.hpp"
 
-#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <string_view>
 #include <utility>
 
-#include "core/utf8.hpp"
 #include "core/words.hpp"
 
 namespace sillok {
 namespace {
 
-// How strongly a word ends a phrase: 2 for sentence ends, 1 for commas.
-int BreakStrength(std::string_view word) {
-  constexpr std::array<std::string_view, 6> kSentence = {
+bool EndsSentence(std::string_view word) {
+  constexpr std::array<std::string_view, 6> kSentenceEnds = {
       ".", "?", "!", "\xE3\x80\x82", "\xEF\xBC\x9F", "\xEF\xBC\x81"};  // 。？！
-  constexpr std::array<std::string_view, 6> kClause = {
-      ",", ";", ":", "\xE3\x80\x81", "\xEF\xBC\x8C", "\xEF\xBC\x9B"};  // 、，；
-  for (const std::string_view mark : kSentence) {
-    if (word.ends_with(mark)) return 2;
+  for (const std::string_view mark : kSentenceEnds) {
+    if (word.ends_with(mark)) return true;
   }
-  for (const std::string_view mark : kClause) {
-    if (word.ends_with(mark)) return 1;
-  }
-  return 0;
-}
-
-bool TooLong(const Segment& segment, const PostprocessOptions& options) {
-  return segment.end - segment.start > options.max_segment_duration ||
-         CountCodePoints(segment.text) > options.max_segment_characters;
+  return false;
 }
 
 // Number of words up to the first sentence end before the last word, or 0
 // when the words make one sentence.
 std::size_t FirstSentence(const std::vector<Word>& words) {
   for (std::size_t k = 1; k < words.size(); ++k) {
-    if (BreakStrength(words[k - 1].text) == 2) return k;
+    if (EndsSentence(words[k - 1].text)) return k;
   }
   return 0;
 }
 
-// Number of words to put in the first part when splitting `words`.
+// Number of words before the split of a sentence too long: the longest pause
+// between words, or without any, the start of a word nearest the middle.
 std::size_t ChooseSplit(const std::vector<Word>& words) {
-  const std::size_t n = words.size();
-  // Only split inside the middle 60% to avoid tiny fragments.
-  const std::size_t min_split = std::max<std::size_t>(1, n * 2 / 10);
-  const std::size_t max_split =
-      std::max(min_split, std::min(n - 1, n * 8 / 10));
-  std::size_t best = (n + 1) / 2;
-  int best_strength = -1;
-  Milliseconds best_pause{0};
-  for (std::size_t k = min_split; k <= max_split; ++k) {
-    const int strength = BreakStrength(words[k - 1].text);
+  std::size_t best = 0;
+  Milliseconds longest{0};
+  for (std::size_t k = 1; k < words.size(); ++k) {
     const Milliseconds pause = words[k].start - words[k - 1].end;
-    if (strength > best_strength ||
-        (strength == best_strength && pause > best_pause)) {
+    if (pause > longest) {
       best = k;
-      best_strength = strength;
-      best_pause = pause;
+      longest = pause;
+    }
+  }
+  if (best != 0) return best;
+  const Milliseconds twice_middle = words.front().start + words.back().end;
+  Milliseconds nearest{0};
+  for (std::size_t k = 1; k < words.size(); ++k) {
+    const Milliseconds distance = words[k].start * 2 - twice_middle;
+    const Milliseconds away = distance < Milliseconds{0} ? -distance : distance;
+    if (best == 0 || away < nearest) {
+      best = k;
+      nearest = away;
     }
   }
   return best;
@@ -78,7 +69,8 @@ std::vector<Segment> SplitSegments(std::vector<Segment> segments,
     pending.pop_back();
     std::size_t split = FirstSentence(segment.words);
     if (split == 0) {
-      if (segment.words.size() < 2 || !TooLong(segment, options)) {
+      if (segment.words.size() < 2 ||
+          segment.end - segment.start <= options.max_segment_duration) {
         out.push_back(std::move(segment));
         continue;
       }

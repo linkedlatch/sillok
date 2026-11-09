@@ -250,7 +250,7 @@ SILLOK_API void sillok_job_destroy(sillok_job* job);
 /* --- Export -------------------------------------------------------------- */
 
 /* Renders a transcript document (as returned by sillok_job_run(), possibly
- * edited by the app) as "txt", "srt" or "json". `options_json` may be NULL
+ * edited by the app) as "txt" or "json". `options_json` may be NULL
  * or {"speaker_label": "Speaker {n}"}; speaker names in the document take
  * precedence over the label. */
 SILLOK_API sillok_status sillok_export(const char* transcript_json,

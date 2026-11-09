@@ -501,12 +501,10 @@ sillok_status sillok_export(const char* transcript_json, const char* format,
     std::string text;
     if (kind == "txt") {
       text = sillok::ToText(transcript, options);
-    } else if (kind == "srt") {
-      text = sillok::ToSrt(transcript, options);
     } else if (kind == "json") {
       text = sillok::TranscriptToJson(transcript);
     } else {
-      throw std::invalid_argument("format must be \"txt\", \"srt\" or \"json\"");
+      throw std::invalid_argument("format must be \"txt\" or \"json\"");
     }
     *out_text = sillok::CopyString(text);
     return SILLOK_OK;

@@ -78,7 +78,7 @@ LGPL, without GPL or nonfree parts, and stays replaceable that way.
 sillok models list                   # * marks the recommended models
 sillok models download               # into the default model directory
 sillok models download --model whisper-large-v3-q5_0   # another transcription model
-sillok transcribe lecture.m4a --diarize --format srt --output lecture.srt
+sillok transcribe lecture.m4a --diarize --format json --output lecture.json
 sillok transcribe talk.wav --language ko --term "Kubernetes" --device gpu
 sillok transcribe talk.wav --model whisper-large-v3-q5_0
 sillok export lecture.json --format txt --speaker-label "화자 {n}"
@@ -132,8 +132,8 @@ sillok_job_push_file(job, "/path/to/lecture.m4a", on_read, user_data);
 /* or sillok_job_push_audio(job, samples, frames, 48000, 2) as you decode */
 char* transcript;
 sillok_job_run(job, on_progress, user_data, &transcript); /* blocks; cancel from any thread */
-char* srt;
-sillok_export(transcript, "srt", "{\"speaker_label\": \"Speaker {n}\"}", &srt);
+char* text;
+sillok_export(transcript, "txt", "{\"speaker_label\": \"Speaker {n}\"}", &text);
 ```
 
 The transcript is JSON with millisecond times in the original recording,

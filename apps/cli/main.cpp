@@ -45,7 +45,7 @@ constexpr const char* kUsage = R"(usage:
       --diarize               label speakers
       --term TEXT             glossary term for the model (repeatable)
       --glossary FILE         glossary terms, one per line
-      --format txt|srt|json   output format (default txt)
+      --format txt|json       output format (default txt)
       --output FILE           write the result here instead of stdout
       --speaker-label TEXT    speaker label, {n} is the number
       --device cpu|gpu        compute device (default cpu)
@@ -60,7 +60,7 @@ constexpr const char* kUsage = R"(usage:
       --as-recorded           leave the loudness as it is, for audio evened
                               out already
       --quiet                 no progress output
-  sillok export TRANSCRIPT.json --format txt|srt|json [--output FILE]
+  sillok export TRANSCRIPT.json --format txt|json [--output FILE]
                 [--speaker-label TEXT]
   sillok models list|check [--models DIR]
   sillok models download [--model ID] [--models DIR]
@@ -354,7 +354,7 @@ int RunTranscribe(const std::vector<std::string>& all_args) {
   const auto input = FindFile(args.positional[0]);
   if (!input) throw std::runtime_error("file not found: " + args.positional[0]);
   const std::string format = args.Get("format").value_or("txt");
-  if (format != "txt" && format != "srt" && format != "json") {
+  if (format != "txt" && format != "json") {
     throw UsageError("unknown format: " + format);
   }
 

@@ -1,7 +1,6 @@
 #ifndef SILLOK_CORE_POSTPROCESS_HPP_
 #define SILLOK_CORE_POSTPROCESS_HPP_
 
-#include <cstddef>
 #include <vector>
 
 #include "core/audio.hpp"
@@ -10,13 +9,13 @@
 namespace sillok {
 
 struct PostprocessOptions {
-  Milliseconds max_segment_duration{8000};
-  std::size_t max_segment_characters = 80;
+  Milliseconds max_segment_duration{10000};
 };
 
 // Splits segments into sentences, after every word ending in sentence
-// punctuation, and then sentences too long to read: at commas if possible,
-// then at the longest pause between words. A model may give a sentence in
+// punctuation, and then halves sentences longer than max_segment_duration
+// until none is: at the longest pause between words if there is one, else
+// between the words nearest the middle. A model may give a sentence in
 // pieces or several in one segment, or a whole group of speech as one.
 std::vector<Segment> SplitSegments(std::vector<Segment> segments,
                                    const PostprocessOptions& options);

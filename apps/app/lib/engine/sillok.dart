@@ -126,7 +126,7 @@ abstract final class Sillok {
       ),
   ];
 
-  /// The transcript as "txt", "srt" or "json"; [speakerLabel] names unnamed
+  /// The transcript as "txt" or "json"; [speakerLabel] names unnamed
   /// speakers, with {n} for the number.
   static String export(String transcriptJson, String format, String speakerLabel) => withUtf8(
     transcriptJson,
