@@ -25,17 +25,32 @@ Segment S(std::vector<Word> words, std::string language = "en") {
   return MakeSegment(std::move(words), std::move(language));
 }
 
-TEST(PostprocessTest, SplitsLongSegmentsAtSentenceEnd) {
+TEST(PostprocessTest, SplitsSegmentsIntoSentences) {
+  // Short enough to read, yet three sentences: one each.
+  const auto out = SplitSegments(
+      {S({W("Okay.", 0, 300), W("Is", 400, 500), W("it?", 500, 700),
+          W("Yes", 800, 900), W("it", 900, 1000), W("is.", 1000, 1200)})},
+      {});
+  ASSERT_EQ(out.size(), 3u);
+  EXPECT_EQ(out[0].text, "Okay.");
+  EXPECT_EQ(out[1].text, "Is it?");
+  EXPECT_EQ(out[2].text, "Yes it is.");
+  EXPECT_EQ(out[2].start, Milliseconds{800});
+}
+
+TEST(PostprocessTest, SplitsLongSentencesAtCommas) {
   PostprocessOptions options;
   options.max_segment_duration = Milliseconds{5000};
   const Segment long_segment = S({W("one", 0, 1000), W("two.", 1000, 2000),
                                   W("three", 2000, 3000), W("four,", 3500, 4000),
-                                  W("five", 4100, 5000), W("six", 5000, 6000)});
-  const auto out = SplitLongSegments({long_segment}, options);
-  ASSERT_EQ(out.size(), 2u);
+                                  W("five", 4100, 5000), W("six", 5000, 6000),
+                                  W("seven", 6000, 8000)});
+  const auto out = SplitSegments({long_segment}, options);
+  ASSERT_EQ(out.size(), 3u);
   EXPECT_EQ(out[0].text, "one two.");
-  EXPECT_EQ(out[1].text, "three four, five six");
-  EXPECT_EQ(out[1].start, Milliseconds{2000});
+  EXPECT_EQ(out[1].text, "three four,");
+  EXPECT_EQ(out[2].text, "five six seven");
+  EXPECT_EQ(out[2].start, Milliseconds{4100});
 }
 
 TEST(PostprocessTest, SplitsAtLongestPauseWithoutPunctuation) {
@@ -44,7 +59,7 @@ TEST(PostprocessTest, SplitsAtLongestPauseWithoutPunctuation) {
   const Segment long_segment =
       S({W("a", 0, 500), W("b", 600, 1000), W("c", 1100, 1500),
          W("d", 2500, 3000), W("e", 3100, 3500), W("f", 3600, 4500)});
-  const auto out = SplitLongSegments({long_segment}, options);
+  const auto out = SplitSegments({long_segment}, options);
   ASSERT_EQ(out.size(), 2u);
   EXPECT_EQ(out[0].text, "a b c");
 }
@@ -52,7 +67,7 @@ TEST(PostprocessTest, SplitsAtLongestPauseWithoutPunctuation) {
 TEST(PostprocessTest, SplitsByCharacterCount) {
   PostprocessOptions options;
   options.max_segment_characters = 10;
-  const auto out = SplitLongSegments(
+  const auto out = SplitSegments(
       {S({W("가나다", 0, 100), W("라마바", 100, 200), W("사아자", 200, 300),
           W("차카", 300, 400)}, "ko")},
       options);

@@ -232,8 +232,7 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
         Diarize(audio, models, progress, stop, transcript);
     segments = AssignSpeakers(std::move(segments), turns, options.speakers);
   }
-  transcript.segments =
-      SplitLongSegments(std::move(segments), options.postprocess);
+  transcript.segments = SplitSegments(std::move(segments), options.postprocess);
   return transcript;
 }
 

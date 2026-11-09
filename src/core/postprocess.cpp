@@ -31,6 +31,15 @@ bool TooLong(const Segment& segment, const PostprocessOptions& options) {
          CountCodePoints(segment.text) > options.max_segment_characters;
 }
 
+// Number of words up to the first sentence end before the last word, or 0
+// when the words make one sentence.
+std::size_t FirstSentence(const std::vector<Word>& words) {
+  for (std::size_t k = 1; k < words.size(); ++k) {
+    if (BreakStrength(words[k - 1].text) == 2) return k;
+  }
+  return 0;
+}
+
 // Number of words to put in the first part when splitting `words`.
 std::size_t ChooseSplit(const std::vector<Word>& words) {
   const std::size_t n = words.size();
@@ -56,8 +65,8 @@ std::size_t ChooseSplit(const std::vector<Word>& words) {
 
 }  // namespace
 
-std::vector<Segment> SplitLongSegments(std::vector<Segment> segments,
-                                       const PostprocessOptions& options) {
+std::vector<Segment> SplitSegments(std::vector<Segment> segments,
+                                   const PostprocessOptions& options) {
   std::vector<Segment> out;
   std::vector<Segment> pending;
   for (auto it = segments.rbegin(); it != segments.rend(); ++it) {
@@ -67,11 +76,14 @@ std::vector<Segment> SplitLongSegments(std::vector<Segment> segments,
   while (!pending.empty()) {
     Segment segment = std::move(pending.back());
     pending.pop_back();
-    if (segment.words.size() < 2 || !TooLong(segment, options)) {
-      out.push_back(std::move(segment));
-      continue;
+    std::size_t split = FirstSentence(segment.words);
+    if (split == 0) {
+      if (segment.words.size() < 2 || !TooLong(segment, options)) {
+        out.push_back(std::move(segment));
+        continue;
+      }
+      split = ChooseSplit(segment.words);
     }
-    const std::size_t split = ChooseSplit(segment.words);
     std::vector<Word> second(
         segment.words.begin() + static_cast<std::ptrdiff_t>(split),
         segment.words.end());

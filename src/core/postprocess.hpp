@@ -14,10 +14,12 @@ struct PostprocessOptions {
   std::size_t max_segment_characters = 80;
 };
 
-// Splits segments that are too long to read: at sentence punctuation if
-// possible, then at commas, then at the longest pause between words.
-std::vector<Segment> SplitLongSegments(std::vector<Segment> segments,
-                                       const PostprocessOptions& options);
+// Splits segments into sentences, after every word ending in sentence
+// punctuation, and then sentences too long to read: at commas if possible,
+// then at the longest pause between words. A model may give a sentence in
+// pieces or several in one segment, or a whole group of speech as one.
+std::vector<Segment> SplitSegments(std::vector<Segment> segments,
+                                   const PostprocessOptions& options);
 
 }  // namespace sillok
 
