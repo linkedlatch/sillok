@@ -89,11 +89,12 @@ TEST(GroupSpeechTest, SplitsLongGroupsAtTheirLongestPause) {
   EXPECT_EQ(groups[1].size(), 3u);
   EXPECT_EQ(groups[2].size(), 2u);
   EXPECT_EQ(groups[2][0].begin, at(8100));
-  // One stretch of speech too long stays whole.
-  EXPECT_EQ(GroupSpeech(std::vector<SampleRange>{{0, at(9000)}}, Milliseconds{2000},
-                        Milliseconds{4000})
-                .size(),
-            1u);
+  // Speech without a pause is halved until short enough: 9 s in 2.25 s.
+  const auto halves = GroupSpeech(std::vector<SampleRange>{{0, at(9000)}}, Milliseconds{2000},
+                                  Milliseconds{4000});
+  ASSERT_EQ(halves.size(), 4u);
+  EXPECT_EQ(halves[1][0].begin, at(2250));
+  EXPECT_EQ(halves[3][0].end, at(9000));
 }
 
 TEST(JoinedSpeechTest, MapsWordsBackToTheRecording) {

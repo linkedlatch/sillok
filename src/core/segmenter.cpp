@@ -73,8 +73,16 @@ std::vector<std::vector<SampleRange>> GroupSpeech(
   while (!pending.empty()) {
     std::vector<SampleRange> group = std::move(pending.back());
     pending.pop_back();
-    if (group.size() < 2 || JoinedSpeech(group).size() <= ToSamples(max_group)) {
+    if (JoinedSpeech(group).size() <= ToSamples(max_group)) {
       groups.push_back(std::move(group));
+      continue;
+    }
+    if (group.size() == 1) {
+      // Speech without a pause: halved, wherever that falls.
+      const SampleRange whole = group[0];
+      const SampleIndex middle = whole.begin + whole.length() / 2;
+      pending.push_back({{middle, whole.end}});
+      pending.push_back({{whole.begin, middle}});
       continue;
     }
     std::size_t split = 1;

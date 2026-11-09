@@ -24,6 +24,18 @@ Segment S(std::vector<Word> words, std::string language = "en") {
   return MakeSegment(std::move(words), std::move(language));
 }
 
+TEST(PostprocessTest, KnowsSentenceEndsOfOtherScripts) {
+  // Hindi's danda, Arabic's question mark, a CJK full stop; not a comma or a
+  // closing quote.
+  const auto out = SplitSegments(
+      {S({W("\xE0\xA4\xB9\xE0\xA5\xA4", 0, 300), W("\xD8\x9F", 300, 400),
+          W("\xE3\x80\x82", 400, 500), W("a,", 500, 600), W("b\"", 600, 700),
+          W("c", 700, 800)})},
+      {});
+  ASSERT_EQ(out.size(), 4u);
+  EXPECT_EQ(out[3].text, "a, b\" c");
+}
+
 TEST(PostprocessTest, SplitsSegmentsIntoSentences) {
   // Short enough to read, yet three sentences: one each.
   const auto out = SplitSegments(

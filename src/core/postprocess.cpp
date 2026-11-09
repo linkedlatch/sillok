@@ -1,7 +1,8 @@
 #include "core/postprocess.hpp"
 
-#include <array>
+#include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <string_view>
 #include <utility>
 
@@ -10,13 +11,38 @@
 namespace sillok {
 namespace {
 
-bool EndsSentence(std::string_view word) {
-  constexpr std::array<std::string_view, 6> kSentenceEnds = {
-      ".", "?", "!", "\xE3\x80\x82", "\xEF\xBC\x9F", "\xEF\xBC\x81"};  // 。？！
-  for (const std::string_view mark : kSentenceEnds) {
-    if (word.ends_with(mark)) return true;
+struct CodePointRange {
+  char32_t first;
+  char32_t last;
+};
+
+constexpr CodePointRange kSentenceEnds[] = {
+#include "core/sentence_ends.inc"
+};
+
+// Last code point of well-formed UTF-8 `text`, or 0 when it is empty.
+char32_t LastCodePoint(std::string_view text) {
+  std::size_t start = text.size();
+  while (start > 0 && (static_cast<unsigned char>(text[start - 1]) & 0xC0) == 0x80) --start;
+  if (start == 0) return 0;
+  --start;
+  const auto lead = static_cast<unsigned char>(text[start]);
+  const std::size_t length = text.size() - start;
+  char32_t code = length == 1 ? lead : lead & (0x7F >> length);
+  for (std::size_t i = start + 1; i < text.size(); ++i) {
+    code = (code << 6) | (static_cast<unsigned char>(text[i]) & 0x3F);
   }
-  return false;
+  return code;
+}
+
+// Whether `word` ends in a character with the Unicode Sentence_Terminal
+// property: . ! ? and their counterparts in other scripts (。 । ؟ ...).
+bool EndsSentence(std::string_view word) {
+  const char32_t last = LastCodePoint(word);
+  const auto it = std::upper_bound(
+      std::begin(kSentenceEnds), std::end(kSentenceEnds), last,
+      [](char32_t value, const CodePointRange& range) { return value < range.first; });
+  return it != std::begin(kSentenceEnds) && last <= std::prev(it)->last;
 }
 
 // Number of words up to the first sentence end before the last word, or 0
