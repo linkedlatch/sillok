@@ -138,8 +138,7 @@ Json SegmentToJson(const Segment& segment) {
   for (const Word& word : segment.words) {
     Json item = {{"text", word.text},
                  {"start_ms", Ms(word.start)},
-                 {"end_ms", Ms(word.end)},
-                 {"confidence", word.confidence}};
+                 {"end_ms", Ms(word.end)}};
     if (word.speaker) item["speaker"] = *word.speaker;
     words.push_back(std::move(item));
   }
@@ -163,7 +162,6 @@ Segment SegmentFromJson(const Json& item) {
     segment.words.push_back({.text = Get<std::string>(word, "text", ""),
                              .start = ReadMs(word, "start_ms"),
                              .end = ReadMs(word, "end_ms"),
-                             .confidence = Get<float>(word, "confidence", 0.0f),
                              .speaker = ReadSpeaker(word)});
   }
   return segment;

@@ -91,22 +91,6 @@ std::vector<Segment> AssignSpeakers(std::vector<Segment> segments,
     }
   }
 
-  // A short run between two runs of one other speaker (A-B-A) is an
-  // interjection or a diarization slip: it joins the surrounding speaker.
-  for (std::size_t i = 0; i < words.size();) {
-    std::size_t j = i;
-    while (j < words.size() && words[j]->speaker == words[i]->speaker) ++j;
-    const Milliseconds duration = words[j - 1]->end - words[i]->start;
-    if (i > 0 && j < words.size() && words[i - 1]->speaker &&
-        words[i - 1]->speaker == words[j]->speaker &&
-        duration < options.min_turn) {
-      for (std::size_t k = i; k < j; ++k) {
-        words[k]->speaker = words[i - 1]->speaker;
-      }
-    }
-    i = j;
-  }
-
   // Number speakers by first appearance.
   std::map<int, int> numbering;
   for (Word* word : words) {

@@ -19,7 +19,6 @@ struct Token {
   std::string text;
   Milliseconds start{0};
   Milliseconds end{0};
-  float probability = 0.0f;
 };
 
 // Consecutive tokens the model grouped together, typically a sentence.

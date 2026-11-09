@@ -51,8 +51,7 @@ void HandOver(whisper_context* context, Run& run) {
         // reaches the next one; the last one ends with the segment.
         Token item{.text = whisper_full_get_token_text(context, i, j),
                    .start = Milliseconds{token.t_dtw * 10},
-                   .end = Milliseconds{whisper_full_get_segment_t1(context, i) * 10},
-                   .probability = token.p};
+                   .end = Milliseconds{whisper_full_get_segment_t1(context, i) * 10}};
         for (int k = j + 1; k < count; ++k) {
           const whisper_token_data next = whisper_full_get_token_data(context, i, k);
           if (next.id >= end_of_text) continue;

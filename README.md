@@ -137,7 +137,7 @@ sillok_export(transcript, "srt", "{\"speaker_label\": \"Speaker {n}\"}", &srt);
 ```
 
 The transcript is JSON with millisecond times in the original recording,
-words with confidence, and speaker ids that the app can name. Apps that
+word times, and speaker ids that the app can name. Apps that
 keep a copy for listening back save the job's own 16 kHz mono recording
 (`sillok_job_save_audio`), the audio those times refer to, with its loudness
 evened out as the transcription heard it. See

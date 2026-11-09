@@ -43,8 +43,7 @@ std::vector<Word> AssembleWords(std::span<const Token> tokens,
                                 std::string_view language) {
   const bool uses_spaces = UsesSpaces(language);
   std::vector<Word> words;
-  std::vector<int> token_counts;  // tokens per word, for the confidence mean
-  std::string pending;            // start of a character not yet complete
+  std::string pending;  // start of a character not yet complete
 
   for (const Token& token : tokens) {
     const bool continues_character = !pending.empty();
@@ -60,26 +59,20 @@ std::vector<Word> AssembleWords(std::span<const Token> tokens,
       words.push_back(Word{.text = {},
                            .start = token.start + offset,
                            .end = token.end + offset,
-                           .confidence = 0.0f,
                            .speaker = std::nullopt});
-      token_counts.push_back(0);
     }
     Word& word = words.back();
     word.text += bytes;
     word.end = token.end + offset;
-    word.confidence += token.probability;
-    ++token_counts.back();
   }
   if (!pending.empty() && !words.empty()) words.back().text += pending;
 
   std::vector<Word> result;
   result.reserve(words.size());
-  for (std::size_t i = 0; i < words.size(); ++i) {
-    Word& word = words[i];
+  for (Word& word : words) {
     const auto first = word.text.find_first_not_of(' ');
     if (first == std::string::npos) continue;
     word.text = SanitizeUtf8(std::string_view(word.text).substr(first));
-    word.confidence /= static_cast<float>(token_counts[i]);
     result.push_back(std::move(word));
   }
   return result;

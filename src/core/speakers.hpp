@@ -13,13 +13,9 @@ namespace sillok {
 struct SpeakerOptions {
   // A word with no overlapping turn takes the nearest turn within this.
   Milliseconds max_distance{500};
-  // A run of words shorter than this between turns of one other speaker is
-  // treated as that speaker.
-  Milliseconds min_turn{1000};
 };
 
-// Labels every word with a speaker, smooths very short interjections, splits
-// segments where the speaker changes and numbers speakers 0, 1, ... in order
+// Labels every word with a speaker, splits segments where the speaker changes and numbers speakers 0, 1, ... in order
 // of first appearance.
 std::vector<Segment> AssignSpeakers(std::vector<Segment> segments,
                                     std::span<const SpeakerTurn> turns,

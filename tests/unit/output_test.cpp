@@ -17,8 +17,7 @@ namespace sillok {
 namespace {
 
 Word W(std::string text, int start, int end) {
-  return {std::move(text), Milliseconds{start}, Milliseconds{end}, 0.9f,
-          std::nullopt};
+  return {std::move(text), Milliseconds{start}, Milliseconds{end}, std::nullopt};
 }
 
 Segment S(std::vector<Word> words, std::string language = "en") {
@@ -76,23 +75,27 @@ TEST(PostprocessTest, SplitsByCharacterCount) {
   }
 }
 
-TEST(SpeakersTest, MapsWordsSmoothsAndSplits) {
+TEST(SpeakersTest, MapsWordsAndKeepsShortInterjections) {
   const std::vector<Segment> segments = {
       S({W("hello", 0, 400), W("there", 500, 900), W("yes", 1000, 1200),
          W("so", 1300, 1500), W("anyway", 1600, 2000)}),
       S({W("right", 5000, 5500), W("indeed", 5600, 6000)})};
-  // Speaker 7 talks except for a short "yes" by speaker 3 that is smoothed
-  // away; speaker 3 takes over at 5 s.
+  // Speaker 7 talks except for a short "yes" by speaker 3, who takes over
+  // at 5 s.
   const std::vector<SpeakerTurn> turns = {
       {{0, ToSamples(Milliseconds{950})}, 7},
       {{ToSamples(Milliseconds{1000}), ToSamples(Milliseconds{1200})}, 3},
       {{ToSamples(Milliseconds{1250}), ToSamples(Milliseconds{2100})}, 7},
       {{ToSamples(Milliseconds{4900}), ToSamples(Milliseconds{6100})}, 3}};
   const auto out = AssignSpeakers(segments, turns, {});
-  ASSERT_EQ(out.size(), 2u);
+  ASSERT_EQ(out.size(), 4u);
   EXPECT_EQ(out[0].speaker, 0);  // renumbered by first appearance
-  EXPECT_EQ(out[0].text, "hello there yes so anyway");
+  EXPECT_EQ(out[0].text, "hello there");
   EXPECT_EQ(out[1].speaker, 1);
+  EXPECT_EQ(out[1].text, "yes");
+  EXPECT_EQ(out[2].speaker, 0);
+  EXPECT_EQ(out[2].text, "so anyway");
+  EXPECT_EQ(out[3].speaker, 1);
 }
 
 TEST(SpeakersTest, SplitsSegmentAtSpeakerChange) {

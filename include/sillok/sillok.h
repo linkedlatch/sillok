@@ -229,7 +229,7 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *  "segments": [{"start_ms": 0, "end_ms": 2300, "text": "...",
  *                "language": "ko", "speaker": 0,
  *                "words": [{"text": "...", "start_ms": 0, "end_ms": 420,
- *                           "confidence": 0.93, "speaker": 0}, ...]}, ...],
+ *                           "speaker": 0}, ...]}, ...],
  *  "models": {"transcription": {"name": "...", "device": "...",
  *                               "fell_back_to_cpu": false}, ...}}
  * "speaker" is absent without diarization.

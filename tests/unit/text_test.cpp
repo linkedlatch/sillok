@@ -11,8 +11,8 @@ namespace {
 
 constexpr const char* kReplacement = "\xEF\xBF\xBD";
 
-Token T(std::string text, int start_ms, int end_ms, float p = 0.8f) {
-  return {std::move(text), Milliseconds{start_ms}, Milliseconds{end_ms}, p};
+Token T(std::string text, int start_ms, int end_ms) {
+  return {std::move(text), Milliseconds{start_ms}, Milliseconds{end_ms}};
 }
 
 TEST(Utf8Test, KeepsValidText) {
@@ -102,13 +102,12 @@ TEST(WordsTest, OutputIsAlwaysValidUtf8) {
   EXPECT_EQ(words[1].text, kReplacement);
 }
 
-TEST(WordsTest, DropsSpaceOnlyWordsAndAveragesConfidence) {
-  const std::vector<Token> tokens = {T(" ", 0, 10, 0.1f), T(" a", 10, 20, 0.4f),
-                                     T("b", 20, 30, 0.8f)};
+TEST(WordsTest, DropsSpaceOnlyWords) {
+  const std::vector<Token> tokens = {T(" ", 0, 10), T(" a", 10, 20), T("b", 20, 30)};
   const auto words = AssembleWords(tokens, Milliseconds{0}, "en");
   ASSERT_EQ(words.size(), 1u);
   EXPECT_EQ(words[0].text, "ab");
-  EXPECT_FLOAT_EQ(words[0].confidence, 0.6f);
+  EXPECT_EQ(words[0].start, Milliseconds{10});
 }
 
 }  // namespace

@@ -154,8 +154,6 @@ class FakeTranscriber : public Transcriber {
       const auto jitter = Milliseconds{
           (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
-      const bool right_language =
-          LanguageOf(models_.options_, burst.id) == language;
       if (i % 5 == 0 && !segment.tokens.empty()) {
         on_segment(segment);
         segment.tokens.clear();
@@ -165,8 +163,7 @@ class FakeTranscriber : public Transcriber {
           {.text = " " + WordText(burst.id, language),
            .start =
                std::max(Milliseconds{0}, ToMilliseconds(burst.begin) + jitter),
-           .end = ToMilliseconds(burst.end) + jitter,
-           .probability = right_language ? 0.9f : 0.05f});
+           .end = ToMilliseconds(burst.end) + jitter});
     }
     if (!segment.tokens.empty()) on_segment(segment);
   }

@@ -15,7 +15,6 @@ struct Word {
   std::string text;
   Milliseconds start{0};
   Milliseconds end{0};
-  float confidence = 0.0f;
   std::optional<int> speaker;
 };
 
