@@ -189,6 +189,7 @@ class ExitSafeModels : public ModelProvider {
  public:
   explicit ExitSafeModels(ModelProvider& models) : models_(models) {}
 
+  std::vector<std::string> Languages() const override { return models_.Languages(); }
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
     auto model = models_.OpenVoiceDetector();
     RegisterExitHandlerOnce(voice_detector_loaded);
@@ -356,8 +357,13 @@ sillok_status sillok_job_create(sillok_engine* engine, const char* options_json,
     RequireArgument(engine != nullptr && out_job != nullptr,
                     "engine and out_job are required");
     *out_job = nullptr;
-    auto job = std::make_unique<sillok_job>(
-        engine->state, sillok::ParseJobOptions(options_json ? options_json : ""));
+    sillok::JobOptions options = sillok::ParseJobOptions(options_json ? options_json : "");
+    const std::string& language = options.pipeline.language;
+    const std::vector<std::string> languages = engine->state->models->Languages();
+    RequireArgument(language == "auto" ||
+                        std::find(languages.begin(), languages.end(), language) != languages.end(),
+                    "\"language\" must be \"auto\" or a language the transcription model knows");
+    auto job = std::make_unique<sillok_job>(engine->state, std::move(options));
     *out_job = job.release();
     return SILLOK_OK;
   });

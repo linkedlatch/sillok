@@ -28,10 +28,9 @@ using ProgressCallback = std::function<void(Stage stage, double fraction)>;
 using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
 struct PipelineOptions {
-  // "auto", detected once from the first speech, or one of `candidates`
-  // (ISO 639-1).
+  // "auto", told from the start of each group of speech, or one of
+  // ModelProvider::Languages() (ISO 639-1).
   std::string language = "auto";
-  std::vector<std::string> candidates = {"ko", "en"};
   std::vector<std::string> glossary;
   bool diarize = false;
 
@@ -45,8 +44,7 @@ struct PipelineOptions {
 // SegmenterOptions::max_gap, each transcribed on its own). A run stopped part
 // way continues from here with the result one run would have given.
 struct Checkpoint {
-  std::string key;       // the recording, options and model it belongs to
-  std::string language;  // the language it was transcribed in
+  std::string key;  // the recording, options and models it belongs to
   std::size_t groups = 0;
   std::vector<Segment> segments;
 };
@@ -57,7 +55,7 @@ class CheckpointSink {
   virtual ~CheckpointSink() = default;
   // Transcription starts from the first group; anything recorded before is
   // void.
-  virtual void Start(const std::string& key, const std::string& language) = 0;
+  virtual void Start(const std::string& key) = 0;
   // The next group is done, with its own segments (maybe none).
   virtual void AddGroup(std::span<const Segment> segments) = 0;
 };
@@ -65,7 +63,8 @@ class CheckpointSink {
 // Transcribes `audio` (finished). Models are opened one stage at a time and
 // freed before the next stage, so the transcription and diarization models
 // are never in memory together. Throws Cancelled once `stop` is requested.
-// With `resume` of the same recording, options and model, transcription
+// Throws std::invalid_argument for a language the model does not know.
+// With `resume` of the same recording, options and models, transcription
 // continues after its groups, and `on_segments` first receives their
 // segments; otherwise it starts from the first group. `checkpoints` (may be
 // null) records the progress either way.

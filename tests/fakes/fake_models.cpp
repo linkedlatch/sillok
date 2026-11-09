@@ -122,26 +122,6 @@ class FakeTranscriber : public Transcriber {
   ~FakeTranscriber() override { --models_.live_.transcribers; }
 
   ModelInfo Info() const override { return {"fake-transcriber", "CPU", false}; }
-  bool DetectsLanguage() const override { return models_.options_.detects_language; }
-
-  std::vector<LanguageScore> DetectLanguage(
-      std::span<const float> pcm, std::span<const std::string> candidates,
-      StopToken stop) override {
-    ThrowIfStopped(stop);
-    std::map<std::string, double> time;
-    double total = 0.0;
-    for (const Burst& burst : FindBursts(pcm, ToSamples(Milliseconds{100}))) {
-      const auto length = static_cast<double>(burst.end - burst.begin);
-      time[LanguageOf(models_.options_, burst.id)] += length;
-      total += length;
-    }
-    std::vector<LanguageScore> scores;
-    for (const std::string& language : candidates) {
-      const double share = total > 0.0 ? time[language] / total : 0.5;
-      scores.push_back({language, static_cast<float>(std::clamp(share, 0.02, 0.98))});
-    }
-    return scores;
-  }
 
   void Transcribe(const TranscribeRequest& request,
                   const TokenSegmentCallback& on_segment,
@@ -151,8 +131,23 @@ class FakeTranscriber : public Transcriber {
     if (models_.options_.on_transcribe) models_.options_.on_transcribe(request);
     ThrowIfStopped(stop);
 
-    TokenSegment segment;
     const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
+    // Without a language, the one spoken longest in the first 30 s, as
+    // Whisper hears it.
+    std::string language = request.language;
+    if (language.empty()) {
+      std::map<std::string, SampleIndex> time;
+      for (const Burst& burst : bursts) {
+        if (burst.begin >= ToSamples(Milliseconds{30000})) break;
+        time[LanguageOf(models_.options_, burst.id)] += burst.end - burst.begin;
+      }
+      language = time.empty() ? "en"
+                              : std::max_element(time.begin(), time.end(),
+                                                 [](const auto& a, const auto& b) {
+                                                   return a.second < b.second;
+                                                 })->first;
+    }
+    TokenSegment segment{.tokens = {}, .language = language};
     for (std::size_t i = 0; i < bursts.size(); ++i) {
       const Burst& burst = bursts[i];
       // Decoded times are not exact.
@@ -160,14 +155,14 @@ class FakeTranscriber : public Transcriber {
           (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
       const bool right_language =
-          LanguageOf(models_.options_, burst.id) == request.language;
+          LanguageOf(models_.options_, burst.id) == language;
       if (i % 5 == 0 && !segment.tokens.empty()) {
         on_segment(segment);
         segment.tokens.clear();
         ThrowIfStopped(stop);
       }
       segment.tokens.push_back(
-          {.text = " " + WordText(burst.id, request.language),
+          {.text = " " + WordText(burst.id, language),
            .start =
                std::max(Milliseconds{0}, ToMilliseconds(burst.begin) + jitter),
            .end = ToMilliseconds(burst.end) + jitter,

@@ -46,13 +46,14 @@ struct FakeOptions {
   std::map<int, int> speakers;
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
-  bool detects_language = true;
 };
 
 // Provider of fake models that work on RenderScript() audio.
 class FakeModels : public ModelProvider {
  public:
   explicit FakeModels(FakeOptions options) : options_(std::move(options)) {}
+
+  std::vector<std::string> Languages() const override { return {"en", "ko"}; }
 
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override;
   std::unique_ptr<Transcriber> OpenTranscriber() override;

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "backends/ggml_devices.hpp"
 #include "core/transcriber.hpp"
@@ -23,6 +24,9 @@ struct WhisperConfig {
   // follow the audio, for the word times.
   std::string family;
 };
+
+// Languages Whisper transcribes, ISO 639-1 (a few have longer codes).
+std::vector<std::string> WhisperLanguages();
 
 // Whisper speech recognition through whisper.cpp. Throws ModelError if the
 // model cannot be loaded.

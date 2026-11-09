@@ -124,9 +124,15 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 
 /* --- Jobs ---------------------------------------------------------------- */
 
-/* One recording. `options_json`: {"language": "auto" | "ko" | "en",
+/* One recording. `options_json`: {"language": "auto" | "<code>",
  * "diarize": false, "glossary": ["term", ...], "checkpoint": "<path>",
  * "even_loudness": true}
+ * "language": "auto" tells the language of each group of speech (below) from
+ * its first 30 s, so a recording may switch language at a pause; a code
+ * (ISO 639-1, such as "ko" or "en", as the transcription model names it)
+ * transcribes everything in that language. SILLOK_INVALID_ARGUMENT for a
+ * language the model does not know. Each segment of the transcript carries
+ * the language it was transcribed in.
  * "even_loudness": false leaves the pushed audio's loudness as it is, for a
  * recording whose loudness was evened out already: a job's copy for
  * listening back (sillok_job_save_audio) transcribes as the original did.

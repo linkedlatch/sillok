@@ -92,11 +92,15 @@ TEST_F(ModelsTest, TranscribesEnglish) {
 
 TEST_F(ModelsTest, DetectsLanguage) {
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_ko.wav", 15.0);
-  auto transcriber = Models()->OpenTranscriber();
-  const std::vector<std::string> candidates = {"ko", "en"};
-  const auto scores = transcriber->DetectLanguage(pcm, candidates, {});
-  ASSERT_EQ(scores.size(), 2u);
-  EXPECT_GT(scores[0].probability, scores[1].probability);
+  auto models = Models();
+  const std::vector<std::string> languages = models->Languages();
+  EXPECT_NE(std::find(languages.begin(), languages.end(), "ko"), languages.end());
+  std::vector<std::string> detected;
+  models->OpenTranscriber()->Transcribe(
+      {.pcm = pcm, .language = "", .prompt = ""},
+      [&](const TokenSegment& segment) { detected.push_back(segment.language); }, {});
+  ASSERT_FALSE(detected.empty());
+  for (const std::string& language : detected) EXPECT_EQ(language, "ko");
 }
 
 TEST_F(ModelsTest, DiarizesMeeting) {

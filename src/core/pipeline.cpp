@@ -18,8 +18,6 @@ namespace sillok {
 namespace {
 
 constexpr SampleIndex kDiarizationChunk = SampleIndex{kSampleRate} * 10;
-// Whisper's window, which the language detection hears.
-constexpr SampleIndex kLanguageSample = SampleIndex{kSampleRate} * 30;
 
 std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio,
                                       const SegmenterOptions& options,
@@ -49,47 +47,22 @@ std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio,
   return FindSpeech(probabilities, frame_samples, audio.size(), options);
 }
 
-// The most likely of the candidates in the first speech of the recording.
-std::string DetectLanguage(const AudioBuffer& audio,
-                           std::span<const SampleRange> speech,
-                           const PipelineOptions& options,
-                           Transcriber& transcriber, const StopToken& stop) {
-  if (!transcriber.DetectsLanguage()) {
-    throw std::invalid_argument(
-        "the transcription model cannot detect languages; choose one");
-  }
-  std::vector<float> pcm;
-  for (const SampleRange& region : speech) {
-    const SampleIndex room = kLanguageSample - static_cast<SampleIndex>(pcm.size());
-    if (room <= 0) break;
-    const std::vector<float> part =
-        audio.Read({region.begin, std::min(region.end, region.begin + room)});
-    pcm.insert(pcm.end(), part.begin(), part.end());
-  }
-  const std::vector<LanguageScore> scores =
-      transcriber.DetectLanguage(pcm, options.candidates, stop);
-  return std::max_element(scores.begin(), scores.end(),
-                          [](const LanguageScore& a, const LanguageScore& b) {
-                            return a.probability < b.probability;
-                          })
-      ->language;
-}
-
 // Identifies what a checkpoint was made of: the recording, the options that
-// shape its transcription and the model. Bump the first line when the
-// transcription of the same input changes.
+// shape its transcription and the models that find and transcribe its
+// speech. Bump the first line when the transcription of the same input
+// changes.
 std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& options,
-                          const std::string& model) {
+                          const std::string& voice_detector,
+                          const std::string& transcriber) {
   Sha256 hash;
   const auto add = [&](std::string_view text) {
     hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
     hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
   };
-  add("sillok checkpoint 1");
-  add(model);
+  add("sillok checkpoint 2");
+  add(voice_detector);
+  add(transcriber);
   add(options.language);
-  for (const std::string& language : options.candidates) add(language);
-  add("");
   for (const std::string& term : options.glossary) add(term);
   add("");
   const SegmenterOptions& segmenter = options.segmenter;
@@ -129,16 +102,16 @@ std::vector<Segment> TranscribeSpeech(
   const auto transcriber = models.OpenTranscriber();
   const std::vector<std::vector<SampleRange>> groups =
       GroupSpeech(speech, options.segmenter.max_gap);
-  const std::string key = resume != nullptr || checkpoints != nullptr
-                              ? CheckpointKey(audio, options, transcriber->Info().name)
-                              : std::string();
+  const std::string key =
+      resume != nullptr || checkpoints != nullptr
+          ? CheckpointKey(audio, options, transcript.models.at("voice_detection").name,
+                          transcriber->Info().name)
+          : std::string();
   const bool continues =
       resume != nullptr && resume->key == key && resume->groups <= groups.size();
-  const std::string language =
-      continues ? resume->language
-      : options.language == "auto"
-          ? DetectLanguage(audio, speech, options, *transcriber, stop)
-          : options.language;
+  // Each group's language is told from its own start: a recording may change
+  // language at a pause.
+  const std::string language = options.language == "auto" ? "" : options.language;
   const std::string prompt = JoinGlossary(options.glossary);
 
   std::vector<Segment> segments;
@@ -148,7 +121,7 @@ std::vector<Segment> TranscribeSpeech(
     first = resume->groups;
     if (on_segments && !segments.empty()) on_segments(segments);
   } else if (checkpoints != nullptr) {
-    checkpoints->Start(key, language);
+    checkpoints->Start(key);
   }
   SampleIndex total_samples = 0;
   SampleIndex done_samples = 0;
@@ -177,14 +150,14 @@ std::vector<Segment> TranscribeSpeech(
         TranscribeRequest{.pcm = pcm, .language = language, .prompt = prompt},
         [&](const TokenSegment& decoded) {
           std::vector<Word> words =
-              AssembleWords(decoded.tokens, Milliseconds{0}, language);
+              AssembleWords(decoded.tokens, Milliseconds{0}, decoded.language);
           if (words.empty()) return;
           const Milliseconds heard = words.back().end;
           for (Word& word : words) {
             std::tie(word.start, word.end) =
                 joined.ToRecording(word.start, word.end);
           }
-          segments.push_back(MakeSegment(std::move(words), language));
+          segments.push_back(MakeSegment(std::move(words), decoded.language));
           if (on_segments) on_segments(std::span(&segments.back(), 1));
           const SampleIndex done =
               done_samples + std::min(ToSamples(heard), joined.size());
@@ -230,10 +203,11 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        StopToken stop, const SegmentsCallback& on_segments,
                        const Checkpoint* resume, CheckpointSink* checkpoints) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
-  if (options.language != "auto" &&
-      std::find(options.candidates.begin(), options.candidates.end(),
-                options.language) == options.candidates.end()) {
-    throw std::invalid_argument("unsupported language: " + options.language);
+  if (options.language != "auto") {
+    const std::vector<std::string> languages = models.Languages();
+    if (std::find(languages.begin(), languages.end(), options.language) == languages.end()) {
+      throw std::invalid_argument("unsupported language: " + options.language);
+    }
   }
 
   Transcript transcript;

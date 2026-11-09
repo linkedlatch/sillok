@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "core/diarizer.hpp"
 #include "core/transcriber.hpp"
@@ -21,6 +23,10 @@ class ModelError : public std::runtime_error {
 class ModelProvider {
  public:
   virtual ~ModelProvider() = default;
+
+  // Languages the transcription model can be told to transcribe in, ISO
+  // 639-1.
+  virtual std::vector<std::string> Languages() const = 0;
 
   virtual std::unique_ptr<VoiceDetector> OpenVoiceDetector() = 0;
   virtual std::unique_ptr<Transcriber> OpenTranscriber() = 0;

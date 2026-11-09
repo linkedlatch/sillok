@@ -40,7 +40,9 @@ void HandOver(whisper_context* context, Run& run) {
   try {
     for (; run.handed < total; ++run.handed) {
       const int i = run.handed;
-      TokenSegment segment;
+      // The language given, or the one whisper_full detected.
+      TokenSegment segment{.tokens = {},
+                           .language = whisper_lang_str(whisper_full_lang_id(context))};
       const int count = whisper_full_n_tokens(context, i);
       for (int j = 0; j < count; ++j) {
         const whisper_token_data token = whisper_full_get_token_data(context, i, j);
@@ -137,33 +139,6 @@ class WhisperTranscriber final : public Transcriber {
 
   ModelInfo Info() const override { return info_; }
 
-  bool DetectsLanguage() const override {
-    return whisper_is_multilingual(context_.get()) != 0;
-  }
-
-  std::vector<LanguageScore> DetectLanguage(
-      std::span<const float> pcm, std::span<const std::string> candidates,
-      StopToken stop) override {
-    ThrowIfStopped(stop);
-    if (whisper_pcm_to_mel(context_.get(), pcm.data(),
-                           static_cast<int>(pcm.size()), threads_) != 0) {
-      throw ModelError("whisper_pcm_to_mel failed");
-    }
-    std::vector<float> probabilities(
-        static_cast<std::size_t>(whisper_lang_max_id() + 1), 0.0f);
-    const int status = whisper_lang_auto_detect(context_.get(), 0, threads_,
-                                                probabilities.data());
-    ThrowIfStopped(stop);
-    if (status < 0) throw ModelError("whisper_lang_auto_detect failed");
-    std::vector<LanguageScore> scores;
-    for (const std::string& language : candidates) {
-      const int id = whisper_lang_id(language.c_str());
-      scores.push_back(
-          {language, id < 0 ? 0.0f : probabilities[static_cast<std::size_t>(id)]});
-    }
-    return scores;
-  }
-
   void Transcribe(const TranscribeRequest& request,
                   const TokenSegmentCallback& on_segment,
                   StopToken stop) override {
@@ -172,7 +147,9 @@ class WhisperTranscriber final : public Transcriber {
     whisper_full_params params =
         whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.n_threads = threads_;
-    params.language = request.language.c_str();
+    // "auto" detects the language from the first 30 s, at the cost of one more
+    // encoder pass.
+    params.language = request.language.empty() ? "auto" : request.language.c_str();
     params.print_progress = false;
     params.print_realtime = false;
     params.print_timestamps = false;
@@ -220,6 +197,12 @@ class WhisperTranscriber final : public Transcriber {
 };
 
 }  // namespace
+
+std::vector<std::string> WhisperLanguages() {
+  std::vector<std::string> languages;
+  for (int id = 0; id <= whisper_lang_max_id(); ++id) languages.emplace_back(whisper_lang_str(id));
+  return languages;
+}
 
 std::unique_ptr<Transcriber> OpenWhisper(const WhisperConfig& config) {
   return std::make_unique<WhisperTranscriber>(config);

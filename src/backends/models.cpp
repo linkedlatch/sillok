@@ -167,6 +167,8 @@ class Models final : public ModelProvider {
         transcriber_(FindModel("transcription", config.transcription_model)),
         diarizer_(FindModel("diarization", config.transcription_model)) {}
 
+  std::vector<std::string> Languages() const override { return WhisperLanguages(); }
+
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
     return OpenSilero({.model = Path(voice_detector_), .name = voice_detector_.id});
   }

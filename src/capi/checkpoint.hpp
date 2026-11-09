@@ -27,7 +27,7 @@ class CheckpointFile final : public CheckpointSink {
   // cut short from the file, so that groups can be appended to it.
   std::optional<Checkpoint> Load();
 
-  void Start(const std::string& key, const std::string& language) override;
+  void Start(const std::string& key) override;
   void AddGroup(std::span<const Segment> segments) override;
 
   // Removes the file, once the job no longer needs it.

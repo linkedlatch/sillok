@@ -15,7 +15,7 @@ namespace {
 
 using Json = nlohmann::json;
 
-constexpr int kFormat = 1;
+constexpr int kFormat = 2;
 
 }  // namespace
 
@@ -44,7 +44,6 @@ std::optional<Checkpoint> CheckpointFile::Load() {
           return std::nullopt;
         }
         checkpoint.key = json.at("key").get<std::string>();
-        checkpoint.language = json.at("language").get<std::string>();
         header = true;
       } else {
         const std::vector<Segment> segments = SegmentsFromJson(line);
@@ -62,10 +61,10 @@ std::optional<Checkpoint> CheckpointFile::Load() {
   return checkpoint;
 }
 
-void CheckpointFile::Start(const std::string& key, const std::string& language) {
+void CheckpointFile::Start(const std::string& key) {
   failed_ = false;
   const Json header = {
-      {"format", kFormat}, {"library", library_}, {"key", key}, {"language", language}};
+      {"format", kFormat}, {"library", library_}, {"key", key}};
   Write(header.dump() + "\n", false);
 }
 

@@ -205,34 +205,54 @@ TEST(PipelineTest, CancelFromAnotherThread) {
   EXPECT_EQ(models.transcribe_calls(), 1);
 }
 
-TEST(PipelineTest, DetectsTheLanguageOnceFromTheFirstSpeech) {
-  // A minute of silence, 40 s of Korean, then English: one language.
-  auto script = Speech(0, 100, Milliseconds{60000}, "ko");
-  const auto english = Speech(200, 20, Milliseconds{100000}, "en");
+TEST(PipelineTest, DetectsTheLanguageOfEachGroup) {
+  // Korean, a pause, then English: each group in its own language, told from
+  // its start, so the English word in the Korean group stays Korean.
+  auto script = Speech(0, 10, Milliseconds{500}, "ko");
+  script.push_back({.id = 50, .start = Milliseconds{4500}, .end = Milliseconds{4800},
+                    .language = "en", .speaker = 0});
+  const auto english = Speech(200, 10, Milliseconds{10000}, "en");
   script.insert(script.end(), english.begin(), english.end());
-  FakeModels models(OptionsFor(script));
-  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{110000}), models);
-  ASSERT_FALSE(transcript.segments.empty());
-  for (const Segment& segment : transcript.segments) EXPECT_EQ(segment.language, "ko");
+  FakeOptions options = OptionsFor(script);
+  std::vector<std::string> requested;
+  options.on_transcribe = [&](const TranscribeRequest& request) {
+    requested.push_back(request.language);
+  };
+  FakeModels models(options);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{15000}), models);
+  EXPECT_EQ(requested, (std::vector<std::string>{"", ""}));
+  std::vector<std::string> words;
+  for (const Segment& segment : transcript.segments) {
+    for (const Word& word : segment.words) words.push_back(segment.language + ":" + word.text);
+  }
+  std::vector<std::string> expected;
+  for (const ScriptWord& word : script) {
+    const std::string language = word.start < Milliseconds{10000} ? "ko" : "en";
+    expected.push_back(language + ":" + WordText(word.id, language));
+  }
+  EXPECT_EQ(words, expected);
 }
 
-TEST(PipelineTest, FixedLanguageSkipsDetection) {
-  const auto script = Speech(0, 10, Milliseconds{500}, "ko");
+TEST(PipelineTest, FixedLanguageIsGivenToEveryGroup) {
+  auto script = Speech(0, 10, Milliseconds{500}, "ko");
+  const auto english = Speech(200, 10, Milliseconds{10000}, "en");
+  script.insert(script.end(), english.begin(), english.end());
   FakeOptions options = OptionsFor(script);
-  options.detects_language = false;
+  std::vector<std::string> requested;
+  options.on_transcribe = [&](const TranscribeRequest& request) {
+    requested.push_back(request.language);
+  };
   FakeModels models(options);
   PipelineOptions pipeline;
   pipeline.language = "ko";
-  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{6000}), models, pipeline);
-  EXPECT_EQ(AllWords(transcript), Expected(script));
+  const Transcript transcript =
+      RunFakes(RenderScript(script, Milliseconds{15000}), models, pipeline);
+  EXPECT_EQ(requested, (std::vector<std::string>{"ko", "ko"}));
+  for (const Segment& segment : transcript.segments) EXPECT_EQ(segment.language, "ko");
 
-  FakeModels no_detection(options);
-  EXPECT_THROW(RunFakes(RenderScript(script, Milliseconds{6000}), no_detection),
+  pipeline.language = "fr";  // not one of the model's languages
+  EXPECT_THROW(RunFakes(RenderScript(script, Milliseconds{15000}), models, pipeline),
                std::invalid_argument);
-  pipeline.language = "fr";
-  EXPECT_THROW(
-      RunFakes(RenderScript(script, Milliseconds{6000}), models, pipeline),
-      std::invalid_argument);
 }
 
 TEST(PipelineTest, PromptIsTheGlossary) {
@@ -252,8 +272,8 @@ TEST(PipelineTest, PromptIsTheGlossary) {
 // A checkpoint kept in memory, as the C ABI keeps one in a file.
 class MemoryCheckpoint final : public CheckpointSink {
  public:
-  void Start(const std::string& key, const std::string& language) override {
-    checkpoint = {.key = key, .language = language};
+  void Start(const std::string& key) override {
+    checkpoint = {.key = key};
     ++starts;
   }
   void AddGroup(std::span<const Segment> segments) override {
