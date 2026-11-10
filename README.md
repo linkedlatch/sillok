@@ -164,3 +164,8 @@ python3 -I scripts/eval/run_eval.py ... --only lecture
 ## Licenses of the models
 
 Whisper (MIT), Silero VAD (MIT), Nemotron-3-Diarization (OpenMDW-1.1).
+
+The Qwen backend carries the Korean word list of Qwen3-ForcedAligner's text
+processor (`korean_dict_jieba.dict` of the qwen-asr package, Apache 2.0) in
+`src/backends/qwen/korean_dict.inc`, written by
+`scripts/backends/qwen_tables.py`.

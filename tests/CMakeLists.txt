@@ -24,8 +24,9 @@ gtest_discover_tests(sillok_unit_tests)
 
 # Model-free tests of the backends' own text handling.
 if(TARGET sillok_whisper_words)
-    add_executable(sillok_backend_unit_tests unit/whisper_words_test.cpp)
-    target_link_libraries(sillok_backend_unit_tests PRIVATE sillok_whisper_words GTest::gtest_main)
+    add_executable(sillok_backend_unit_tests unit/whisper_words_test.cpp unit/qwen_text_test.cpp)
+    target_link_libraries(sillok_backend_unit_tests PRIVATE
+        sillok_whisper_words sillok_qwen_text GTest::gtest_main)
     sillok_set_warnings(sillok_backend_unit_tests)
     gtest_discover_tests(sillok_backend_unit_tests)
 endif()
