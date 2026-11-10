@@ -15,7 +15,9 @@ QwenAligner::QwenAligner(const std::filesystem::path& model, const std::filesyst
               .mmproj = mmproj,
               .device = device,
               .threads = threads,
-              .context = 16384,
+              // 180 s of audio is 2340 positions, and its words with their
+              // slots take fewer than 6000.
+              .context = 8192,
               .embeddings = false}),
       slot_(model_.Token("<timestamp>")),
       classes_(model_.MetaNumber("qwen3_forced_aligner.classes")),

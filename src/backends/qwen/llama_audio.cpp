@@ -53,11 +53,13 @@ LlamaAudio::LlamaAudio(const LlamaAudioConfig& config) : embeddings_(config.embe
   if (model_ == nullptr) throw ModelError("cannot load the model " + text_path);
   vocab_ = llama_model_get_vocab(model_);
 
+  // Batches of 2048, computed 512 at a time: the compute buffers grow with
+  // the second.
   n_batch_ = 2048;
   llama_context_params context_params = llama_context_default_params();
   context_params.n_ctx = static_cast<uint32_t>(config.context);
   context_params.n_batch = static_cast<uint32_t>(n_batch_);
-  context_params.n_ubatch = static_cast<uint32_t>(n_batch_);
+  context_params.n_ubatch = 512;
   context_params.n_seq_max = 1;
   context_params.n_threads = config.threads;
   context_params.n_threads_batch = config.threads;
