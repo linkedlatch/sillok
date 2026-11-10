@@ -11,8 +11,7 @@
 namespace sillok {
 
 bool UsesSpaces(std::string_view language) {
-  constexpr std::array<std::string_view, 8> kWithoutSpaces = {
-      "ja", "zh", "yue", "th", "lo", "km", "my", "bo"};
+  constexpr std::array<std::string_view, 3> kWithoutSpaces = {"ja", "zh", "yue"};
   return std::find(kWithoutSpaces.begin(), kWithoutSpaces.end(), language) ==
          kWithoutSpaces.end();
 }

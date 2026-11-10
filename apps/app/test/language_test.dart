@@ -7,7 +7,7 @@ import 'package:sillok/ui/language_field.dart';
 import 'package:sillok/ui/language_names.g.dart';
 import 'package:sillok/ui/languages.dart';
 
-const _languages = ['en', 'zh', 'de', 'ko', 'ja', 'no', 'yue'];
+const _languages = ['ko', 'en', 'ja', 'zh', 'yue', 'de'];
 
 Widget _app(Widget child, {Locale locale = const Locale('ko')}) => MaterialApp(
   locale: locale,
@@ -34,7 +34,6 @@ void main() {
 
   test('the system language as the models write it', () {
     expect(systemLanguage(const Locale('ko', 'KR'), _languages), 'ko');
-    expect(systemLanguage(const Locale('nb', 'NO'), _languages), 'no');
     expect(systemLanguage(const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), _languages), 'zh');
     expect(systemLanguage(const Locale('fr'), _languages), isNull);
   });

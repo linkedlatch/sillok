@@ -392,6 +392,17 @@ class AppState extends ChangeNotifier {
     if (model != null && !catalog.any((m) => m.id == model)) {
       defaults = defaults.copyWith(transcriptionModel: () => null);
     }
+    // A language the model no longer offers (any of Whisper's before
+    // 2026-11-10, docs/DESIGN.md D43).
+    final languages =
+        transcriptionModels.where((m) => m.id == defaults.transcriptionModel).firstOrNull?.languages ??
+        recommendedTranscription.languages;
+    if (defaults.language != 'auto' && !languages.contains(defaults.language)) {
+      defaults = defaults.copyWith(language: 'auto');
+    }
+    if (defaults.listedLanguage != null && !languages.contains(defaults.listedLanguage)) {
+      defaults = defaults.copyWith(listedLanguage: () => null);
+    }
   }
 
   Future<void> _loadAppLanguage() async {

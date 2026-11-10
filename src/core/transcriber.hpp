@@ -29,8 +29,8 @@ struct TokenSegment {
 
 struct TranscribeRequest {
   std::span<const float> pcm;  // 16 kHz mono, of any length
-  // ISO 639-1, one of ModelProvider::Languages(); empty for the model to
-  // tell from the audio.
+  // One of ModelProvider::Languages(); empty for the model to tell which of
+  // them from the audio.
   std::string language;
   std::string prompt;  // terms the model should expect, or empty
 };

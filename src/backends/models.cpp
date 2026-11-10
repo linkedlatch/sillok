@@ -30,6 +30,15 @@ constexpr char kWhisperRepo[] =
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/"
     "5359861c739e955e79d9a303bcbc70fb988958b1/";
 
+// The languages sillok transcribes (docs/DESIGN.md D43): those
+// Qwen3-ForcedAligner gives word times in, so that every model offers the
+// same ones and automatic detection picks among them alone.
+const std::vector<std::string>& Languages() {
+  static const std::vector<std::string> languages = {
+      "ko", "en", "ja", "zh", "yue", "de", "es", "fr", "it", "pt", "ru"};
+  return languages;
+}
+
 CatalogFile WhisperFile(const char* file, std::uint64_t size, const char* sha256) {
   return {.file = file, .url = std::string(kWhisperRepo) + file, .size = size,
           .sha256 = sha256, .zip = false};
@@ -52,7 +61,7 @@ CatalogModel Whisper(const char* family, const char* quantization,
                      .quantization = quantization,
                      .recommended = recommended,
                      .files = {std::move(model)},
-                     .languages = WhisperLanguages()};
+                     .languages = Languages()};
 #ifdef SILLOK_COREML
   entry.files.push_back(std::move(encoder));
 #else
@@ -187,7 +196,8 @@ class Models final : public ModelProvider {
                         .device = device_,
                         .threads = threads_,
                         .core_ml = core_ml,
-                        .family = transcriber_.family});
+                        .family = transcriber_.family,
+                        .languages = transcriber_.languages});
   }
 
   std::unique_ptr<Diarizer> OpenDiarizer() override {

@@ -16,13 +16,9 @@ String languageNameOf(String code, String localeName) {
 /// say.
 String? languageSelfName(String code) => languageSelfNames[code];
 
-/// System language codes that the models write differently.
-const _modelCodes = {'nb': 'no', 'fil': 'tl', 'jv': 'jw', 'iw': 'he', 'in': 'id', 'ji': 'yi'};
-
 /// The language of [locale] among [languages], or null when the models do
 /// not know it.
 String? systemLanguage(Locale locale, List<String> languages) {
   final code = locale.languageCode.toLowerCase();
-  final model = _modelCodes[code] ?? code;
-  return languages.contains(model) ? model : null;
+  return languages.contains(code) ? code : null;
 }

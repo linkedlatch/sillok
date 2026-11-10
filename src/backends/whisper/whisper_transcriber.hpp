@@ -23,13 +23,12 @@ struct WhisperConfig {
   // "large-v3-turbo" or "large-v3": which of the decoder's attention heads
   // follow the audio, for the word times.
   std::string family;
+  // The languages it may be told or tell from the audio, in Whisper's codes.
+  std::vector<std::string> languages;
 };
 
-// Languages Whisper transcribes, ISO 639-1 (a few have longer codes).
-std::vector<std::string> WhisperLanguages();
-
 // Whisper speech recognition through whisper.cpp. Throws ModelError if the
-// model cannot be loaded.
+// model cannot be loaded or does not know one of the languages.
 std::unique_ptr<Transcriber> OpenWhisper(const WhisperConfig& config);
 
 }  // namespace sillok
