@@ -46,10 +46,15 @@ if(WIN32)
     set(GGML_OPENMP OFF CACHE INTERNAL "")
 endif()
 foreach(option LLAMA_BUILD_COMMON LLAMA_BUILD_TESTS LLAMA_BUILD_TOOLS LLAMA_BUILD_EXAMPLES
-               LLAMA_BUILD_SERVER LLAMA_BUILD_APP LLAMA_BUILD_MTMD LLAMA_OPENSSL)
+               LLAMA_BUILD_SERVER LLAMA_BUILD_APP LLAMA_OPENSSL LLAMA_SUBPROCESS MTMD_VIDEO)
     set(${option} OFF CACHE INTERNAL "")
 endforeach()
+# The multimodal library alone (tools/mtmd, no tools): Qwen3-ASR's audio
+# encoder.
+set(LLAMA_BUILD_MTMD ON CACHE INTERNAL "")
 add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/llama.cpp" "${CMAKE_BINARY_DIR}/third_party/llama.cpp" EXCLUDE_FROM_ALL SYSTEM)
+# llama.cpp is C++17: under C++20 its u8"" literals are char8_t.
+set_target_properties(llama mtmd PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF)
 
 # whisper.cpp builds no ggml of its own when the ggml target exists.
 set(WHISPER_BUILD_TESTS OFF CACHE INTERNAL "")
@@ -64,14 +69,12 @@ add_subdirectory("${SILLOK_THIRD_PARTY_DIR}/whisper.cpp" "${CMAKE_BINARY_DIR}/th
 # NeMo-Speech.cpp: only the sources behind nemo_speech::asr::Diarizer, built
 # against the ggml above (docs/DESIGN.md D16). Its own CMake would add a second
 # ggml and pull in the NeMo ASR model and SentencePiece. Its model loader reads
-# files with llama.cpp's llama_file/llama_mmap, taken from third_party/llama.cpp
-# (none of NeMo's own submodules is fetched).
+# files with llama.cpp's llama_file/llama_mmap, which come with the llama
+# library (none of NeMo's own submodules is fetched).
 sillok_require_third_party(NeMo-Speech.cpp)
 set(nemo "${SILLOK_THIRD_PARTY_DIR}/NeMo-Speech.cpp/src")
 set(nemo_llama "${SILLOK_THIRD_PARTY_DIR}/llama.cpp")
 add_library(nemo_diar STATIC
-    "${nemo_llama}/src/llama-mmap.cpp"
-    "${nemo}/runtime/ggml/llama_log_shim.cpp"
     "${nemo}/runtime/ggml/backend.cpp"
     "${nemo}/runtime/ggml/loader.cpp"
     "${nemo}/runtime/ggml/logging.cpp"
@@ -97,7 +100,12 @@ target_include_directories(nemo_diar SYSTEM PUBLIC
     "${nemo}/common"
     "${nemo}/runtime/ggml")
 target_include_directories(nemo_diar SYSTEM PRIVATE "${nemo_llama}/src")
-target_link_libraries(nemo_diar PUBLIC ggml)
+target_link_libraries(nemo_diar PUBLIC ggml PRIVATE llama)
+# NeMo defines the same global format() as llama.cpp's llama-impl.cpp, which
+# the llama library brings; its copy is renamed so the two do not clash (the
+# rest of NeMo calls llama.cpp's, which is the same function).
+set_source_files_properties("${nemo}/runtime/ggml/logging.cpp" PROPERTIES
+    COMPILE_DEFINITIONS "format=sillok_nemo_unused_format")
 set_target_properties(nemo_diar PROPERTIES
     CXX_STANDARD 17
     CXX_EXTENSIONS OFF

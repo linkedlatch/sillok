@@ -11,6 +11,7 @@
 #include <string_view>
 #include <thread>
 
+#include <llama.h>
 #include <model_logging.h>
 #include <whisper.h>
 
@@ -158,6 +159,8 @@ void ConfigureLogging() {
     // does not replace the callback set next.
     nemo_speech::common::configure_ggml_logging(false);
     whisper_log_set(Log, nullptr);
+    // llama.cpp's own log, which NeMo's model loader writes to as well.
+    llama_log_set(Log, nullptr);
   });
 }
 

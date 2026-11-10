@@ -19,7 +19,7 @@ target_link_libraries(sillok_sortformer PUBLIC sillok_ggml_devices PRIVATE nemo_
 add_library(sillok_models STATIC models.cpp)
 target_link_libraries(sillok_models
     PUBLIC sillok_whisper sillok_silero sillok_sortformer
-    PRIVATE whisper nemo_diar)
+    PRIVATE whisper nemo_diar llama)
 
 if(SILLOK_COREML)
     target_compile_definitions(sillok_whisper PRIVATE SILLOK_COREML)
