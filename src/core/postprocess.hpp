@@ -1,6 +1,7 @@
 #ifndef SILLOK_CORE_POSTPROCESS_HPP_
 #define SILLOK_CORE_POSTPROCESS_HPP_
 
+#include <string_view>
 #include <vector>
 
 #include "core/audio.hpp"
@@ -11,6 +12,10 @@ namespace sillok {
 struct PostprocessOptions {
   Milliseconds max_segment_duration{10000};
 };
+
+// Whether `word` ends in a character with the Unicode Sentence_Terminal
+// property: . ! ? and their counterparts in other scripts (。 । ؟ ...).
+bool EndsSentence(std::string_view word);
 
 // Splits segments into sentences, after every word ending in sentence
 // punctuation, and then halves sentences longer than max_segment_duration

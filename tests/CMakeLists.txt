@@ -68,6 +68,11 @@ if(TARGET sillok_models)
     sillok_set_warnings(sillok_integration_tests)
     sillok_copy_runtime_dlls(sillok_integration_tests)
     gtest_discover_tests(sillok_integration_tests DISCOVERY_TIMEOUT 60 PROPERTIES LABELS integration TIMEOUT 1800)
+
+    # Qwen3-ForcedAligner on given words, for scripts that score its times.
+    add_executable(sillok_qwen_align_probe integration/qwen_align_probe.cpp)
+    target_link_libraries(sillok_qwen_align_probe PRIVATE sillok_models)
+    sillok_set_warnings(sillok_qwen_align_probe)
 endif()
 
 # Measurements with the real models (scripts/eval), on the shared library.

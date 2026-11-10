@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "backends/models.hpp"
+#include "backends/qwen/qwen_transcriber.hpp"
 #include "core/cancel.hpp"
 #include "media/audio_file.hpp"
 #include "media/audio_input.hpp"
@@ -126,6 +127,80 @@ TEST_F(ModelsTest, ReportsTheDeviceUsed) {
   if (!has_gpu) {
     EXPECT_EQ(info.device, "CPU");
   }
+}
+
+// Qwen3-ASR with Qwen3-ForcedAligner, opened directly (the catalog does not
+// list it yet).
+class QwenTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    for (const char* file : {"Qwen3-ASR-1.7B-Q8_0.gguf", "mmproj-Qwen3-ASR-1.7B-bf16.gguf",
+                             "qwen3-forced-aligner-0.6b-q8_0.gguf",
+                             "mmproj-qwen3-forced-aligner-0.6b-f16.gguf"}) {
+      if (!std::filesystem::exists(kModels / file)) GTEST_SKIP() << file << " not found";
+    }
+    if (!std::filesystem::exists(kAudio / "sets" / "fleurs_en.wav")) {
+      GTEST_SKIP() << "test recordings not found";
+    }
+  }
+  static std::unique_ptr<Transcriber> Open() {
+    return OpenQwen({.asr_model = kModels / "Qwen3-ASR-1.7B-Q8_0.gguf",
+                     .asr_mmproj = kModels / "mmproj-Qwen3-ASR-1.7B-bf16.gguf",
+                     .aligner_model = kModels / "qwen3-forced-aligner-0.6b-q8_0.gguf",
+                     .aligner_mmproj = kModels / "mmproj-qwen3-forced-aligner-0.6b-f16.gguf",
+                     .name = "qwen3-asr-1.7b",
+                     .device = ChooseDevice(Device::kGpu, 0),
+                     .threads = 8,
+                     .languages = {"ko", "en"}});
+  }
+};
+
+TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
+  // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
+  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
+  pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
+  std::vector<TranscribedWords> pieces;
+  double progress = 0.0;
+  Open()->Transcribe({.pcm = pcm, .language = "", .glossary = {}},
+                     [&](TranscribedWords piece) { pieces.push_back(std::move(piece)); },
+                     [&](double fraction) {
+                       EXPECT_GE(fraction, progress);
+                       progress = fraction;
+                     },
+                     {});
+  EXPECT_EQ(progress, 1.0);
+  std::string text;
+  Milliseconds last{0};
+  for (const TranscribedWords& piece : pieces) {
+    EXPECT_EQ(piece.language, "en");
+    for (const Word& word : piece.words) {
+      text += " " + word.text;
+      EXPECT_GE(word.start, last) << word.text;
+      EXPECT_GE(word.end, word.start) << word.text;
+      EXPECT_LE(word.end, Milliseconds{8000}) << word.text;
+      last = word.start;
+    }
+  }
+  for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
+    EXPECT_NE(text.find(word), std::string::npos) << text;
+  }
+}
+
+TEST_F(QwenTest, TellsKoreanAndStopsWhenAsked) {
+  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_ko.wav", 15.0);
+  auto qwen = Open();
+  std::vector<std::string> languages;
+  qwen->Transcribe({.pcm = pcm, .language = "", .glossary = {}},
+                   [&](TranscribedWords piece) { languages.push_back(piece.language); },
+                   [](double) {}, {});
+  ASSERT_FALSE(languages.empty());
+  for (const std::string& language : languages) EXPECT_EQ(language, "ko");
+
+  StopSource source;
+  source.RequestStop();
+  EXPECT_THROW(qwen->Transcribe({.pcm = pcm, .language = "ko", .glossary = {}},
+                                [](TranscribedWords) {}, [](double) {}, source.Token()),
+               Cancelled);
 }
 
 }  // namespace

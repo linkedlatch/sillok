@@ -35,16 +35,6 @@ char32_t LastCodePoint(std::string_view text) {
   return code;
 }
 
-// Whether `word` ends in a character with the Unicode Sentence_Terminal
-// property: . ! ? and their counterparts in other scripts (。 । ؟ ...).
-bool EndsSentence(std::string_view word) {
-  const char32_t last = LastCodePoint(word);
-  const auto it = std::upper_bound(
-      std::begin(kSentenceEnds), std::end(kSentenceEnds), last,
-      [](char32_t value, const CodePointRange& range) { return value < range.first; });
-  return it != std::begin(kSentenceEnds) && last <= std::prev(it)->last;
-}
-
 // Number of words up to the first sentence end before the last word, or 0
 // when the words make one sentence.
 std::size_t FirstSentence(const std::vector<Word>& words) {
@@ -81,6 +71,14 @@ std::size_t ChooseSplit(const std::vector<Word>& words) {
 }
 
 }  // namespace
+
+bool EndsSentence(std::string_view word) {
+  const char32_t last = LastCodePoint(word);
+  const auto it = std::upper_bound(
+      std::begin(kSentenceEnds), std::end(kSentenceEnds), last,
+      [](char32_t value, const CodePointRange& range) { return value < range.first; });
+  return it != std::begin(kSentenceEnds) && last <= std::prev(it)->last;
+}
 
 std::vector<Segment> SplitSegments(std::vector<Segment> segments,
                                    const PostprocessOptions& options) {

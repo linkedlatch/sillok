@@ -6,6 +6,8 @@
 
 #include "backends/models.hpp"
 
+struct ggml_backend_device;
+
 namespace sillok {
 
 // Device a ggml-based model runs on.
@@ -20,6 +22,10 @@ ComputeDevice ChooseDevice(Device device, int gpu_index);
 
 // All devices ggml was built with and found.
 std::vector<DeviceInfo> GgmlDevices();
+
+// ggml's device behind `device`, for libraries that take one (llama.cpp);
+// nullptr for the CPU.
+ggml_backend_device* GgmlGpu(const ComputeDevice& device);
 
 }  // namespace sillok
 

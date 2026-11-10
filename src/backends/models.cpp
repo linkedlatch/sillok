@@ -13,6 +13,7 @@
 
 #include <llama.h>
 #include <model_logging.h>
+#include <mtmd.h>
 #include <whisper.h>
 
 #include "backends/ggml_devices.hpp"
@@ -159,8 +160,10 @@ void ConfigureLogging() {
     // does not replace the callback set next.
     nemo_speech::common::configure_ggml_logging(false);
     whisper_log_set(Log, nullptr);
-    // llama.cpp's own log, which NeMo's model loader writes to as well.
+    // llama.cpp's own log, which NeMo's model loader writes to as well, and
+    // its audio encoder's.
     llama_log_set(Log, nullptr);
+    mtmd_log_set(Log, nullptr);
   });
 }
 

@@ -11,6 +11,9 @@ target_link_libraries(sillok_whisper_words PUBLIC sillok_core)
 add_library(sillok_qwen_text STATIC qwen/qwen_text.cpp)
 target_link_libraries(sillok_qwen_text PUBLIC sillok_core)
 
+add_library(sillok_qwen STATIC qwen/llama_audio.cpp qwen/qwen_aligner.cpp qwen/qwen_transcriber.cpp)
+target_link_libraries(sillok_qwen PUBLIC sillok_ggml_devices sillok_qwen_text llama PRIVATE mtmd ggml)
+
 add_library(sillok_whisper STATIC whisper/whisper_transcriber.cpp)
 target_link_libraries(sillok_whisper PUBLIC sillok_ggml_devices PRIVATE sillok_whisper_words whisper)
 
@@ -22,13 +25,13 @@ target_link_libraries(sillok_sortformer PUBLIC sillok_ggml_devices PRIVATE nemo_
 
 add_library(sillok_models STATIC models.cpp)
 target_link_libraries(sillok_models
-    PUBLIC sillok_whisper sillok_silero sillok_sortformer
-    PRIVATE whisper nemo_diar llama)
+    PUBLIC sillok_whisper sillok_qwen sillok_silero sillok_sortformer
+    PRIVATE whisper nemo_diar llama mtmd)
 
 if(SILLOK_COREML)
     target_compile_definitions(sillok_whisper PRIVATE SILLOK_COREML)
     target_compile_definitions(sillok_models PRIVATE SILLOK_COREML)
 endif()
-foreach(target sillok_ggml_devices sillok_whisper_words sillok_qwen_text sillok_whisper sillok_silero sillok_sortformer sillok_models)
+foreach(target sillok_ggml_devices sillok_whisper_words sillok_qwen_text sillok_qwen sillok_whisper sillok_silero sillok_sortformer sillok_models)
     sillok_set_warnings(${target})
 endforeach()

@@ -72,6 +72,17 @@ ComputeDevice ChooseDevice(Device device, int gpu_index) {
           .fell_back_to_cpu = device == Device::kGpu};
 }
 
+ggml_backend_device* GgmlGpu(const ComputeDevice& device) {
+  if (device.gpu_index < 0) return nullptr;
+  int index = 0;
+  for (std::size_t i = 0; i < ggml_backend_dev_count(); ++i) {
+    const ggml_backend_dev_t candidate = ggml_backend_dev_get(i);
+    if (!IsGpu(candidate)) continue;
+    if (index++ == device.gpu_index) return candidate;
+  }
+  return nullptr;
+}
+
 std::vector<DeviceInfo> GgmlDevices() {
   SkipMissingVulkan();
   std::vector<DeviceInfo> devices;
