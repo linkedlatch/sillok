@@ -12,19 +12,11 @@
 
 namespace sillok {
 
-// Decoded text with its time span. `text` holds raw bytes: one UTF-8
-// character may be split over consecutive tokens. Times are relative to the
-// start of the request audio.
-struct Token {
-  std::string text;
-  Milliseconds start{0};
-  Milliseconds end{0};
-};
-
-// Consecutive tokens the model grouped together, typically a sentence.
-struct TokenSegment {
-  std::vector<Token> tokens;
-  std::string language;  // what they were decoded as, ISO 639-1
+// Consecutive words a model transcribed, typically a sentence. Times are
+// relative to the start of the request audio; speakers are not set.
+struct TranscribedWords {
+  std::vector<Word> words;
+  std::string language;  // what they were transcribed as, one of ModelProvider::Languages()
 };
 
 struct TranscribeRequest {
@@ -32,11 +24,13 @@ struct TranscribeRequest {
   // One of ModelProvider::Languages(); empty for the model to tell which of
   // them from the audio.
   std::string language;
-  std::string prompt;  // terms the model should expect, or empty
+  std::span<const std::string> glossary;  // terms the model should expect
 };
 
-// Receives each decoded segment, in order, during Transcribe().
-using TokenSegmentCallback = std::function<void(const TokenSegment&)>;
+// Receives each piece of words, in order, during Transcribe().
+using WordsCallback = std::function<void(TranscribedWords words)>;
+// Receives how much of the request is done, a fraction in [0, 1].
+using FractionCallback = std::function<void(double fraction)>;
 
 class Transcriber {
  public:
@@ -44,7 +38,8 @@ class Transcriber {
 
   virtual ModelInfo Info() const = 0;
   virtual void Transcribe(const TranscribeRequest& request,
-                          const TokenSegmentCallback& on_segment,
+                          const WordsCallback& on_words,
+                          const FractionCallback& on_progress,
                           StopToken stop) = 0;
 };
 

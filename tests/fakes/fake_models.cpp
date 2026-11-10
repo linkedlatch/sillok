@@ -124,7 +124,8 @@ class FakeTranscriber : public Transcriber {
   ModelInfo Info() const override { return {"fake-transcriber", "CPU", false}; }
 
   void Transcribe(const TranscribeRequest& request,
-                  const TokenSegmentCallback& on_segment,
+                  const WordsCallback& on_words,
+                  const FractionCallback& on_progress,
                   StopToken stop) override {
     ThrowIfStopped(stop);
     ++models_.transcribe_calls_;
@@ -147,25 +148,31 @@ class FakeTranscriber : public Transcriber {
                                                    return a.second < b.second;
                                                  })->first;
     }
-    TokenSegment segment{.tokens = {}, .language = language};
+    TranscribedWords piece{.words = {}, .language = language};
+    const auto hand_over = [&] {
+      const SampleIndex heard = ToSamples(piece.words.back().end);
+      on_words(std::move(piece));
+      piece = {.words = {}, .language = language};
+      on_progress(std::min(1.0, static_cast<double>(heard) / static_cast<double>(request.pcm.size())));
+    };
     for (std::size_t i = 0; i < bursts.size(); ++i) {
       const Burst& burst = bursts[i];
       // Decoded times are not exact.
       const auto jitter = Milliseconds{
           (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
-      if (i % 5 == 0 && !segment.tokens.empty()) {
-        on_segment(segment);
-        segment.tokens.clear();
+      if (i % 5 == 0 && !piece.words.empty()) {
+        hand_over();
         ThrowIfStopped(stop);
       }
-      segment.tokens.push_back(
-          {.text = " " + WordText(burst.id, language),
+      piece.words.push_back(
+          {.text = WordText(burst.id, language),
            .start =
                std::max(Milliseconds{0}, ToMilliseconds(burst.begin) + jitter),
-           .end = ToMilliseconds(burst.end) + jitter});
+           .end = ToMilliseconds(burst.end) + jitter,
+           .speaker = std::nullopt});
     }
-    if (!segment.tokens.empty()) on_segment(segment);
+    if (!piece.words.empty()) hand_over();
   }
 
  private:

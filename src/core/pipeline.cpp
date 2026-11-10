@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
@@ -59,7 +60,7 @@ std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& optio
     hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
     hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
   };
-  add("sillok checkpoint 3");
+  add("sillok checkpoint 4");
   add(voice_detector);
   add(transcriber);
   add(options.language);
@@ -83,15 +84,6 @@ std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& optio
   return hash.HexDigest();
 }
 
-std::string JoinGlossary(const std::vector<std::string>& glossary) {
-  std::string joined;
-  for (const std::string& term : glossary) {
-    if (!joined.empty()) joined += ", ";
-    joined += term;
-  }
-  return joined;
-}
-
 std::vector<Segment> TranscribeSpeech(
     const AudioBuffer& audio, std::span<const SampleRange> speech,
     const PipelineOptions& options, ModelProvider& models,
@@ -113,7 +105,6 @@ std::vector<Segment> TranscribeSpeech(
   // Each group's language is told from its own start: a recording may change
   // language at a pause.
   const std::string language = options.language == "auto" ? "" : options.language;
-  const std::string prompt = JoinGlossary(options.glossary);
 
   std::vector<Segment> segments;
   std::size_t first = 0;
@@ -148,22 +139,22 @@ std::vector<Segment> TranscribeSpeech(
                 pcm.begin() + static_cast<std::ptrdiff_t>(joined.Offset(i)));
     }
     transcriber->Transcribe(
-        TranscribeRequest{.pcm = pcm, .language = language, .prompt = prompt},
-        [&](const TokenSegment& decoded) {
+        TranscribeRequest{.pcm = pcm, .language = language, .glossary = options.glossary},
+        [&](TranscribedWords transcribed) {
           std::vector<Word> words =
-              AssembleWords(decoded.tokens, Milliseconds{0}, decoded.language);
+              CheckWords(std::move(transcribed.words), ToMilliseconds(joined.size()));
           if (words.empty()) return;
-          const Milliseconds heard = words.back().end;
           for (Word& word : words) {
-            std::tie(word.start, word.end) =
-                joined.ToRecording(word.start, word.end);
+            word.speaker = std::nullopt;
+            std::tie(word.start, word.end) = joined.ToRecording(word.start, word.end);
           }
-          segments.push_back(MakeSegment(std::move(words), decoded.language));
+          segments.push_back(MakeSegment(std::move(words), std::move(transcribed.language)));
           if (on_segments) on_segments(std::span(&segments.back(), 1));
-          const SampleIndex done =
-              done_samples + std::min(ToSamples(heard), joined.size());
-          progress(Stage::kTranscribe, static_cast<double>(done) /
-                                           static_cast<double>(total_samples));
+        },
+        [&](double fraction) {
+          const double done = static_cast<double>(done_samples) +
+                              std::clamp(fraction, 0.0, 1.0) * static_cast<double>(joined.size());
+          progress(Stage::kTranscribe, done / static_cast<double>(total_samples));
         },
         stop);
     done_samples += joined.size();

@@ -9,6 +9,7 @@
 
 #include <whisper.h>
 
+#include "backends/whisper/whisper_words.hpp"
 #include "core/cancel.hpp"
 #include "core/files.hpp"
 #include "core/model_provider.hpp"
@@ -18,9 +19,11 @@ namespace {
 
 // What the callbacks of one whisper_full call need.
 struct Run {
-  const TokenSegmentCallback& on_segment;
+  const WordsCallback& on_words;
+  const FractionCallback& on_progress;
   const StopToken& stop;
-  int handed = 0;  // segments passed to on_segment so far
+  SampleIndex samples = 0;  // of the request audio
+  int handed = 0;  // segments passed to on_words so far
   std::exception_ptr error;
 };
 
@@ -43,8 +46,8 @@ void HandOver(whisper_context* context, Run& run) {
     for (; run.handed < total; ++run.handed) {
       const int i = run.handed;
       // The language it was told to decode in.
-      TokenSegment segment{.tokens = {},
-                           .language = whisper_lang_str(whisper_full_lang_id(context))};
+      const std::string language = whisper_lang_str(whisper_full_lang_id(context));
+      std::vector<Token> tokens;
       const int count = whisper_full_n_tokens(context, i);
       for (int j = 0; j < count; ++j) {
         const whisper_token_data token = whisper_full_get_token_data(context, i, j);
@@ -61,9 +64,15 @@ void HandOver(whisper_context* context, Run& run) {
           break;
         }
         item.end = std::max(item.end, item.start);
-        segment.tokens.push_back(std::move(item));
+        tokens.push_back(std::move(item));
       }
-      if (!segment.tokens.empty()) run.on_segment(segment);
+      std::vector<Word> words = AssembleWords(tokens, Milliseconds{0}, language);
+      if (words.empty()) continue;
+      const SampleIndex heard = std::min(ToSamples(words.back().end), run.samples);
+      run.on_words({.words = std::move(words), .language = language});
+      if (run.samples > 0) {
+        run.on_progress(static_cast<double>(heard) / static_cast<double>(run.samples));
+      }
     }
   } catch (...) {
     run.error = std::current_exception();  // not through whisper.cpp
@@ -146,7 +155,8 @@ class WhisperTranscriber final : public Transcriber {
   ModelInfo Info() const override { return info_; }
 
   void Transcribe(const TranscribeRequest& request,
-                  const TokenSegmentCallback& on_segment,
+                  const WordsCallback& on_words,
+                  const FractionCallback& on_progress,
                   StopToken stop) override {
     // whisper_full checks the abort callback only after its encoder pass.
     ThrowIfStopped(stop);
@@ -165,12 +175,17 @@ class WhisperTranscriber final : public Transcriber {
     // Earlier text as context lets a mistake repeat for the rest of a
     // recording, so whisper_full gets room for the prompt alone.
     params.n_max_text_ctx = 0;
-    if (!request.prompt.empty()) {
-      params.initial_prompt = request.prompt.c_str();
+    const std::string prompt = JoinGlossary(request.glossary);
+    if (!prompt.empty()) {
+      params.initial_prompt = prompt.c_str();
       params.carry_initial_prompt = true;
-      params.n_max_text_ctx = CountTokens(request.prompt) + 1;
+      params.n_max_text_ctx = CountTokens(prompt) + 1;
     }
-    Run run{.on_segment = on_segment, .stop = stop, .error = nullptr};
+    Run run{.on_words = on_words,
+            .on_progress = on_progress,
+            .stop = stop,
+            .samples = static_cast<SampleIndex>(request.pcm.size()),
+            .error = nullptr};
     params.abort_callback = Aborted;
     params.abort_callback_user_data = &run;
     params.new_segment_callback = NewSegments;

@@ -255,18 +255,21 @@ TEST(PipelineTest, FixedLanguageIsGivenToEveryGroup) {
                std::invalid_argument);
 }
 
-TEST(PipelineTest, PromptIsTheGlossary) {
+TEST(PipelineTest, ModelsGetTheGlossary) {
   auto script = Speech(0, 5, Milliseconds{500});
   const auto after = Speech(10, 5, Milliseconds{10000});
   script.insert(script.end(), after.begin(), after.end());
   FakeOptions options = OptionsFor(script);
-  std::vector<std::string> prompts;
-  options.on_transcribe = [&](const TranscribeRequest& request) { prompts.push_back(request.prompt); };
+  std::vector<std::vector<std::string>> glossaries;
+  options.on_transcribe = [&](const TranscribeRequest& request) {
+    glossaries.emplace_back(request.glossary.begin(), request.glossary.end());
+  };
   FakeModels models(options);
   PipelineOptions pipeline;
   pipeline.glossary = {"sillok", "Whisper"};
   RunFakes(RenderScript(script, Milliseconds{13000}), models, pipeline);
-  EXPECT_EQ(prompts, (std::vector<std::string>{"sillok, Whisper", "sillok, Whisper"}));
+  const std::vector<std::string> glossary = {"sillok", "Whisper"};
+  EXPECT_EQ(glossaries, (std::vector<std::vector<std::string>>{glossary, glossary}));
 }
 
 // A checkpoint kept in memory, as the C ABI keeps one in a file.

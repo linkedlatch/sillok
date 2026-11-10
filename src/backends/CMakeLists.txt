@@ -3,8 +3,12 @@
 add_library(sillok_ggml_devices STATIC ggml_devices.cpp)
 target_link_libraries(sillok_ggml_devices PUBLIC sillok_core PRIVATE ggml)
 
+# Whisper's tokens to words, apart from whisper.cpp so that tests need no model.
+add_library(sillok_whisper_words STATIC whisper/whisper_words.cpp)
+target_link_libraries(sillok_whisper_words PUBLIC sillok_core)
+
 add_library(sillok_whisper STATIC whisper/whisper_transcriber.cpp)
-target_link_libraries(sillok_whisper PUBLIC sillok_ggml_devices PRIVATE whisper)
+target_link_libraries(sillok_whisper PUBLIC sillok_ggml_devices PRIVATE sillok_whisper_words whisper)
 
 add_library(sillok_silero STATIC silero/silero_voice_detector.cpp)
 target_link_libraries(sillok_silero PUBLIC sillok_core PRIVATE whisper)
@@ -21,6 +25,6 @@ if(SILLOK_COREML)
     target_compile_definitions(sillok_whisper PRIVATE SILLOK_COREML)
     target_compile_definitions(sillok_models PRIVATE SILLOK_COREML)
 endif()
-foreach(target sillok_ggml_devices sillok_whisper sillok_silero sillok_sortformer sillok_models)
+foreach(target sillok_ggml_devices sillok_whisper_words sillok_whisper sillok_silero sillok_sortformer sillok_models)
     sillok_set_warnings(${target})
 endforeach()

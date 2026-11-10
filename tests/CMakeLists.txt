@@ -22,6 +22,14 @@ target_link_libraries(sillok_unit_tests PRIVATE sillok_fakes GTest::gtest_main)
 sillok_set_warnings(sillok_unit_tests)
 gtest_discover_tests(sillok_unit_tests)
 
+# Model-free tests of the backends' own text handling.
+if(TARGET sillok_whisper_words)
+    add_executable(sillok_backend_unit_tests unit/whisper_words_test.cpp)
+    target_link_libraries(sillok_backend_unit_tests PRIVATE sillok_whisper_words GTest::gtest_main)
+    sillok_set_warnings(sillok_backend_unit_tests)
+    gtest_discover_tests(sillok_backend_unit_tests)
+endif()
+
 # FFmpeg: converting pushed audio to 16 kHz mono, reading and writing files.
 add_executable(sillok_media_tests unit/audio_input_test.cpp unit/audio_file_test.cpp)
 target_link_libraries(sillok_media_tests PRIVATE sillok_media GTest::gtest_main)

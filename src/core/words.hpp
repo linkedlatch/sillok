@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "core/audio.hpp"
-#include "core/transcriber.hpp"
 #include "core/transcript.hpp"
 
 namespace sillok {
@@ -22,12 +21,9 @@ std::string JoinWords(std::span<const Word> words, std::string_view language);
 // `words` must not be empty.
 Segment MakeSegment(std::vector<Word> words, std::string language);
 
-// Groups decoded tokens into words and shifts their times by `offset`.
-// In languages with spaces a word starts at a token that begins with a space;
-// otherwise every token starts one. A UTF-8 character split over tokens stays
-// in one word, and the result is always well-formed UTF-8.
-std::vector<Word> AssembleWords(std::span<const Token> tokens,
-                                Milliseconds offset, std::string_view language);
+// `words` as the rest of the pipeline expects them from a model: without
+// empty ones, inside [0, duration] and ending no earlier than they start.
+std::vector<Word> CheckWords(std::vector<Word> words, Milliseconds duration);
 
 }  // namespace sillok
 

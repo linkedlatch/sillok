@@ -80,11 +80,11 @@ TEST_F(ModelsTest, TranscribesEnglish) {
   auto transcriber = Models()->OpenTranscriber();
   std::string text;
   transcriber->Transcribe(
-      {.pcm = pcm, .language = "en", .prompt = ""},
-      [&](const TokenSegment& segment) {
-        for (const Token& token : segment.tokens) text += token.text;
+      {.pcm = pcm, .language = "en", .glossary = {}},
+      [&](const TranscribedWords& piece) {
+        for (const Word& word : piece.words) text += " " + word.text;
       },
-      {});
+      [](double) {}, {});
   for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge"}) {
     EXPECT_NE(text.find(word), std::string::npos) << text;
   }
@@ -99,8 +99,8 @@ TEST_F(ModelsTest, DetectsLanguage) {
                                                             "es", "fr", "it", "pt", "ru"}));
   std::vector<std::string> detected;
   models->OpenTranscriber()->Transcribe(
-      {.pcm = pcm, .language = "", .prompt = ""},
-      [&](const TokenSegment& segment) { detected.push_back(segment.language); }, {});
+      {.pcm = pcm, .language = "", .glossary = {}},
+      [&](const TranscribedWords& piece) { detected.push_back(piece.language); }, [](double) {}, {});
   ASSERT_FALSE(detected.empty());
   for (const std::string& language : detected) EXPECT_EQ(language, "ko");
 }
