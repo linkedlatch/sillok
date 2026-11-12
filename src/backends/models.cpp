@@ -202,7 +202,6 @@ class Models final : public ModelProvider {
                         .device = device_,
                         .threads = threads_,
                         .core_ml = core_ml,
-                        .family = transcriber_.family,
                         .languages = transcriber_.languages});
   }
 

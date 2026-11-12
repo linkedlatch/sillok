@@ -32,11 +32,7 @@ bool Aborted(void* data) {
   return run->error != nullptr || run->stop.StopRequested();
 }
 
-// Passes on the segments whisper.cpp finished since the last call. With DTW
-// whisper.cpp calls the segment callback with wrong counts, and after the
-// first window not at all, so this does not rely on it: it is also called
-// before each window is encoded, when the previous window's times are final,
-// and once whisper_full returns.
+// Passes on the segments whisper.cpp finished since the last call.
 void HandOver(whisper_context* context, Run& run) {
   if (run.error) return;
   // Special tokens (timestamps, end of text, ...) have ids from EOT up.
@@ -52,19 +48,10 @@ void HandOver(whisper_context* context, Run& run) {
       for (int j = 0; j < count; ++j) {
         const whisper_token_data token = whisper_full_get_token_data(context, i, j);
         if (token.id >= end_of_text) continue;
-        // A token starts where the alignment reaches it and ends where it
-        // reaches the next one; the last one ends with the segment.
-        Token item{.text = whisper_full_get_token_text(context, i, j),
-                   .start = Milliseconds{token.t_dtw * 10},
-                   .end = Milliseconds{whisper_full_get_segment_t1(context, i) * 10}};
-        for (int k = j + 1; k < count; ++k) {
-          const whisper_token_data next = whisper_full_get_token_data(context, i, k);
-          if (next.id >= end_of_text) continue;
-          item.end = Milliseconds{next.t_dtw * 10};
-          break;
-        }
-        item.end = std::max(item.end, item.start);
-        tokens.push_back(std::move(item));
+        // whisper.cpp's token times, from the timestamp tokens around them.
+        tokens.push_back({.text = whisper_full_get_token_text(context, i, j),
+                          .start = Milliseconds{token.t0 * 10},
+                          .end = Milliseconds{std::max(token.t0, token.t1) * 10}});
       }
       std::vector<Word> words = AssembleWords(tokens, Milliseconds{0}, language);
       if (words.empty()) continue;
@@ -81,18 +68,6 @@ void HandOver(whisper_context* context, Run& run) {
 
 void NewSegments(whisper_context* context, whisper_state*, int, void* data) {
   HandOver(context, *static_cast<Run*>(data));
-}
-
-bool EncoderBegins(whisper_context* context, whisper_state*, void* data) {
-  Run* run = static_cast<Run*>(data);
-  HandOver(context, *run);
-  return run->error == nullptr;
-}
-
-whisper_alignment_heads_preset AlignmentHeads(const std::string& family) {
-  if (family == "large-v3-turbo") return WHISPER_AHEADS_LARGE_V3_TURBO;
-  if (family == "large-v3") return WHISPER_AHEADS_LARGE_V3;
-  throw ModelError("no alignment heads for the Whisper model " + family);
 }
 
 // Loads through a reader instead of a path. whisper.cpp derives the Core ML
@@ -125,12 +100,6 @@ class WhisperTranscriber final : public Transcriber {
     whisper_context_params params = whisper_context_default_params();
     params.use_gpu = config.device.gpu_index >= 0;
     params.gpu_device = std::max(0, config.device.gpu_index);
-    // Word times by dynamic time warping over the decoder's attention to the
-    // audio, as OpenAI's word_timestamps (docs/DESIGN.md D37). whisper.cpp
-    // supports it only without flash attention.
-    params.flash_attn = false;
-    params.dtw_token_timestamps = true;
-    params.dtw_aheads_preset = AlignmentHeads(config.family);
     const std::string path = PathToUtf8(config.model);
 #ifdef SILLOK_COREML
     const bool use_path = config.core_ml;
@@ -170,8 +139,8 @@ class WhisperTranscriber final : public Transcriber {
     params.print_progress = false;
     params.print_realtime = false;
     params.print_timestamps = false;
-    // whisper.cpp's estimate from timestamp token probabilities is not used.
-    params.token_timestamps = false;
+    // Word times from whisper.cpp's token times (docs/DESIGN.md D45).
+    params.token_timestamps = true;
     // Earlier text as context lets a mistake repeat for the rest of a
     // recording, so whisper_full gets room for the prompt alone.
     params.n_max_text_ctx = 0;
@@ -190,8 +159,6 @@ class WhisperTranscriber final : public Transcriber {
     params.abort_callback_user_data = &run;
     params.new_segment_callback = NewSegments;
     params.new_segment_callback_user_data = &run;
-    params.encoder_begin_callback = EncoderBegins;
-    params.encoder_begin_callback_user_data = &run;
 
     const int status = whisper_full(context_.get(), params, request.pcm.data(),
                                     static_cast<int>(request.pcm.size()));
