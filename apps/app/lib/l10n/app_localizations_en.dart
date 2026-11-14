@@ -129,9 +129,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepCopy => 'Saving a copy for listening';
 
   @override
-  String get stepAnalyze => 'Finding speech';
-
-  @override
   String get stepTranscribe => 'Transcribing';
 
   @override

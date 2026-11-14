@@ -128,7 +128,7 @@ Future<void> _writeResult(Directory support) async {
       'created_ms': DateTime(2026, 11, 1, 9).millisecondsSinceEpoch,
       'duration_ms': 300000,
       'stats': {
-        'timings_ms': {'read': 1200, 'copy': 300, 'analyze': 900, 'transcribe': 40000, 'diarize': 5000},
+        'timings_ms': {'read': 1200, 'copy': 300, 'transcribe': 40000, 'diarize': 5000},
       },
     }),
   );
@@ -185,7 +185,7 @@ void main() {
             step: RunStep.transcribe,
             stepFraction: 0.4,
             remaining: Duration(minutes: 42),
-            timingsMs: {RunStep.read: 1200, RunStep.copy: 300, RunStep.analyze: 900},
+            timingsMs: {RunStep.read: 1200, RunStep.copy: 300},
           ),
           [
             for (var i = 0; i < 30; i++)
@@ -195,7 +195,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // The step's own progress, not a share of the whole run.
-        expect(find.text('Transcribing (2/3) · 40% · about 42:00 left'), findsOneWidget);
+        expect(find.text('Transcribing (1/2) · 40% · about 42:00 left'), findsOneWidget);
 
         // The running file.
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);
@@ -296,12 +296,15 @@ void main() {
     await start(tester, _sizes['desktop']!, result: false);
     expect(find.text('large-v3 turbo'), findsOneWidget);
     expect(find.text('large-v3'), findsOneWidget);
-    // Apple: the model with the NPU encoder (recommended) or alone.
+    expect(find.text('Qwen3-ASR 1.7B'), findsOneWidget);
+    // Apple: a Whisper model with the NPU encoder (recommended) or alone;
+    // Qwen has no NPU encoder.
     if (Platform.isMacOS) {
       expect(find.textContaining('Download with the NPU encoder ('), findsNWidgets(2));
       expect(find.textContaining('Model only ('), findsNWidgets(2));
+      expect(find.textContaining('Download ('), findsOneWidget);
     } else {
-      expect(find.textContaining('Download ('), findsNWidgets(2));
+      expect(find.textContaining('Download ('), findsNWidgets(3));
     }
     // Under the recommended version, turbo q5_0.
     expect(find.text('Recommended'), findsOneWidget);

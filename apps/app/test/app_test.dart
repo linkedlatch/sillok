@@ -50,7 +50,7 @@ void main() {
     await tester.pump();
     expect(find.text('Transcribe on this device'), findsOneWidget);
     // A card for each transcription model.
-    expect(find.byType(FilledButton), findsNWidgets(2));
+    expect(find.byType(FilledButton), findsNWidgets(3));
   });
 
   // The app in a folder of its own, with the models linked into it.

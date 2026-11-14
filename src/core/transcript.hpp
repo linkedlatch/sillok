@@ -41,7 +41,7 @@ struct Transcript {
   // Display names chosen by the app, by speaker id. Export falls back to a
   // numbered label for speakers without a name.
   std::map<int, std::string> speaker_names;
-  // By stage: "voice_detection", "transcription", "diarization".
+  // By stage: "transcription", "diarization".
   std::map<std::string, ModelInfo> models;
 };
 

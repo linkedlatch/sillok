@@ -2,12 +2,10 @@
 
 On-device transcription with speaker diarization, as a C++20 library with a C
 ABI. Eleven languages (Korean, English, Japanese, Chinese, Cantonese, German,
-Spanish, French, Italian, Portuguese, Russian), including recordings that
-switch between them.
+Spanish, French, Italian, Portuguese, Russian).
 
 - Transcription: Whisper large-v3-turbo (q5_0) through whisper.cpp, or Qwen3-ASR 1.7B
   with Qwen3-ForcedAligner word times through llama.cpp
-- Voice activity detection: Silero through whisper.cpp
 - Speaker diarization: Nemotron-3-Diarization through NeMo-Speech.cpp
 - Compute: CPU, Vulkan, Metal; the NPU for the Whisper encoder on Apple (Core ML, the Neural Engine)
 
@@ -166,7 +164,7 @@ python3 -I scripts/eval/run_eval.py ... --only lecture
 
 ## Licenses of the models
 
-Whisper (MIT), Silero VAD (MIT), Nemotron-3-Diarization (OpenMDW-1.1),
+Whisper (MIT), Nemotron-3-Diarization (OpenMDW-1.1),
 Qwen3-ASR and Qwen3-ForcedAligner (Apache 2.0).
 
 The Qwen backend carries the Korean word list of Qwen3-ForcedAligner's text

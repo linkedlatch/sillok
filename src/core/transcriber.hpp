@@ -6,21 +6,23 @@
 #include <string>
 #include <vector>
 
-#include "core/audio.hpp"
+#include "core/audio_buffer.hpp"
 #include "core/cancel.hpp"
 #include "core/transcript.hpp"
 
 namespace sillok {
 
 // Consecutive words a model transcribed, typically a sentence. Times are
-// relative to the start of the request audio; speakers are not set.
+// relative to the start of the recording; speakers are not set.
 struct TranscribedWords {
   std::vector<Word> words;
   std::string language;  // what they were transcribed as, one of ModelProvider::Languages()
 };
 
 struct TranscribeRequest {
-  std::span<const float> pcm;  // 16 kHz mono, of any length
+  // The whole recording (finished). The model reads it as its own tools do:
+  // Whisper all at once, Qwen in pieces of up to about 3 minutes.
+  const AudioBuffer& audio;
   // One of ModelProvider::Languages(); empty for the model to tell which of
   // them from the audio.
   std::string language;
@@ -29,7 +31,7 @@ struct TranscribeRequest {
 
 // Receives each piece of words, in order, during Transcribe().
 using WordsCallback = std::function<void(TranscribedWords words)>;
-// Receives how much of the request is done, a fraction in [0, 1].
+// Receives how much of the recording is done, a fraction in [0, 1].
 using FractionCallback = std::function<void(double fraction)>;
 
 class Transcriber {

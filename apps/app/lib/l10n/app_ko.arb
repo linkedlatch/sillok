@@ -34,7 +34,6 @@
   "libraryFailed": "실패: {message}",
   "stepRead": "파일 읽기",
   "stepCopy": "다시 듣기 사본 저장",
-  "stepAnalyze": "음성 구간 찾기",
   "stepTranscribe": "받아쓰기",
   "stepDiarize": "화자 구분",
   "addTitle": "{count, plural, other{파일 {count}개 전사}}",

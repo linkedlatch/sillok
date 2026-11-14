@@ -38,7 +38,7 @@ class JobMeta {
   final int createdMs;
   final int durationMs;
 
-  /// Milliseconds per step: read, copy, analyze, transcribe, diarize.
+  /// Milliseconds per step: read, copy, transcribe, diarize.
   final Map<String, int> timingsMs;
   final String device;
 

@@ -32,7 +32,6 @@ std::string WordText(int id, const std::string& language);
 
 // Counts live fake models, to check which ones share memory.
 struct LiveModels {
-  std::atomic<int> detectors = 0;
   std::atomic<int> transcribers = 0;
   std::atomic<int> diarizers = 0;
   // Set when a transcriber and a diarizer were alive at the same time.
@@ -55,7 +54,6 @@ class FakeModels : public ModelProvider {
 
   std::vector<std::string> Languages() const override { return {"en", "ko"}; }
 
-  std::unique_ptr<VoiceDetector> OpenVoiceDetector() override;
   std::unique_ptr<Transcriber> OpenTranscriber() override;
   std::unique_ptr<Diarizer> OpenDiarizer() override;
 

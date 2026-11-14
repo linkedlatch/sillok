@@ -51,7 +51,7 @@ class Transcript {
       (speaker['id'] as num).toInt(): speaker['name'] as String?,
   };
 
-  /// Stages ("voice_detection", "transcription", "diarization") and what ran them.
+  /// Stages ("transcription", "diarization") and what ran them.
   Map<String, StageInfo> get stages => {
     for (final MapEntry(:key, :value) in (_json['models'] as Map<String, dynamic>? ?? const {}).entries)
       key: StageInfo(

@@ -45,9 +45,8 @@ typedef enum sillok_status {
 } sillok_status;
 
 typedef enum sillok_stage {
-  SILLOK_STAGE_ANALYZE = 0,    /* finding speech */
-  SILLOK_STAGE_TRANSCRIBE = 1,
-  SILLOK_STAGE_DIARIZE = 2
+  SILLOK_STAGE_TRANSCRIBE = 0,
+  SILLOK_STAGE_DIARIZE = 1
 } sillok_stage;
 
 typedef struct sillok_engine sillok_engine;
@@ -77,9 +76,8 @@ SILLOK_API void sillok_free_string(char* text);
  *   "files": [{"file": "...", "url": "...", "size": 574041195,
  *              "sha256": "...", "zip": false}, ...],
  *   "languages": ["ko", "en", "ja", ...]}, ...]
- * Roles are "voice_detection", "transcription" and "diarization", and
- * "backend" names what runs a model ("silero", "whisper", "qwen",
- * "sortformer"); an engine
+ * Roles are "transcription" and "diarization", and "backend" names what
+ * runs a model ("whisper", "qwen", "sortformer"); an engine
  * needs one model of each, the recommended one unless the engine config
  * names another transcription model. A "zip" file is an optional
  * accelerator (the Core ML encoder on Apple) that the app extracts into the
@@ -132,9 +130,9 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 
 /* One recording. `options_json`: {"language": "auto" | "<code>",
  * "diarize": false, "glossary": ["term", ...], "even_loudness": true}
- * "language": "auto" tells the language of each group of speech (below) from
- * its first 30 s, among the model's "languages", so a recording may switch
- * language at a pause; a code
+ * "language": "auto" lets the model tell the language among its
+ * "languages": Whisper once, from the first 30 s of the recording, Qwen for
+ * each piece of up to about 3 minutes it transcribes; a code
  * (one of the transcription model's "languages" in the catalog)
  * transcribes everything in that language. SILLOK_INVALID_ARGUMENT for a
  * language the model does not know. Each segment of the transcript carries

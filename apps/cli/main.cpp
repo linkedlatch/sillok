@@ -40,8 +40,8 @@ constexpr int kExitInterrupted = 130;
 
 constexpr const char* kUsage = R"(usage:
   sillok transcribe INPUT [options]
-      --language auto|CODE    spoken language, such as ko or en; auto tells it
-                              at each long pause (default auto)
+      --language auto|CODE    spoken language, such as ko or en; auto lets the
+                              model tell it (default auto)
       --diarize               label speakers
       --term TEXT             glossary term for the model (repeatable)
       --glossary FILE         glossary terms, one per line

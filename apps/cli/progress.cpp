@@ -16,7 +16,6 @@ constexpr int kReading = 100;  // after sillok_stage's values
 const char* StageName(int stage) {
   switch (stage) {
     case kReading: return "reading";
-    case SILLOK_STAGE_ANALYZE: return "analyzing";
     case SILLOK_STAGE_TRANSCRIBE: return "transcribing";
     case SILLOK_STAGE_DIARIZE: return "diarizing";
     default: return "working";

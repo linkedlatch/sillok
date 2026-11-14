@@ -54,7 +54,7 @@ class JobRequest {
 }
 
 /// The steps of a run, in order. The last three are the library's stages.
-enum RunStep { read, copy, analyze, transcribe, diarize }
+enum RunStep { read, copy, transcribe, diarize }
 
 sealed class JobEvent {}
 
@@ -180,7 +180,7 @@ Future<void> _work((SendPort, JobRequest) start) async {
     (Pointer<Void> _, double fraction) => report(fileStep, fraction),
   );
   final stageProgress = NativeCallable<ProgressFn>.isolateLocal(
-    (Pointer<Void> _, int stage, double fraction) => report(RunStep.values[RunStep.analyze.index + stage], fraction),
+    (Pointer<Void> _, int stage, double fraction) => report(RunStep.values[RunStep.transcribe.index + stage], fraction),
   );
   final segments = NativeCallable<SegmentsFn>.isolateLocal(
     (Pointer<Void> _, Pointer<Utf8> json) => out.send(Previews(json.toDartString())),
