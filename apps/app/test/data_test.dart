@@ -131,23 +131,21 @@ void main() {
 
   test('preparing evens out the original, transcribing takes the copy as it is', () {
     const settings = JobSettings(language: 'ko', diarize: true, glossary: ['Raft']);
-    expect(jobOptions(settings, Lane.prepare, '/j/checkpoint.jsonl'), isEmpty);
-    final transcribe = jobOptions(settings, Lane.transcribe, '/j/checkpoint.jsonl');
+    expect(jobOptions(settings, Lane.prepare), isEmpty);
+    final transcribe = jobOptions(settings, Lane.transcribe);
     expect(transcribe, containsPair('even_loudness', false));
-    expect(transcribe, containsPair('checkpoint', '/j/checkpoint.jsonl'));
     expect(transcribe, containsPair('language', 'ko'));
     expect(transcribe, containsPair('diarize', true));
   });
 
-  test('the queue keeps a stopped file paused with its folder', () async {
+  test('the queue keeps a file for later with its folder', () async {
     final root = await Directory.systemTemp.createTemp('sillok queue ');
     addTearDown(() => root.delete(recursive: true));
     final store = JobStore(Directory('${root.path}/jobs'));
     final stopped = await store.create(DateTime(2026, 11, 9, 10));
-    await store.checkpointOf(stopped).writeAsString('{}\n');
     final leftover = await store.create(DateTime(2026, 11, 9, 11));
     final queueFile = File('${root.path}/queue.json');
-    // The app closed while the first file ran; the second one failed.
+    // The first file waits to be started; the second one failed.
     await queueFile.writeAsString(
       jsonEncode([
         QueueItem(
@@ -157,7 +155,7 @@ void main() {
           settings: const JobSettings(),
           jobId: stopped,
           ready: true,
-          started: true,
+          later: true,
         ),
         QueueItem(
           key: 'b',
@@ -172,20 +170,20 @@ void main() {
     final transcriber = Transcriber(
       store: store,
       queueFile: queueFile,
-      request: (item, lane, copyPath, checkpointPath) => throw StateError('nothing should run'),
+      request: (item, lane, copyPath) => throw StateError('nothing should run'),
       keepAwake: awake,
     );
     addTearDown(transcriber.dispose);
-    await transcriber.resume();
+    await transcriber.load();
 
-    expect([for (final item in transcriber.queue) item.paused], [true, false]);
+    expect([for (final item in transcriber.queue) item.later], [true, false]);
     expect(transcriber.run, isNull);
-    expect(store.checkpointOf(stopped).existsSync(), isTrue);
+    expect(store.dirOf(stopped).existsSync(), isTrue);
     expect(store.dirOf(leftover).existsSync(), isFalse);
     expect(transcriber.waitingPosition('a'), 0);
     expect(awake.holds, 0); // nothing to run, so the computer may sleep
 
-    // Removed, a paused file takes its folder along.
+    // Removed, a file for later takes its folder along.
     await transcriber.remove('a');
     expect(store.dirOf(stopped).existsSync(), isFalse);
     expect((jsonDecode(await queueFile.readAsString()) as List).single['key'], 'b');

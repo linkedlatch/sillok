@@ -11,7 +11,6 @@
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/diarizer.hpp"
-#include "core/sha256.hpp"
 #include "core/transcriber.hpp"
 #include "core/words.hpp"
 
@@ -48,89 +47,27 @@ std::vector<SampleRange> DetectSpeech(const AudioBuffer& audio,
   return FindSpeech(probabilities, frame_samples, audio.size(), options);
 }
 
-// Identifies what a checkpoint was made of: the recording, the options that
-// shape its transcription and the models that find and transcribe its
-// speech. Bump the first line when the transcription of the same input
-// changes.
-std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& options,
-                          const std::string& voice_detector,
-                          const std::string& transcriber) {
-  Sha256 hash;
-  const auto add = [&](std::string_view text) {
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
-  };
-  add("sillok checkpoint 4");
-  add(voice_detector);
-  add(transcriber);
-  add(options.language);
-  for (const std::string& term : options.glossary) add(term);
-  add("");
-  const SegmenterOptions& segmenter = options.segmenter;
-  for (const float threshold : {segmenter.speech_threshold, segmenter.silence_threshold}) {
-    add(std::to_string(threshold));
-  }
-  for (const Milliseconds time : {segmenter.min_speech, segmenter.min_silence, segmenter.padding,
-                                  segmenter.tail, segmenter.max_gap,
-                                  segmenter.max_group}) {
-    add(std::to_string(time.count()));
-  }
-  constexpr SampleIndex kBlock = SampleIndex{kSampleRate} * 60;
-  for (SampleIndex begin = 0; begin < audio.size(); begin += kBlock) {
-    const std::vector<float> part = audio.Read({begin, begin + kBlock});
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>(part.data()),
-                          part.size() * sizeof(float)));
-  }
-  return hash.HexDigest();
-}
-
 std::vector<Segment> TranscribeSpeech(
     const AudioBuffer& audio, std::span<const SampleRange> speech,
     const PipelineOptions& options, ModelProvider& models,
     const ProgressCallback& progress, const SegmentsCallback& on_segments,
-    const StopToken& stop, const Checkpoint* resume, CheckpointSink* checkpoints,
-    Transcript& transcript) {
+    const StopToken& stop, Transcript& transcript) {
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
   const std::vector<std::vector<SampleRange>> groups =
       GroupSpeech(speech, options.segmenter.max_gap, options.segmenter.max_group);
-  const std::string key =
-      resume != nullptr || checkpoints != nullptr
-          ? CheckpointKey(audio, options, transcript.models.at("voice_detection").name,
-                          transcriber->Info().name)
-          : std::string();
-  const bool continues =
-      resume != nullptr && resume->key == key && resume->groups <= groups.size();
   // Each group's language is told from its own start: a recording may change
   // language at a pause.
   const std::string language = options.language == "auto" ? "" : options.language;
 
   std::vector<Segment> segments;
-  std::size_t first = 0;
-  if (continues) {
-    segments = resume->segments;
-    first = resume->groups;
-    if (on_segments && !segments.empty()) on_segments(segments);
-  } else if (checkpoints != nullptr) {
-    checkpoints->Start(key);
-  }
   SampleIndex total_samples = 0;
   SampleIndex done_samples = 0;
-  for (std::size_t i = 0; i < groups.size(); ++i) {
-    const SampleIndex size = JoinedSpeech(groups[i]).size();
-    total_samples += size;
-    if (i < first) done_samples += size;
-  }
-  if (first > 0) {
-    progress(Stage::kTranscribe,
-             static_cast<double>(done_samples) / static_cast<double>(total_samples));
-  }
+  for (const std::vector<SampleRange>& group : groups) total_samples += JoinedSpeech(group).size();
 
-  for (std::size_t index = first; index < groups.size(); ++index) {
+  for (const std::vector<SampleRange>& group : groups) {
     ThrowIfStopped(stop);
-    const std::vector<SampleRange>& group = groups[index];
-    const std::size_t before = segments.size();
     const JoinedSpeech joined(group);
     std::vector<float> pcm(static_cast<std::size_t>(joined.size()), 0.0f);
     for (std::size_t i = 0; i < group.size(); ++i) {
@@ -158,9 +95,6 @@ std::vector<Segment> TranscribeSpeech(
         },
         stop);
     done_samples += joined.size();
-    if (checkpoints != nullptr) {
-      checkpoints->AddGroup(std::span(segments).subspan(before));
-    }
   }
   transcript.models["transcription"] = transcriber->Info();
   return segments;
@@ -192,8 +126,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
 
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       StopToken stop, const SegmentsCallback& on_segments,
-                       const Checkpoint* resume, CheckpointSink* checkpoints) {
+                       StopToken stop, const SegmentsCallback& on_segments) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
   if (options.language != "auto") {
     const std::vector<std::string> languages = models.Languages();
@@ -214,8 +147,7 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   std::vector<Segment> segments;
   if (!speech.empty()) {
     segments = TranscribeSpeech(audio, speech, options, models, progress,
-                                on_segments, stop, resume, checkpoints,
-                                transcript);
+                                on_segments, stop, transcript);
   }
   progress(Stage::kTranscribe, 1.0);
 

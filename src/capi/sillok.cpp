@@ -24,7 +24,6 @@
 #endif
 
 #include "backends/models.hpp"
-#include "capi/checkpoint.hpp"
 #include "capi/json_io.hpp"
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
@@ -99,14 +98,12 @@ struct sillok_job {
              sillok::JobOptions job_options)
       : engine(std::move(engine_state)),
         options(std::move(job_options.pipeline)),
-        checkpoint(std::move(job_options.checkpoint)),
         audio(engine->temp_dir),
         input(audio, job_options.even_loudness ? sillok::AudioInput::Loudness::kEvenedOut
                                                : sillok::AudioInput::Loudness::kAsRecorded) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
-  std::filesystem::path checkpoint;  // empty for none
   sillok::AudioBuffer audio;  // kept in a temporary file
   sillok::AudioInput input;   // converts pushed audio into `audio`
   sillok::StopSource stop;
@@ -457,12 +454,6 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
 
     job->input.Finish();
     sillok::ExitSafeModels models(*job->engine->models);
-    std::optional<sillok::CheckpointFile> checkpoint;
-    std::optional<sillok::Checkpoint> resume;
-    if (!job->checkpoint.empty()) {
-      checkpoint.emplace(job->checkpoint, sillok_version());
-      resume = checkpoint->Load();
-    }
     const sillok::Transcript transcript = sillok::RunPipeline(
         job->audio, job->options, models,
         [&](sillok::Stage stage, double fraction) {
@@ -473,9 +464,7 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
           if (job->on_segments == nullptr) return;
           const std::string json = sillok::SegmentsToJson(segments);
           job->on_segments(job->segments_user_data, json.c_str());
-        },
-        resume ? &*resume : nullptr, checkpoint ? &*checkpoint : nullptr);
-    if (checkpoint) checkpoint->Remove();
+        });
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;
   });

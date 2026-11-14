@@ -113,13 +113,13 @@ class AppState extends ChangeNotifier {
       store: store,
       queueFile: File('${_support.path}${Platform.pathSeparator}queue.json'),
       keepAwake: KeepAwake.system(),
-      request: (item, lane, copyPath, checkpointPath) => JobRequest(
+      request: (item, lane, copyPath) => JobRequest(
         modelsDir: modelsDir.path,
         tempDir: cache.path,
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
-        options: jobOptions(item.settings, lane, checkpointPath),
+        options: jobOptions(item.settings, lane),
         source: item.path,
         copyPath: copyPath,
         prepare: lane == Lane.prepare,
@@ -138,7 +138,7 @@ class AppState extends ChangeNotifier {
     started = true;
     notifyListeners();
     await checkModels();
-    await transcriber.resume();
+    await transcriber.load();
   }
 
   // --- Models -----------------------------------------------------------------

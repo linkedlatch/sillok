@@ -278,8 +278,8 @@ class _QueueTile extends StatelessWidget {
                 ? l.libraryFailed(errorText(l, error))
                 : state.transcriber.preparing == item.key
                 ? l.runningPreparing
-                : item.paused
-                ? (item.started ? l.libraryPaused : l.libraryLater)
+                : item.later
+                ? l.libraryLater
                 : l.libraryWaiting(state.transcriber.waitingPosition(item.key)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -291,7 +291,7 @@ class _QueueTile extends StatelessWidget {
             ? Icons.error_outline
             : run != null
             ? Icons.graphic_eq
-            : item.paused
+            : item.later
             ? Icons.pause_circle_outline
             : Icons.schedule,
       ),
@@ -301,15 +301,12 @@ class _QueueTile extends StatelessWidget {
       trailing: PopupMenuButton<String>(
         onSelected: (action) => switch (action) {
           'retry' => state.transcriber.retry(item.key),
-          'unpause' => state.transcriber.unpause(item.key),
-          'pause' => state.transcriber.pause(),
+          'start' => state.transcriber.start(item.key),
           _ => state.transcriber.remove(item.key),
         },
         itemBuilder: (context) => [
           if (error != null) PopupMenuItem(value: 'retry', child: Text(l.retry)),
-          if (error == null && item.paused)
-            PopupMenuItem(value: 'unpause', child: Text(item.started ? l.unpause : l.addStart)),
-          if (run != null && !run.stopping) PopupMenuItem(value: 'pause', child: Text(l.runningPause)),
+          if (error == null && item.later) PopupMenuItem(value: 'start', child: Text(l.addStart)),
           PopupMenuItem(value: 'remove', child: Text(run != null ? l.runningCancel : l.remove)),
         ],
       ),

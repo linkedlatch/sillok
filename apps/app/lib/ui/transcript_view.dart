@@ -18,8 +18,8 @@ import 'playback.dart';
 import 'settings_fields.dart';
 
 /// A file's text over a player (DESIGN D36): a finished result, or a file in
-/// the queue with what is transcribed so far, while it transcribes or waits
-/// paused. Choosing a sentence plays it from a second before and shows what is
+/// the queue with what is transcribed so far, while it transcribes or waits.
+/// Choosing a sentence plays it from a second before and shows what is
 /// otherwise hidden: its exact times and language. Dragging the player's
 /// slider shows the sentence at that time, and letting go goes to it.
 ///
@@ -59,14 +59,10 @@ class _TranscriptViewState extends State<TranscriptView> {
   List<Segment> _segments = const [];
   List<Paragraph> _paragraphs = const [];
 
-  /// What a stopped run left in the checkpoint, shown while the file waits
-  /// and until a continued run sends it again.
-  List<Segment> _saved = const [];
   bool _loaded = false;
   bool _playing = false;
   bool _searching = false;
   String? _audio; // the copy, once opened
-  bool _wasRunning = false;
 
   /// Whether the playing sentence's paragraph is scrolled out of view. The
   /// text never moves by itself during playback; a button goes to the
@@ -142,9 +138,11 @@ class _TranscriptViewState extends State<TranscriptView> {
         _setSegments(transcript?.segments ?? const []);
         _loaded = true;
       });
-    } else {
-      await _loadSaved();
-      if (mounted) setState(() => _loaded = true);
+    } else if (mounted) {
+      setState(() {
+        _showQueued();
+        _loaded = true;
+      });
     }
   }
 
@@ -159,31 +157,17 @@ class _TranscriptViewState extends State<TranscriptView> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadSaved() async {
-    final id = _jobId;
-    final saved = id == null ? const <Segment>[] : await widget.state.store.readCheckpoint(id);
-    if (!mounted) return;
-    setState(() {
-      _saved = saved;
-      _showQueued();
-    });
-  }
-
   void _onState() {
     if (!mounted || widget.entry != null) return;
     unawaited(_openAudio());
-    final running = _run != null;
-    if (_wasRunning && !running && _item != null) unawaited(_loadSaved()); // paused or failed
-    _wasRunning = running;
     // Gone from the queue: it finished, and its result follows.
     if (_item == null) return;
     setState(_showQueued);
   }
 
-  /// The sentences of a queued file: those of its run, or those saved.
+  /// The sentences of a queued file's run so far.
   void _showQueued() {
-    final previews = widget.state.transcriber.previews;
-    final segments = _run != null && previews.isNotEmpty ? previews : _saved;
+    final segments = _run != null ? widget.state.transcriber.previews : const <Segment>[];
     // The same sentences: the queue's lists are copies of the same segments.
     if (segments.length == _segments.length && (segments.isEmpty || identical(segments.last, _segments.last))) return;
     final grew = segments.length > _segments.length;
@@ -590,8 +574,8 @@ class _TranscriptViewState extends State<TranscriptView> {
       text = errorText(l, error);
     } else if (preparing) {
       text = l.detailPreparing;
-    } else if (item.paused) {
-      text = item.started ? l.detailPaused : l.detailLater;
+    } else if (item.later) {
+      text = l.detailLater;
     } else {
       text = l.detailWaiting(transcriber.waitingPosition(item.key));
     }
@@ -612,23 +596,16 @@ class _TranscriptViewState extends State<TranscriptView> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (run != null) ...[
+              if (run != null)
                 OutlinedButton(
-                  onPressed: run.stopping ? null : transcriber.pause,
-                  child: Text(run.pausing ? l.runningPausing : l.runningPause),
-                ),
-                OutlinedButton(
-                  onPressed: run.stopping ? null : transcriber.cancel,
+                  onPressed: run.cancelling ? null : transcriber.cancel,
                   child: Text(run.cancelling ? l.runningCancelling : l.runningCancel),
-                ),
-              ] else ...[
+                )
+              else ...[
                 if (error != null)
                   FilledButton(onPressed: () => transcriber.retry(item.key), child: Text(l.retry))
-                else if (item.paused)
-                  FilledButton(
-                    onPressed: () => transcriber.unpause(item.key),
-                    child: Text(item.started ? l.unpause : l.addStart),
-                  ),
+                else if (item.later)
+                  FilledButton(onPressed: () => transcriber.start(item.key), child: Text(l.addStart)),
                 OutlinedButton(onPressed: () => transcriber.remove(item.key), child: Text(l.remove)),
               ],
             ],

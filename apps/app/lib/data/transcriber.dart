@@ -2,16 +2,14 @@
 // the app closed are transcribed when it opens again; a failed file stays
 // with its error until it is retried or removed.
 //
-// A file goes through two lanes (DESIGN D20-5, D34). Preparing reads the
-// original once, as soon as the file is added and while another file may be
+// A file goes through two lanes (DESIGN D20-5). Preparing reads the original
+// once, as soon as the file is added and while another file may be
 // transcribing, and saves the copy for listening back in the file's job
 // folder. Transcribing then runs prepared files one at a time from that copy,
-// so the original may be moved or deleted by then. The run writes the
-// library's checkpoint to the folder: pausing stops it and keeps both, and
-// continuing, retrying or opening the app again picks up after the last group
-// of speech transcribed. A file the app closed on while it was transcribing
-// comes back paused; one added to transcribe later is prepared and waits,
-// paused.
+// so the original may be moved or deleted by then. A retried file, or one the
+// app closed on while it was transcribing, is transcribed again from the
+// start. A file added to transcribe later is prepared and waits until it is
+// started.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -33,9 +31,8 @@ class QueueItem {
     required this.settings,
     this.error,
     this.jobId,
-    this.paused = false,
+    this.later = false,
     this.ready = false,
-    this.started = false,
     this.prepareMs = const {},
   });
 
@@ -46,9 +43,8 @@ class QueueItem {
     settings: JobSettings.fromJson(json['settings'] as Map<String, dynamic>),
     error: json['error'] == null ? null : RunError.fromJson(json['error'] as Map<String, dynamic>),
     jobId: json['job'] as String?,
-    paused: json['paused'] as bool? ?? false,
+    later: json['later'] as bool? ?? false,
     ready: json['ready'] as bool? ?? false,
-    started: json['started'] as bool? ?? false,
     prepareMs: {
       for (final MapEntry(:key, :value) in (json['prepare_ms'] as Map<String, dynamic>? ?? const {}).entries)
         key: (value as num).toInt(),
@@ -64,31 +60,25 @@ class QueueItem {
   /// The job folder, once preparing started.
   final String? jobId;
 
-  /// Not to be transcribed until continued: stopped by the user or by the app
-  /// closing, or added to transcribe later.
-  final bool paused;
+  /// Added to transcribe later: not transcribed until started.
+  final bool later;
 
   /// The copy for listening back is saved; transcription reads it.
   final bool ready;
-
-  /// Transcription started at least once.
-  final bool started;
 
   /// Milliseconds of reading the original and saving the copy.
   final Map<String, int> prepareMs;
 
   QueueItem withError(RunError? error) => _copy(error: error);
   QueueItem withJob(String? jobId) => _copy(jobId: jobId);
-  QueueItem withPaused(bool paused) => _copy(paused: paused);
-  QueueItem withStarted() => _copy(started: true);
+  QueueItem withLater(bool later) => _copy(later: later);
   QueueItem withReady(Map<String, int> prepareMs) => _copy(ready: true, prepareMs: prepareMs);
 
   QueueItem _copy({
     Object? error = _same,
     Object? jobId = _same,
-    bool? paused,
+    bool? later,
     bool? ready,
-    bool? started,
     Map<String, int>? prepareMs,
   }) => QueueItem(
     key: key,
@@ -97,9 +87,8 @@ class QueueItem {
     settings: settings,
     error: identical(error, _same) ? this.error : error as RunError?,
     jobId: identical(jobId, _same) ? this.jobId : jobId as String?,
-    paused: paused ?? this.paused,
+    later: later ?? this.later,
     ready: ready ?? this.ready,
-    started: started ?? this.started,
     prepareMs: prepareMs ?? this.prepareMs,
   );
 
@@ -112,9 +101,8 @@ class QueueItem {
     'settings': settings.toJson(),
     'error': error?.toJson(),
     'job': jobId,
-    'paused': paused,
+    'later': later,
     'ready': ready,
-    'started': started,
     'prepare_ms': prepareMs,
   };
 }
@@ -145,7 +133,6 @@ class RunState {
     required this.remaining,
     required this.timingsMs,
     this.cancelling = false,
-    this.pausing = false,
   });
 
   final String key;
@@ -168,13 +155,11 @@ class RunState {
 
   /// Milliseconds of the steps done so far.
   final Map<RunStep, int> timingsMs;
+
+  /// A cancel was asked for and the run is stopping.
   final bool cancelling;
-  final bool pausing;
 
-  /// A cancel or pause was asked for and the run is stopping.
-  bool get stopping => cancelling || pausing;
-
-  RunState _stopping({required bool pause}) => RunState(
+  RunState _cancelling() => RunState(
     key: key,
     name: name,
     settings: settings,
@@ -182,8 +167,7 @@ class RunState {
     stepFraction: stepFraction,
     remaining: remaining,
     timingsMs: timingsMs,
-    cancelling: !pause,
-    pausing: pause,
+    cancelling: true,
   );
 }
 
@@ -192,11 +176,10 @@ enum Lane { prepare, transcribe }
 
 /// The library's job options for [lane] (DESIGN D20-5). Preparing reads the
 /// original with the defaults, which even out its loudness, as the copy keeps
-/// it; transcribing reads the copy as it is, with the file's settings and the
-/// checkpoint in its folder.
-Map<String, Object?> jobOptions(JobSettings settings, Lane lane, String checkpointPath) => switch (lane) {
+/// it; transcribing reads the copy as it is, with the file's settings.
+Map<String, Object?> jobOptions(JobSettings settings, Lane lane) => switch (lane) {
   Lane.prepare => const {},
-  Lane.transcribe => {...settings.options, 'checkpoint': checkpointPath, 'even_loudness': false},
+  Lane.transcribe => {...settings.options, 'even_loudness': false},
 };
 
 class Transcriber extends ChangeNotifier {
@@ -214,8 +197,8 @@ class Transcriber extends ChangeNotifier {
   final KeepAwake keepAwake;
 
   /// The library request for a file in [lane], given the copy for listening
-  /// back and the checkpoint in its job folder.
-  final JobRequest Function(QueueItem item, Lane lane, String copyPath, String checkpointPath) request;
+  /// back in its job folder.
+  final JobRequest Function(QueueItem item, Lane lane, String copyPath) request;
 
   List<QueueItem> _queue = [];
   RunState? _run;
@@ -242,10 +225,9 @@ class Transcriber extends ChangeNotifier {
   /// The job id of a file that finished and left the queue.
   String? finishedId(String key) => _finishedIds[key];
 
-  /// Loads the saved queue and continues with it. A file that was
-  /// transcribing when the app closed stays paused; folders no file in the
+  /// Loads the saved queue and continues with it; folders no file in the
   /// queue keeps are left over from a stop and removed.
-  Future<void> resume() async {
+  Future<void> load() async {
     try {
       _queue = [
         for (final item in jsonDecode(await queueFile.readAsString()) as List)
@@ -254,7 +236,6 @@ class Transcriber extends ChangeNotifier {
     } on Object {
       _queue = [];
     }
-    _queue = [for (final item in _queue) item.started && item.error == null ? item.withPaused(true) : item];
     await store.removeUnfinished(keep: {for (final item in _queue) ?item.jobId});
     await _save();
     notifyListeners();
@@ -262,22 +243,22 @@ class Transcriber extends ChangeNotifier {
   }
 
   /// Queues [files] (path, name) with [settings]; with [later], they are
-  /// prepared and wait, paused, to be started.
+  /// prepared and wait to be started.
   Future<void> enqueue(List<(String, String)> files, JobSettings settings, {bool later = false}) async {
     final now = DateTime.now().microsecondsSinceEpoch;
     for (final (path, name) in files) {
-      _queue.add(QueueItem(key: '$now-${_keys++}', path: path, name: name, settings: settings, paused: later));
+      _queue.add(QueueItem(key: '$now-${_keys++}', path: path, name: name, settings: settings, later: later));
     }
     await _save();
     notifyListeners();
     _kick();
   }
 
-  /// Runs a failed file again, from where it stopped.
+  /// Runs a failed file again, from the start.
   Future<void> retry(String key) => _update(key, (item) => item.withError(null));
 
-  /// Starts or continues a paused file, from where it stopped.
-  Future<void> unpause(String key) => _update(key, (item) => item.withPaused(false));
+  /// Starts a file added to transcribe later.
+  Future<void> start(String key) => _update(key, (item) => item.withLater(false));
 
   Future<void> _update(String key, QueueItem Function(QueueItem item) change) async {
     _queue = [for (final item in _queue) item.key == key ? change(item) : item];
@@ -303,15 +284,10 @@ class Transcriber extends ChangeNotifier {
   }
 
   /// Stops the transcribing file and removes it.
-  void cancel() => _stop(pause: false);
-
-  /// Stops the transcribing file and keeps it, paused, to continue later.
-  void pause() => _stop(pause: true);
-
-  void _stop({required bool pause}) {
+  void cancel() {
     final run = _run;
-    if (run == null || run.stopping) return;
-    _run = run._stopping(pause: pause);
+    if (run == null || run.cancelling) return;
+    _run = run._cancelling();
     _job?.cancel();
     notifyListeners();
   }
@@ -338,7 +314,7 @@ class Transcriber extends ChangeNotifier {
   int waitingPosition(String key) {
     var position = 0;
     for (final item in _queue) {
-      if (item.error != null || item.paused || item.key == _run?.key) continue;
+      if (item.error != null || item.later || item.key == _run?.key) continue;
       position++;
       if (item.key == key) return position;
     }
@@ -383,7 +359,7 @@ class Transcriber extends ChangeNotifier {
     _preparing = item.key;
     notifyListeners();
     final job = _prepareJob = JobRun.start(
-      request(item, Lane.prepare, store.audioOf(id).path, store.checkpointOf(id).path),
+      request(item, Lane.prepare, store.audioOf(id).path),
     );
     JobEvent? last;
     await for (final event in job.events) {
@@ -417,7 +393,7 @@ class Transcriber extends ChangeNotifier {
     var held = false;
     try {
       while (true) {
-        final next = _queue.where((item) => item.ready && item.error == null && !item.paused).firstOrNull;
+        final next = _queue.where((item) => item.ready && item.error == null && !item.later).firstOrNull;
         if (next == null) break;
         if (!held) keepAwake.hold();
         held = true;
@@ -431,11 +407,6 @@ class Transcriber extends ChangeNotifier {
 
   Future<void> _runItem(QueueItem item) async {
     final id = item.jobId!;
-    if (!item.started) {
-      item = item.withStarted();
-      _replace(item);
-      await _save();
-    }
     final created = DateTime.now().millisecondsSinceEpoch;
     final clock = Stopwatch()..start();
     final timings = <RunStep, int>{};
@@ -453,7 +424,7 @@ class Transcriber extends ChangeNotifier {
     notifyListeners();
 
     final job = _job = JobRun.start(
-      request(item, Lane.transcribe, store.audioOf(id).path, store.checkpointOf(id).path),
+      request(item, Lane.transcribe, store.audioOf(id).path),
     );
     JobEvent? last;
     await for (final event in job.events) {
@@ -475,7 +446,6 @@ class Transcriber extends ChangeNotifier {
             remaining: fraction >= 0.03 && elapsed.inSeconds >= 20 ? elapsed * ((1 - fraction) / fraction) : null,
             timingsMs: Map.unmodifiable(timings),
             cancelling: previous.cancelling,
-            pausing: previous.pausing,
           );
           notifyListeners();
         case Previews(:final segmentsJson):
@@ -485,7 +455,6 @@ class Transcriber extends ChangeNotifier {
           break;
       }
     }
-    final paused = _run?.pausing ?? false;
     _job = null;
     _run = null;
     _previews = [];
@@ -509,13 +478,11 @@ class Transcriber extends ChangeNotifier {
         _finishedIds[item.key] = id;
         _queue.removeWhere((q) => q.key == item.key);
         _finished.add((item.key, id));
-      case JobFailed(:final status) when status == Status.cancelled && paused:
-        _queue = [for (final q in _queue) q.key == item.key ? q.withPaused(true) : q];
       case JobFailed(:final status) when status == Status.cancelled:
         _queue.removeWhere((q) => q.key == item.key);
         await store.delete(id);
       case JobFailed(:final status, :final message):
-        // The folder stays, so that a retry continues where this run stopped.
+        // The folder stays with the copy, which a retry reads.
         _queue = [for (final q in _queue) q.key == item.key ? q.withError(RunError(status, message)) : q];
       default:
         _queue = [

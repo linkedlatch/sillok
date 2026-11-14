@@ -1,5 +1,5 @@
 // The app on the real library and models: first start, a file through the
-// queue into the library, a paused file continued, and the settings. The runs
+// queue into the library, a file added for later, and the settings. The runs
 // are skipped without
 // SILLOK_TEST_MODELS and SILLOK_TEST_AUDIO (see engine_test.dart).
 import 'dart:io';
@@ -11,7 +11,6 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:sillok/app_state.dart';
 import 'package:sillok/data/settings.dart';
-import 'package:sillok/engine/job_run.dart';
 import 'package:sillok/main.dart';
 
 class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
@@ -72,31 +71,6 @@ void main() {
     return state;
   }
 
-  testWidgets('a paused file continues in its folder', skip: skip, (tester) async {
-    final state = await started(tester);
-    await tester.runAsync(
-      () => state.enqueue([(audio!, 'fleurs.wav')], const JobSettings(language: 'en', diarize: false)),
-    );
-    // Paused as transcription starts, after the copy for listening back.
-    await _waitFor(tester, () => state.transcriber.run?.step == RunStep.transcribe);
-    state.transcriber.pause();
-    await _waitFor(tester, () => state.transcriber.run == null);
-    final item = state.transcriber.queue.single;
-    expect(item.paused, isTrue);
-    final copy = state.store.audioOf(item.jobId!);
-    expect(copy.existsSync(), isTrue);
-    final copied = copy.lastModifiedSync();
-    await tester.pump();
-    expect(find.text('Paused'), findsOneWidget);
-
-    await tester.runAsync(() => state.transcriber.unpause(item.key));
-    await _waitFor(tester, () => state.library.isNotEmpty);
-    expect(state.transcriber.queue, isEmpty);
-    expect(state.library.single.id, item.jobId);
-    expect(copy.lastModifiedSync(), copied); // kept, not written again
-    expect(state.store.checkpointOf(item.jobId!).existsSync(), isFalse);
-  });
-
   testWidgets('a file added for later outlives its original', skip: skip, (tester) async {
     final state = await started(tester);
     final original = await tester.runAsync(() async {
@@ -117,7 +91,7 @@ void main() {
     expect(find.text('To transcribe later'), findsOneWidget);
 
     await tester.runAsync(() => original!.delete());
-    await tester.runAsync(() => state.transcriber.unpause(state.transcriber.queue.single.key));
+    await tester.runAsync(() => state.transcriber.start(state.transcriber.queue.single.key));
     await _waitFor(tester, () => state.library.isNotEmpty);
     final transcript = await tester.runAsync(() => state.store.readTranscript(state.library.single.id));
     expect(transcript!.segments, isNotEmpty);

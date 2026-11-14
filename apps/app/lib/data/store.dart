@@ -1,8 +1,8 @@
 // Finished transcriptions on disk (docs/APP-NOTES.md, storage format): one
 // folder per job, <jobs>/<yyyyMMdd-HHmmss[-n]>/, with transcript.json, the
 // copy for listening back (audio.m4a) and meta.json, written last. A folder
-// without meta.json is unfinished; while its file is paused or failed, it
-// holds the library's checkpoint (checkpoint.jsonl) and maybe the copy.
+// without meta.json is unfinished; while its file waits or failed, it holds
+// the copy.
 import 'dart:convert';
 import 'dart:io';
 
@@ -77,7 +77,6 @@ class JobStore {
   File _file(String id, String name) => File('${dirOf(id).path}${Platform.pathSeparator}$name');
 
   File audioOf(String id) => _file(id, 'audio.m4a');
-  File checkpointOf(String id) => _file(id, 'checkpoint.jsonl');
 
   /// A new, empty folder named after [time].
   Future<String> create(DateTime time) async {
@@ -128,27 +127,6 @@ class JobStore {
     } on Object {
       return null;
     }
-  }
-
-  /// The segments a stopped run left in the checkpoint: its lines after the
-  /// first, one group of speech each (the library's format, DESIGN D34). A
-  /// last line cut short is left out.
-  Future<List<Segment>> readCheckpoint(String id) async {
-    final List<String> lines;
-    try {
-      lines = await checkpointOf(id).readAsLines();
-    } on Object {
-      return const [];
-    }
-    final segments = <Segment>[];
-    for (final line in lines.skip(1)) {
-      try {
-        segments.addAll(parseSegments(line));
-      } on Object {
-        break;
-      }
-    }
-    return segments;
   }
 
   Future<Transcript?> readTranscript(String id) async {

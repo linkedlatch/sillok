@@ -131,8 +131,7 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 /* --- Jobs ---------------------------------------------------------------- */
 
 /* One recording. `options_json`: {"language": "auto" | "<code>",
- * "diarize": false, "glossary": ["term", ...], "checkpoint": "<path>",
- * "even_loudness": true}
+ * "diarize": false, "glossary": ["term", ...], "even_loudness": true}
  * "language": "auto" tells the language of each group of speech (below) from
  * its first 30 s, among the model's "languages", so a recording may switch
  * language at a pause; a code
@@ -142,15 +141,7 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * the language it was transcribed in.
  * "even_loudness": false leaves the pushed audio's loudness as it is, for a
  * recording whose loudness was evened out already: a job's copy for
- * listening back (sillok_job_save_audio) transcribes as the original did.
- * With "checkpoint", the job records in that file how far transcription got,
- * one group of speech at a time (speech pausing for 2 s or more starts a new
- * group). A job of the same recording and options, with the same file,
- * continues after the groups it finds there, with the result one run would
- * have given; otherwise it starts the file anew. Detecting speech and
- * diarization run again in full. The file is removed when the job succeeds
- * and kept when it fails or is cancelled, which is how an app pauses a job:
- * sillok_job_cancel(), then a new job with the same file. */
+ * listening back (sillok_job_save_audio) transcribes as the original did. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);
