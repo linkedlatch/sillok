@@ -10,7 +10,9 @@ namespace {
 // Where in `samples` the cut falls: the quietest sample of the first of the
 // quietest windows (numpy's argmin of the moving sum, then within it).
 SampleIndex QuietestSample(const std::vector<float>& samples) {
-  const auto at = [&](SampleIndex i) { return std::abs(samples[static_cast<std::size_t>(i)]); };
+  const auto at = [&](SampleIndex i) {
+    return static_cast<double>(std::abs(samples[static_cast<std::size_t>(i)]));
+  };
   const auto n = static_cast<SampleIndex>(samples.size());
   double sum = 0.0;
   for (SampleIndex i = 0; i < kCutWindow; ++i) sum += at(i);

@@ -153,7 +153,8 @@ std::vector<CatalogModel> BuildCatalog() {
                          "Nemotron-3-Diarization.q8_0.gguf",
                   .size = 107012128,
                   .sha256 = "08456d9e22cd9a323c0364d98375f3746d6e68507ebb705cd46438c534c7a3a1",
-                  .zip = false}}},
+                  .zip = false}},
+       .languages = {}},
   };
 }
 

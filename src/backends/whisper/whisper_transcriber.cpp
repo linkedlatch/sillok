@@ -195,7 +195,9 @@ class WhisperTranscriber final : public Transcriber {
     }
     const auto best = std::max_element(
         language_ids_.begin(), language_ids_.end(),
-        [&](int a, int b) { return probabilities[a] < probabilities[b]; });
+        [&](int a, int b) {
+          return probabilities[static_cast<std::size_t>(a)] < probabilities[static_cast<std::size_t>(b)];
+        });
     if (best == language_ids_.end()) throw ModelError("no languages to tell apart");
     return whisper_lang_str(*best);
   }

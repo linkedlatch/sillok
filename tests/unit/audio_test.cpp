@@ -1,27 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
-#include <numbers>
 #include <vector>
 
 #include "core/audio_buffer.hpp"
 
 namespace sillok {
 namespace {
-
-std::vector<float> Sine(int rate, double frequency, double seconds,
-                        double amplitude = 0.5) {
-  std::vector<float> pcm(static_cast<std::size_t>(rate * seconds));
-  for (std::size_t i = 0; i < pcm.size(); ++i) {
-    pcm[i] = static_cast<float>(
-        amplitude *
-        std::sin(2.0 * std::numbers::pi * frequency * static_cast<double>(i) / rate));
-  }
-  return pcm;
-}
 
 TEST(AudioBufferTest, StoresSixteenBitMono) {
   AudioBuffer audio;

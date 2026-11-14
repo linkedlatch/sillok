@@ -13,6 +13,7 @@ std::vector<CatalogModel> ModelCatalog() {
   const std::string abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
   return {{.id = "fake-transcriber",
            .role = "transcription",
+           .backend = "fake",
            .family = "fake",
            .quantization = "q5_0",
            .recommended = true,
@@ -29,6 +30,7 @@ std::vector<CatalogModel> ModelCatalog() {
            .languages = {"en", "ko"}},
           {.id = "fake-small",
            .role = "transcription",
+           .backend = "fake",
            .family = "fake-small",
            .quantization = "q8_0",
            .recommended = false,
