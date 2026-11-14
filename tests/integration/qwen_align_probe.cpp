@@ -5,9 +5,8 @@
 //   before FixTimestamps), one per line.
 #include <chrono>
 #include <cstdio>
-#include <cstring>
+#include <filesystem>
 #include <fstream>
-#include <iterator>
 #include <string>
 #include <vector>
 
@@ -22,10 +21,12 @@ int main(int argc, char** argv) {
   }
   ListDevices();  // quiets the libraries' logs
   const std::filesystem::path models = argv[1];
+  // Read with its size known: gcc 13 wrongly warns of a null dereference in
+  // istreambuf_iterator (-Wnull-dereference).
   std::ifstream audio_file(argv[2], std::ios::binary);
-  const std::string bytes((std::istreambuf_iterator<char>(audio_file)), std::istreambuf_iterator<char>());
-  std::vector<float> pcm(bytes.size() / sizeof(float));
-  std::memcpy(pcm.data(), bytes.data(), pcm.size() * sizeof(float));
+  std::vector<float> pcm(static_cast<std::size_t>(std::filesystem::file_size(argv[2])) / sizeof(float));
+  audio_file.read(reinterpret_cast<char*>(pcm.data()),
+                  static_cast<std::streamsize>(pcm.size() * sizeof(float)));
   std::vector<qwen::AlignUnit> units;
   std::ifstream words(argv[3], std::ios::binary);
   for (std::string line; std::getline(words, line);) {
