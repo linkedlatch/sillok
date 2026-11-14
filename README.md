@@ -1,9 +1,12 @@
 # sillok
 
 On-device transcription with speaker diarization, as a C++20 library with a C
-ABI. Korean and English, including recordings that switch between them.
+ABI. Eleven languages (Korean, English, Japanese, Chinese, Cantonese, German,
+Spanish, French, Italian, Portuguese, Russian), including recordings that
+switch between them.
 
-- Transcription: Whisper large-v3-turbo (q5_0) through whisper.cpp
+- Transcription: Whisper large-v3-turbo (q5_0) through whisper.cpp, or Qwen3-ASR 1.7B
+  with Qwen3-ForcedAligner word times through llama.cpp
 - Voice activity detection: Silero through whisper.cpp
 - Speaker diarization: Nemotron-3-Diarization through NeMo-Speech.cpp
 - Compute: CPU, Vulkan, Metal; the NPU for the Whisper encoder on Apple (Core ML, the Neural Engine)
@@ -24,7 +27,7 @@ apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              llama.cpp, whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
-scripts/                  fetching test audio, evaluation
+scripts/                  test audio, evaluation, model conversion, generated tables, CI
 ```
 
 To update a submodule to a release, fetch and check out its tag, then commit
@@ -163,7 +166,8 @@ python3 -I scripts/eval/run_eval.py ... --only lecture
 
 ## Licenses of the models
 
-Whisper (MIT), Silero VAD (MIT), Nemotron-3-Diarization (OpenMDW-1.1).
+Whisper (MIT), Silero VAD (MIT), Nemotron-3-Diarization (OpenMDW-1.1),
+Qwen3-ASR and Qwen3-ForcedAligner (Apache 2.0).
 
 The Qwen backend carries the Korean word list of Qwen3-ForcedAligner's text
 processor (`korean_dict_jieba.dict` of the qwen-asr package, Apache 2.0) in

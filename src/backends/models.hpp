@@ -49,6 +49,7 @@ struct CatalogFile {
 struct CatalogModel {
   std::string id;            // e.g. "whisper-large-v3-turbo-q5_0"
   std::string role;          // "voice_detection", "transcription", "diarization"
+  std::string backend;       // what runs it: "silero", "whisper", "qwen", "sortformer"
   std::string family;        // e.g. "large-v3-turbo", for apps to describe
   std::string quantization;  // e.g. "q5_0", "q8_0", "f16"
   bool recommended = false;  // its role's default

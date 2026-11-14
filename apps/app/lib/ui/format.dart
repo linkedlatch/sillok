@@ -51,8 +51,11 @@ String errorText(AppLocalizations l, RunError error) => switch (error.status) {
   _ => l.errorEngine(error.message),
 };
 
-/// "large-v3 turbo"
-String familyName(String family) => family.replaceFirst('large-v3-turbo', 'large-v3 turbo');
+/// "large-v3 turbo", "Qwen3-ASR 1.7B"
+String familyName(String family) => switch (family) {
+  'qwen3-asr-1.7b' => 'Qwen3-ASR 1.7B',
+  _ => family.replaceFirst('large-v3-turbo', 'large-v3 turbo'),
+};
 
 /// "large-v3 turbo / q5_0"
 String modelName(CatalogModel model) => '${familyName(model.family)} / ${model.quantization}';

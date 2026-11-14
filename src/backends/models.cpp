@@ -19,6 +19,7 @@
 #include "backends/ggml_devices.hpp"
 #include "backends/silero/silero_voice_detector.hpp"
 #include "backends/sortformer/sortformer_diarizer.hpp"
+#include "backends/qwen/qwen_transcriber.hpp"
 #include "backends/whisper/whisper_transcriber.hpp"
 #include "core/files.hpp"
 
@@ -59,6 +60,7 @@ CatalogModel Whisper(const char* family, const char* quantization,
                      bool recommended = false) {
   CatalogModel entry{.id = std::string("whisper-") + family + "-" + quantization,
                      .role = "transcription",
+                     .backend = "whisper",
                      .family = family,
                      .quantization = quantization,
                      .recommended = recommended,
@@ -72,6 +74,38 @@ CatalogModel Whisper(const char* family, const char* quantization,
   return entry;
 }
 
+// Qwen3-ASR from ggml-org's conversion, and Qwen3-ForcedAligner converted by
+// scripts/models/convert_qwen_aligner.py (llama.cpp b12233): the backend runs
+// the four files in this order.
+constexpr char kQwenAsrRepo[] =
+    "https://huggingface.co/ggml-org/Qwen3-ASR-1.7B-GGUF/resolve/"
+    "36a678687ba7d07a74ca70ccb0e36902e005fb80/";
+// TODO(owner): where the converted aligner is published.
+constexpr char kQwenAlignerRepo[] = "";
+
+CatalogModel Qwen() {
+  const auto file = [](const char* repo, const char* name, std::uint64_t size,
+                       const char* sha256) {
+    return CatalogFile{.file = name, .url = std::string(repo) + name, .size = size,
+                       .sha256 = sha256, .zip = false};
+  };
+  return {.id = "qwen3-asr-1.7b-q8_0",
+          .role = "transcription",
+          .backend = "qwen",
+          .family = "qwen3-asr-1.7b",
+          .quantization = "q8_0",
+          .recommended = false,
+          .files = {file(kQwenAsrRepo, "Qwen3-ASR-1.7B-Q8_0.gguf", 2165034944,
+                         "58e22d0532d4eacaf034cfac17a6fed159f37c41390c710186783be439d1fc57"),
+                    file(kQwenAsrRepo, "mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
+                         "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"),
+                    file(kQwenAlignerRepo, "qwen3-forced-aligner-0.6b-q8_0.gguf", 805030944,
+                         "34925c2e8c77fd891d44c9331985c0f909dfa8e7e558bb8899d8c0497c158088"),
+                    file(kQwenAlignerRepo, "mmproj-qwen3-forced-aligner-0.6b-f16.gguf", 639672832,
+                         "2fa50bcc9288ddecdf0b3b87b3a8338e016de4c9baf1d9b51f6803e579a6c2bc")},
+          .languages = Languages()};
+}
+
 std::vector<CatalogModel> BuildCatalog() {
   const CatalogFile large_v3_encoder = CoreMlEncoder(
       "ggml-large-v3-encoder.mlmodelc.zip", 1175711232,
@@ -82,6 +116,7 @@ std::vector<CatalogModel> BuildCatalog() {
   return {
       {.id = "silero-v6.2.0",
        .role = "voice_detection",
+       .backend = "silero",
        .family = "silero",
        .quantization = "f32",
        .recommended = true,
@@ -118,8 +153,10 @@ std::vector<CatalogModel> BuildCatalog() {
               WhisperFile("ggml-large-v3.bin", 3095033483,
                           "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"),
               large_v3_encoder),
+      Qwen(),
       {.id = "nemotron-3-diarization-q8_0",
        .role = "diarization",
+       .backend = "sortformer",
        .family = "nemotron-3-diarization",
        .quantization = "q8_0",
        .recommended = true,
@@ -190,6 +227,16 @@ class Models final : public ModelProvider {
   }
 
   std::unique_ptr<Transcriber> OpenTranscriber() override {
+    if (transcriber_.backend == "qwen") {
+      return OpenQwen({.asr_model = Path(transcriber_, 0),
+                       .asr_mmproj = Path(transcriber_, 1),
+                       .aligner_model = Path(transcriber_, 2),
+                       .aligner_mmproj = Path(transcriber_, 3),
+                       .name = transcriber_.id,
+                       .device = device_,
+                       .threads = threads_,
+                       .languages = transcriber_.languages});
+    }
     // The Core ML encoder is the model's archive, once extracted.
     bool core_ml = false;
     for (const CatalogFile& file : transcriber_.files) {
@@ -215,9 +262,9 @@ class Models final : public ModelProvider {
   }
 
  private:
-  // The model's main file: its first, which is never an archive.
-  std::filesystem::path Path(const CatalogModel& model) const {
-    return dir_ / PathFromUtf8(model.files.front().file);
+  // File `index` of the model; the first, the main one, is never an archive.
+  std::filesystem::path Path(const CatalogModel& model, std::size_t index = 0) const {
+    return dir_ / PathFromUtf8(model.files.at(index).file);
   }
 
   std::filesystem::path dir_;

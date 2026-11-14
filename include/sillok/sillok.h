@@ -72,11 +72,14 @@ SILLOK_API void sillok_free_string(char* text);
 /* The models this build can use, each with the files to download into one
  * directory, which the app passes to sillok_engine_create():
  * [{"id": "whisper-large-v3-turbo-q5_0", "role": "transcription",
- *   "family": "large-v3-turbo", "quantization": "q5_0", "recommended": true,
+ *   "backend": "whisper", "family": "large-v3-turbo", "quantization": "q5_0",
+ *   "recommended": true,
  *   "files": [{"file": "...", "url": "...", "size": 574041195,
  *              "sha256": "...", "zip": false}, ...],
  *   "languages": ["ko", "en", "ja", ...]}, ...]
- * Roles are "voice_detection", "transcription" and "diarization"; an engine
+ * Roles are "voice_detection", "transcription" and "diarization", and
+ * "backend" names what runs a model ("silero", "whisper", "qwen",
+ * "sortformer"); an engine
  * needs one model of each, the recommended one unless the engine config
  * names another transcription model. A "zip" file is an optional
  * accelerator (the Core ML encoder on Apple) that the app extracts into the

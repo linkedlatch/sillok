@@ -255,6 +255,7 @@ std::string CatalogToJson(const std::vector<CatalogModel>& catalog) {
     }
     Json entry = {{"id", model.id},
                   {"role", model.role},
+                  {"backend", model.backend},
                   {"family", model.family},
                   {"quantization", model.quantization},
                   {"recommended", model.recommended},
