@@ -20,10 +20,13 @@ extern "C" {
 namespace sillok {
 namespace {
 
-// The filter's defaults but for b=1, which keeps the gain at the start and end
+// The filter's defaults but for two. b=1 keeps the gain at the start and end
 // of a recording: by default it fades in from none there, which leaves a
-// recording shorter than 15 s as quiet as it came.
-constexpr const char* kOptions = "b=1";
+// recording shorter than 15 s as quiet as it came. s=10 softly limits, before
+// the gain is set, samples over ten times their 0.5 s frame's RMS: without
+// it, one short loud sound caps its frame's gain at its peak, and that cap
+// holds the gain down for about 15 s around it (docs/DESIGN.md D57).
+constexpr const char* kOptions = "b=1:s=10";
 
 AVFilterContext* Create(AVFilterGraph* graph, const char* filter, const char* name,
                         const char* options) {

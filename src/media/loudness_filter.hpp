@@ -15,7 +15,8 @@ namespace sillok {
 
 // Evens out a 16 kHz mono recording with FFmpeg's dynaudnorm: a quiet passage
 // is raised towards the level of the rest over about 15 s, up to 20 dB, and
-// keeps its own dynamics. Voice detection and Whisper miss speech recorded
+// keeps its own dynamics, while a short loud sound such as a clap is softened
+// rather than holding the gain down around it. Models miss speech recorded
 // near -50 dBFS, and a question from the back of a room is quiet next to the
 // lecturer. Output lags the input by about that long and is as long.
 class LoudnessFilter {

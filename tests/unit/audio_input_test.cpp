@@ -144,6 +144,22 @@ TEST(LoudnessTest, RaisesAQuietPassageTowardsTheRest) {
   EXPECT_GT(Rms(quiet), Rms(loud) * 0.45);
 }
 
+TEST(LoudnessTest, AShortLoudSoundDoesNotHoldTheGainDownAroundIt) {
+  // A quiet tone with a 10 ms full-scale click at 20 s. Without softening
+  // the click, the gain 1 to 4 s either side of it falls to 0-4 dB.
+  auto pcm = Scaled(Sine(16000, 300.0, 40.0), 0.04f);
+  for (std::size_t i = 16000 * 20; i < 16000 * 20 + 160; ++i) pcm[i] = (i / 8) % 2 ? 1.0f : -1.0f;
+  const auto out = EvenOut(pcm);
+  ASSERT_EQ(out.size(), pcm.size());
+  const auto gain = [&](int from, int to) {
+    const std::span<const float> before(pcm.data() + 16000 * from, 16000 * (to - from));
+    const std::span<const float> after(out.data() + 16000 * from, 16000 * (to - from));
+    return Rms(after) / Rms(before);
+  };
+  EXPECT_GT(gain(16, 19), 4.0);  // over 12 dB
+  EXPECT_GT(gain(21, 24), 4.0);
+}
+
 TEST(LoudnessTest, LeavesSilenceSilentAndKeepsShortInput) {
   const std::vector<float> silence(16000, 0.0f);
   const auto out = EvenOut(silence);
