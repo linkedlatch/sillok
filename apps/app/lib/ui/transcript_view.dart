@@ -292,10 +292,9 @@ class _TranscriptViewState extends State<TranscriptView> {
     if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
   }
 
-  /// Plays from a second before [startMs]: a segment occasionally starts
-  /// later than its first word.
+  /// Plays from [startMs].
   Future<void> _playFrom(int startMs) async {
-    await _player.seek(Duration(milliseconds: startMs > 1000 ? startMs - 1000 : 0));
+    await _player.seek(Duration(milliseconds: startMs));
     await _player.play();
   }
 
