@@ -59,6 +59,9 @@ class _TranscriptViewState extends State<TranscriptView> {
   List<Segment> _segments = const [];
   List<Paragraph> _paragraphs = const [];
 
+  /// Each sentence's group, marked as playing together (playingGroups).
+  List<int> _groups = const [];
+
   bool _loaded = false;
   bool _playing = false;
   bool _searching = false;
@@ -76,9 +79,11 @@ class _TranscriptViewState extends State<TranscriptView> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   int? _selected;
+
+  /// The playing group, as its first sentence.
   int? _current;
 
-  /// The sentence the slider was let go at, marked until playback moves on.
+  /// The group the slider was let go at, marked until playback moves on.
   int? _landed;
 
   /// Where the slider is being dragged, in milliseconds.
@@ -180,6 +185,7 @@ class _TranscriptViewState extends State<TranscriptView> {
   void _setSegments(List<Segment> segments) {
     _segments = segments;
     _paragraphs = paragraphs(segments);
+    _groups = playingGroups(segments);
     while (_recognizers.length > segments.length) {
       _recognizers.removeLast().dispose();
     }
@@ -195,7 +201,8 @@ class _TranscriptViewState extends State<TranscriptView> {
       _textKeys.add(GlobalKey());
     }
     if (_selected != null && _selected! >= segments.length) _selected = null;
-    if (_current != null && _current! >= segments.length) _current = null;
+    if (_current != null && (_current! >= segments.length || _groups[_current!] != _current)) _current = null;
+    if (_landed != null && (_landed! >= segments.length || _groups[_landed!] != _landed)) _landed = null;
   }
 
   @override
@@ -253,7 +260,7 @@ class _TranscriptViewState extends State<TranscriptView> {
 
   void _onPosition(Duration position) {
     final ms = position.inMilliseconds;
-    final current = _segments.indexWhere((s) => s.startMs <= ms && ms < s.endMs);
+    final current = playingGroup(_segments, _groups, ms);
     final changed = current >= 0 && current != _current;
     setState(() {
       _position = position;
@@ -313,8 +320,8 @@ class _TranscriptViewState extends State<TranscriptView> {
       _dragging = null;
       _position = Duration(milliseconds: ms.round());
       if (goes) {
-        _current = segment;
-        _landed = segment;
+        _current = _groups[segment];
+        _landed = _groups[segment];
       }
     });
     _player.seek(Duration(milliseconds: ms.round()));
@@ -654,7 +661,7 @@ class _TranscriptViewState extends State<TranscriptView> {
   List<TextSpan> _segmentSpans(ThemeData theme, String text, int segment, String query) {
     final background = segment == _selected
         ? theme.colorScheme.tertiaryContainer
-        : segment == _current && (_playing || segment == _landed)
+        : _groups[segment] == _current && (_playing || _current == _landed)
         ? theme.colorScheme.secondaryContainer
         : null;
     final style = TextStyle(backgroundColor: background);

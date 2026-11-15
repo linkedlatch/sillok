@@ -96,6 +96,36 @@ int landingSegment(List<Segment> segments, int ms, {required bool complete}) {
   return complete && segments.isNotEmpty ? segments.length - 1 : -1;
 }
 
+/// Sentences marked as playing together (DESIGN D55), as the first of each
+/// one's group: a run that starts at the same time, and a sentence without
+/// length with the one after it. The aligner may give many words one time.
+List<int> playingGroups(List<Segment> segments) {
+  final first = List<int>.filled(segments.length, 0);
+  for (var i = 1; i < segments.length; i++) {
+    final previous = segments[i - 1];
+    final joins = segments[i].startMs == segments[first[i - 1]].startMs || previous.startMs == previous.endMs;
+    first[i] = joins ? first[i - 1] : i;
+  }
+  return first;
+}
+
+/// The group of [playingGroups] playing at [ms], as its first sentence: the
+/// first group spanning it, from its first sentence's start to the latest
+/// end among its sentences. -1 in a pause.
+int playingGroup(List<Segment> segments, List<int> groups, int ms) {
+  var i = 0;
+  while (i < segments.length) {
+    var end = segments[i].endMs;
+    var j = i + 1;
+    for (; j < segments.length && groups[j] == i; j++) {
+      if (segments[j].endMs > end) end = segments[j].endMs;
+    }
+    if (segments[i].startMs <= ms && ms < end) return i;
+    i = j;
+  }
+  return -1;
+}
+
 List<Paragraph> paragraphs(List<Segment> segments) {
   final result = <Paragraph>[];
   var current = <int>[];

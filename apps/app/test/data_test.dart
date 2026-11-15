@@ -129,6 +129,30 @@ void main() {
     expect(landingSegment(const [], 0, complete: true), -1);
   });
 
+  test('sentences at one time, and one without length with the next, play together', () {
+    const segments = [
+      Segment(startMs: 1000, endMs: 3000, text: 'a', language: 'ko'),
+      Segment(startMs: 3000, endMs: 3000, text: 'b', language: 'ko'), // no length: with c
+      Segment(startMs: 3000, endMs: 3000, text: 'c', language: 'ko'), // with d, same start
+      Segment(startMs: 3000, endMs: 4000, text: 'd', language: 'ko'),
+      Segment(startMs: 4500, endMs: 4500, text: 'e', language: 'ko'), // no length: with f
+      Segment(startMs: 4600, endMs: 6000, text: 'f', language: 'ko'),
+      Segment(startMs: 6000, endMs: 6000, text: 'g', language: 'ko'), // last, alone
+    ];
+    final groups = playingGroups(segments);
+    expect(groups, [0, 1, 1, 1, 4, 4, 6]);
+    int at(int ms) => playingGroup(segments, groups, ms);
+    expect(at(500), -1);
+    expect(at(2999), 0);
+    expect(at(3000), 1);
+    expect(at(3999), 1);
+    expect(at(4200), -1); // a pause
+    expect(at(4500), 4);
+    expect(at(5999), 4);
+    expect(at(6000), -1);
+    expect(playingGroups(const []), isEmpty);
+  });
+
   test('preparing evens out the original, transcribing takes the copy as it is', () {
     const settings = JobSettings(language: 'ko', diarize: true, glossary: ['Raft']);
     expect(jobOptions(settings, Lane.prepare), isEmpty);
