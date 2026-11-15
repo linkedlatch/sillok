@@ -111,14 +111,14 @@ TEST_F(ModelsTest, ReportsTheDeviceUsed) {
   }
 }
 
-// Qwen3-ASR with Qwen3-ForcedAligner, opened directly (the catalog does not
-// list it yet).
+// Qwen3-ASR with Qwen3-ForcedAligner, opened directly (apart from the
+// catalog, with two languages).
 class QwenTest : public ::testing::Test {
  protected:
   void SetUp() override {
     for (const char* file : {"Qwen3-ASR-1.7B-Q8_0.gguf", "mmproj-Qwen3-ASR-1.7B-bf16.gguf",
-                             "qwen3-forced-aligner-0.6b-q8_0.gguf",
-                             "mmproj-qwen3-forced-aligner-0.6b-f16.gguf"}) {
+                             "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
+                             "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf"}) {
       if (!std::filesystem::exists(kModels / file)) GTEST_SKIP() << file << " not found";
     }
     if (!std::filesystem::exists(kAudio / "sets" / "fleurs_en.wav")) {
@@ -128,8 +128,8 @@ class QwenTest : public ::testing::Test {
   static std::unique_ptr<Transcriber> Open() {
     return OpenQwen({.asr_model = kModels / "Qwen3-ASR-1.7B-Q8_0.gguf",
                      .asr_mmproj = kModels / "mmproj-Qwen3-ASR-1.7B-bf16.gguf",
-                     .aligner_model = kModels / "qwen3-forced-aligner-0.6b-q8_0.gguf",
-                     .aligner_mmproj = kModels / "mmproj-qwen3-forced-aligner-0.6b-f16.gguf",
+                     .aligner_model = kModels / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
+                     .aligner_mmproj = kModels / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
                      .name = "qwen3-asr-1.7b",
                      .device = ChooseDevice(Device::kGpu, 0),
                      .threads = 8,

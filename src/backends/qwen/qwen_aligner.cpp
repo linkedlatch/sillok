@@ -8,6 +8,14 @@
 #include "core/model_provider.hpp"
 
 namespace sillok::qwen {
+namespace {
+
+// The model's timestamp classes (config.json: classify_num,
+// timestamp_segment_time), which llama.cpp's converter does not record.
+constexpr int kClasses = 5000;
+constexpr int kSegmentMs = 80;
+
+}  // namespace
 
 QwenAligner::QwenAligner(const std::filesystem::path& model, const std::filesystem::path& mmproj,
                          const ComputeDevice& device, int threads)
@@ -20,12 +28,8 @@ QwenAligner::QwenAligner(const std::filesystem::path& model, const std::filesyst
               // 6000.
               .context = 8192,
               .embeddings = false}),
-      slot_(model_.Token("<timestamp>")),
-      classes_(model_.MetaNumber("qwen3_forced_aligner.classes")),
-      segment_ms_(model_.MetaNumber("qwen3_forced_aligner.segment_ms")) {
-  if (classes_ <= 0 || classes_ > model_.row_size() || segment_ms_ <= 0) {
-    throw ModelError("not a converted Qwen3-ForcedAligner");
-  }
+      slot_(model_.Token("<timestamp>")) {
+  if (model_.row_size() < kClasses) throw ModelError("not a Qwen3-ForcedAligner");
 }
 
 std::vector<int> QwenAligner::Align(std::span<const float> pcm, std::span<const AlignUnit> units,
@@ -36,12 +40,15 @@ std::vector<int> QwenAligner::Align(std::span<const float> pcm, std::span<const 
   for (const AlignUnit& unit : units) prompt += unit.text + "<timestamp><timestamp>";
   std::vector<int> times;
   times.reserve(units.size() * 2);
-  // The output layer's first rows are the classes of 80 ms; the rest are 0.
+  // The output layer is the classes of 80 ms; llama.cpp puts them at the end
+  // of each row, after -inf up to the vocabulary's size.
+  const int first = model_.row_size() - kClasses;
   model_.Feed(
       prompt, pcm, AudioTokens(pcm.size()), [&](llama_token token) { return token == slot_; },
-      [&](llama_token, const float* logits) {
-        times.push_back(static_cast<int>(std::max_element(logits, logits + classes_) - logits) *
-                        segment_ms_);
+      [&](llama_token, const float* row) {
+        const float* classes = row + first;
+        times.push_back(
+            static_cast<int>(std::max_element(classes, classes + kClasses) - classes) * kSegmentMs);
       },
       false, on_progress, stop);
   if (times.size() != units.size() * 2) {

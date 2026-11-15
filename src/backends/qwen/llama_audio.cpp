@@ -1,7 +1,6 @@
 #include "backends/qwen/llama_audio.hpp"
 
 #include <algorithm>
-#include <cstdlib>
 #include <utility>
 
 #include <mtmd.h>
@@ -127,14 +126,6 @@ std::string LlamaAudio::Piece(llama_token token) const {
   std::string piece(static_cast<std::size_t>(-length), '\0');
   llama_token_to_piece(vocab_, token, piece.data(), static_cast<int32_t>(piece.size()), 0, true);
   return piece;
-}
-
-int LlamaAudio::MetaNumber(const char* key) const {
-  char value[32];
-  if (llama_model_meta_val_str(model_, key, value, sizeof(value)) <= 0) {
-    throw ModelError(std::string("the model file has no ") + key);
-  }
-  return std::atoi(value);
 }
 
 const float* LlamaAudio::Row(int index) const {

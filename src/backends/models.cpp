@@ -26,8 +26,8 @@ namespace sillok {
 namespace {
 
 // Official sources, pinned to a repository revision: whisper.cpp's own
-// download scripts point at ggerganov/whisper.cpp and ggml-org/whisper-vad,
-// and NVIDIA publishes the diarization GGUF in its model repository.
+// download script points at ggerganov/whisper.cpp, and NVIDIA publishes the
+// diarization GGUF in its model repository.
 constexpr char kWhisperRepo[] =
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/"
     "5359861c739e955e79d9a303bcbc70fb988958b1/";
@@ -73,14 +73,15 @@ CatalogModel Whisper(const char* family, const char* quantization,
   return entry;
 }
 
-// Qwen3-ASR from ggml-org's conversion, and Qwen3-ForcedAligner converted by
-// scripts/models/convert_qwen_aligner.py (llama.cpp b12233): the backend runs
-// the four files in this order.
+// Qwen3-ASR from ggml-org's conversion, and Qwen3-ForcedAligner converted the
+// same way (llama.cpp b12233's convert_hf_to_gguf.py, unchanged): the backend
+// runs the four files in this order.
 constexpr char kQwenAsrRepo[] =
     "https://huggingface.co/ggml-org/Qwen3-ASR-1.7B-GGUF/resolve/"
     "36a678687ba7d07a74ca70ccb0e36902e005fb80/";
-// TODO(owner): where the converted aligner is published.
-constexpr char kQwenAlignerRepo[] = "";
+constexpr char kQwenAlignerRepo[] =
+    "https://huggingface.co/linkedlatch/Qwen3-ForcedAligner-0.6B-GGUF/resolve/"
+    "501a5023b8a60d6baf0bb8f98084208dde4ad058/";
 
 CatalogModel Qwen() {
   const auto file = [](const char* repo, const char* name, std::uint64_t size,
@@ -98,10 +99,10 @@ CatalogModel Qwen() {
                          "58e22d0532d4eacaf034cfac17a6fed159f37c41390c710186783be439d1fc57"),
                     file(kQwenAsrRepo, "mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
                          "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"),
-                    file(kQwenAlignerRepo, "qwen3-forced-aligner-0.6b-q8_0.gguf", 805030944,
-                         "34925c2e8c77fd891d44c9331985c0f909dfa8e7e558bb8899d8c0497c158088"),
-                    file(kQwenAlignerRepo, "mmproj-qwen3-forced-aligner-0.6b-f16.gguf", 639672832,
-                         "2fa50bcc9288ddecdf0b3b87b3a8338e016de4c9baf1d9b51f6803e579a6c2bc")},
+                    file(kQwenAlignerRepo, "Qwen3-ForcedAligner-0.6B-Q8_0.gguf", 645025216,
+                         "c5b48ae7a04b808f7059de128069f0ad40577c724e9f064aa83bbf11bacefd32"),
+                    file(kQwenAlignerRepo, "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
+                         "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668")},
           .languages = Languages()};
 }
 

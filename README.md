@@ -25,7 +25,7 @@ apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              llama.cpp, whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
-scripts/                  test audio, evaluation, model conversion, generated tables, CI
+scripts/                  test audio, evaluation, generated tables, CI
 ```
 
 To update a submodule to a release, fetch and check out its tag, then commit

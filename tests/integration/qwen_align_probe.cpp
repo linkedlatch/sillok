@@ -36,8 +36,8 @@ int main(int argc, char** argv) {
   const bool cpu = argc > 4 && std::string(argv[4]) == "cpu";
   const auto started = std::chrono::steady_clock::now();
   try {
-    qwen::QwenAligner aligner(models / "qwen3-forced-aligner-0.6b-q8_0.gguf",
-                              models / "mmproj-qwen3-forced-aligner-0.6b-f16.gguf",
+    qwen::QwenAligner aligner(models / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
+                              models / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
                               ChooseDevice(cpu ? Device::kCpu : Device::kGpu, 0), 8);
     const auto loaded = std::chrono::steady_clock::now();
     const std::vector<int> times = aligner.Align(pcm, units, {}, {});

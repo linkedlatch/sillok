@@ -46,8 +46,6 @@ class LlamaAudio {
   llama_token Token(std::string_view text) const;
   std::vector<llama_token> Tokenize(std::string_view text, bool parse_special) const;
   std::string Piece(llama_token token) const;
-  // A number in the model file's metadata; throws ModelError without it.
-  int MetaNumber(const char* key) const;
 
   // Starts anew with `prompt`, in which mtmd_default_marker() stands for
   // `pcm` (16 kHz mono). The audio gives `audio_tokens` positions (mtmd may

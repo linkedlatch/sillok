@@ -10,6 +10,24 @@ function(sillok_require_third_party name)
     endif()
 endfunction()
 
+# Applies `patch` (cmake/patches) to the submodule `name` once: a change the
+# project needs before upstream has it. The submodule shows as modified.
+function(sillok_patch_third_party name patch)
+    find_package(Git REQUIRED)
+    set(dir "${SILLOK_THIRD_PARTY_DIR}/${name}")
+    execute_process(COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${patch}"
+                    WORKING_DIRECTORY "${dir}" RESULT_VARIABLE applied OUTPUT_QUIET ERROR_QUIET)
+    if(applied EQUAL 0)
+        return()
+    endif()
+    execute_process(COMMAND "${GIT_EXECUTABLE}" apply "${patch}"
+                    WORKING_DIRECTORY "${dir}" RESULT_VARIABLE result ERROR_VARIABLE error)
+    if(NOT result EQUAL 0)
+        message(FATAL_ERROR "cannot apply ${patch} to ${name}: ${error}")
+    endif()
+    message(STATUS "Applied ${patch} to ${name}")
+endfunction()
+
 # nlohmann/json, single_include/nlohmann/json.hpp only: used by the C ABI layer
 # and the CLI.
 sillok_require_third_party(json)
@@ -34,6 +52,9 @@ endif()
 # self-contained.
 sillok_require_third_party(llama.cpp)
 sillok_require_third_party(whisper.cpp)
+# Qwen3-ForcedAligner's output layer is its 5000 timestamp classes, which
+# llama.cpp b12233 refuses as narrower than the vocabulary.
+sillok_patch_third_party(llama.cpp "${PROJECT_SOURCE_DIR}/cmake/patches/llama.cpp-qwen3vl-output-head.patch")
 # whisper.cpp and llama.cpp declare old cmake_minimum_required versions, so
 # without CMP0077 their option(BUILD_SHARED_LIBS) would override the value set
 # here.

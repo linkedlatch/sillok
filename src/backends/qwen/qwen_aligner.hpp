@@ -13,8 +13,10 @@
 
 namespace sillok::qwen {
 
-// Qwen3-ForcedAligner (converted by scripts/models/convert_qwen_aligner.py)
-// through llama.cpp. Throws ModelError if it cannot be loaded.
+// Qwen3-ForcedAligner (converted by llama.cpp's convert_hf_to_gguf.py)
+// through llama.cpp, which needs cmake/patches/llama.cpp-qwen3vl-output-head.patch
+// to load its 5000-class output layer. Throws ModelError if it cannot be
+// loaded.
 class QwenAligner {
  public:
   QwenAligner(const std::filesystem::path& model, const std::filesystem::path& mmproj,
@@ -29,8 +31,6 @@ class QwenAligner {
  private:
   LlamaAudio model_;
   llama_token slot_;  // <timestamp>
-  int classes_;
-  int segment_ms_;
 };
 
 }  // namespace sillok::qwen
