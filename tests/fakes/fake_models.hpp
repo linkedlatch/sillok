@@ -46,6 +46,9 @@ struct FakeOptions {
   std::map<int, int> speakers;
   // The longest request the transcriber takes; a longer one fails the test.
   Milliseconds max_audio{30000};
+  // The longest glossary the transcriber takes, in bytes of its terms joined
+  // by ", " (a token each).
+  std::size_t glossary_room = 1000;
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
 };
@@ -63,11 +66,14 @@ class FakeModels : public ModelProvider {
 
   LiveModels& live() { return live_; }
   int transcribe_calls() const { return transcribe_calls_; }
+  // The longest audio of each CheckGlossary call.
+  const std::vector<Milliseconds>& glossary_checks() const { return glossary_checks_; }
 
  private:
   FakeOptions options_;
   LiveModels live_;
   int transcribe_calls_ = 0;
+  std::vector<Milliseconds> glossary_checks_;
 
   friend class FakeTranscriber;
 };

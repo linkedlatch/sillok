@@ -20,6 +20,23 @@ bool Aborted(void* data) {
   return stop != nullptr && stop->StopRequested();
 }
 
+using Chunks = std::unique_ptr<mtmd_input_chunks, decltype(&mtmd_input_chunks_free)>;
+
+// `prompt` with `pcm` for its marker, as mtmd splits it into text and audio.
+Chunks TokenizePrompt(mtmd_context* mtmd, std::string_view prompt, std::span<const float> pcm) {
+  std::unique_ptr<mtmd_bitmap, decltype(&mtmd_bitmap_free)> bitmap(
+      mtmd_bitmap_init_from_audio(pcm.size(), pcm.data()), mtmd_bitmap_free);
+  Chunks chunks(mtmd_input_chunks_init(), mtmd_input_chunks_free);
+  if (!bitmap || !chunks) throw ModelError("cannot prepare the audio for mtmd");
+  const std::string text(prompt);
+  const mtmd_input_text input{text.c_str(), text.size(), false, true};
+  const mtmd_bitmap* bitmaps[] = {bitmap.get()};
+  if (mtmd_tokenize(mtmd, chunks.get(), &input, bitmaps, 1) != 0) {
+    throw ModelError("mtmd cannot tokenize the prompt");
+  }
+  return chunks;
+}
+
 }  // namespace
 
 struct LlamaAudio::Batch {
@@ -152,18 +169,7 @@ void LlamaAudio::Feed(std::string_view prompt, std::span<const float> pcm, std::
   llama_memory_clear(llama_get_memory(context_), true);
   position_ = 0;
 
-  std::unique_ptr<mtmd_bitmap, decltype(&mtmd_bitmap_free)> bitmap(
-      mtmd_bitmap_init_from_audio(pcm.size(), pcm.data()), mtmd_bitmap_free);
-  std::unique_ptr<mtmd_input_chunks, decltype(&mtmd_input_chunks_free)> chunks(
-      mtmd_input_chunks_init(), mtmd_input_chunks_free);
-  if (!bitmap || !chunks) throw ModelError("cannot prepare the audio for mtmd");
-  const std::string text(prompt);
-  const mtmd_input_text input{text.c_str(), text.size(), false, true};
-  const mtmd_bitmap* bitmaps[] = {bitmap.get()};
-  if (mtmd_tokenize(mtmd_, chunks.get(), &input, bitmaps, 1) != 0) {
-    throw ModelError("mtmd cannot tokenize the prompt");
-  }
-
+  const Chunks chunks = TokenizePrompt(mtmd_, prompt, pcm);
   const std::size_t count = mtmd_input_chunks_size(chunks.get());
   std::size_t audio_chunks = 0;
   for (std::size_t c = 0; c < count; ++c) {
@@ -233,6 +239,19 @@ void LlamaAudio::Feed(std::string_view prompt, std::span<const float> pcm, std::
   }
   if (!audio.empty()) feed_audio();
   flush();
+}
+
+std::size_t LlamaAudio::Positions(std::string_view prompt, std::span<const float> pcm,
+                                  std::size_t audio_tokens) const {
+  const Chunks chunks = TokenizePrompt(mtmd_, prompt, pcm);
+  std::size_t text = 0;
+  std::size_t audio = 0;
+  for (std::size_t c = 0; c < mtmd_input_chunks_size(chunks.get()); ++c) {
+    const mtmd_input_chunk* chunk = mtmd_input_chunks_get(chunks.get(), c);
+    (mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_TEXT ? text : audio) +=
+        mtmd_input_chunk_get_n_tokens(chunk);
+  }
+  return text + std::min(audio, audio_tokens);  // as Feed() drops mtmd's padding
 }
 
 const float* LlamaAudio::Next(llama_token token, const StopToken& stop) {

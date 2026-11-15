@@ -59,9 +59,10 @@ std::vector<Segment> TranscribeSpeech(
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
+  const Milliseconds longest = std::min(options.segmenter.max_chunk, transcriber->MaxAudio());
+  transcriber->CheckGlossary(options.glossary, longest);
   const std::vector<std::vector<SampleRange>> chunks =
-      ChunkSpeech(speech.regions, speech.probabilities, speech.frame_samples,
-                  std::min(options.segmenter.max_chunk, transcriber->MaxAudio()));
+      ChunkSpeech(speech.regions, speech.probabilities, speech.frame_samples, longest);
   // Each chunk's language is told from its own speech: a recording may change
   // language between chunks.
   const std::string language = options.language == "auto" ? "" : options.language;

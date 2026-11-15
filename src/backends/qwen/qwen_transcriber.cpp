@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <span>
+#include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -53,6 +55,22 @@ std::size_t ArgMax(const float* row, std::size_t size) {
   return static_cast<std::size_t>(std::max_element(row, row + size) - row);
 }
 
+// The prompt of a request: the glossary as context, the audio, and with a
+// language code, the start of the answer in that language.
+std::string Prompt(std::span<const std::string> glossary, std::string_view language) {
+  std::string context;
+  for (const std::string& term : glossary) {
+    if (!context.empty()) context += ", ";
+    context += term;
+  }
+  std::string prompt = "<|im_start|>system\n" + context + "<|im_end|>\n<|im_start|>user\n" +
+                       mtmd_default_marker() + "<|im_end|>\n<|im_start|>assistant\n";
+  if (!language.empty()) {
+    prompt += "language " + std::string(qwen::LanguageName(language)) + "<asr_text>";
+  }
+  return prompt;
+}
+
 class QwenTranscriber final : public Transcriber {
  public:
   explicit QwenTranscriber(const QwenConfig& config)
@@ -68,16 +86,43 @@ class QwenTranscriber final : public Transcriber {
               .fell_back_to_cpu = config.device.fell_back_to_cpu} {
     // What may follow the prompt when the model tells the language: one of
     // these, "None" for no speech.
+    std::size_t longest = 0;
     for (const std::string& code : config.languages) {
       const std::string_view name = qwen::LanguageName(code);
       if (name.empty()) throw ModelError("Qwen3-ASR does not know the language " + code);
       language_starts_.push_back(asr_.Tokenize("language " + std::string(name) + "<asr_text>", true));
+      if (language_starts_.back().size() > longest) {
+        longest = language_starts_.back().size();
+        longest_language_ = code;
+      }
     }
     language_starts_.push_back(asr_.Tokenize("language None<asr_text>", true));
   }
 
   ModelInfo Info() const override { return info_; }
   Milliseconds MaxAudio() const override { return kMaxAudio; }
+
+  // The context holds the prompt with the glossary, the audio and the most
+  // text the model may write for it; with a language set, the prompt ends in
+  // the start of the answer, here the longest of them.
+  void CheckGlossary(std::span<const std::string> glossary, Milliseconds longest) const override {
+    if (glossary.empty()) return;
+    const std::size_t samples =
+        std::max(kMinSamples, static_cast<std::size_t>(ToSamples(std::min(longest, kMaxAudio))));
+    const std::vector<float> silence(samples, 0.0f);
+    const std::size_t audio_tokens = qwen::AudioTokens(samples);
+    const std::size_t fixed = asr_.Positions(Prompt({}, longest_language_), silence, audio_tokens);
+    const std::size_t count =
+        asr_.Positions(Prompt(glossary, longest_language_), silence, audio_tokens) - fixed;
+    const std::size_t taken = fixed + MaxTokens(samples);
+    const std::size_t room = asr_.context_size() > taken ? asr_.context_size() - taken : 0;
+    if (count > room) {
+      throw std::invalid_argument("glossary is " + std::to_string(count) +
+                                  " tokens; this model takes at most " + std::to_string(room) +
+                                  " with " + std::to_string((samples + kSampleRate / 2) / kSampleRate) +
+                                  " s of audio");
+    }
+  }
 
   void Transcribe(const TranscribeRequest& given, const WordsCallback& on_words,
                   const FractionCallback& on_progress, StopToken stop) override {
@@ -122,19 +167,9 @@ class QwenTranscriber final : public Transcriber {
   // Qwen3-ASR's transcript of the request, greedy as the package decodes.
   qwen::AsrOutput Listen(const TranscribeRequest& request, const FractionCallback& on_progress,
                          const StopToken& stop) {
-    std::string context;
-    for (const std::string& term : request.glossary) {
-      if (!context.empty()) context += ", ";
-      context += term;
-    }
-    std::string prompt = "<|im_start|>system\n" + context + "<|im_end|>\n<|im_start|>user\n" +
-                         mtmd_default_marker() + "<|im_end|>\n<|im_start|>assistant\n";
-    if (!request.language.empty()) {
-      prompt += "language " + std::string(qwen::LanguageName(request.language)) + "<asr_text>";
-    }
     std::vector<float> logits;
     asr_.Feed(
-        prompt, request.pcm, qwen::AudioTokens(request.pcm.size()), {},
+        Prompt(request.glossary, request.language), request.pcm, qwen::AudioTokens(request.pcm.size()), {},
         [&](llama_token, const float* row) { logits.assign(row, row + asr_.row_size()); }, true,
         [&](double fraction) { on_progress(kEncodeShare * fraction); }, stop);
 
@@ -193,6 +228,7 @@ class QwenTranscriber final : public Transcriber {
   qwen::QwenAligner aligner_;
   ModelInfo info_;
   std::vector<std::vector<llama_token>> language_starts_;
+  std::string longest_language_;  // the one whose start takes the most tokens
 };
 
 }  // namespace

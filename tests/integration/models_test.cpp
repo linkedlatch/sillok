@@ -11,6 +11,7 @@
 #include <fstream>
 #include <regex>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,6 +30,49 @@ namespace {
 
 const std::filesystem::path kModels = SILLOK_TEST_MODELS_DIR;
 const std::filesystem::path kAudio = SILLOK_TEST_AUDIO_DIR;
+
+// Terms of lectures, for glossaries of a typical size.
+const std::vector<std::string> kEnglishTerms = {
+    "eigenvalue", "Fourier transform", "gradient descent", "backpropagation",
+    "convolutional neural network", "Bayesian inference", "Markov chain", "stochastic process",
+    "Laplace transform", "Hilbert space", "entropy", "regularization", "overfitting",
+    "hyperparameter", "transformer", "attention mechanism", "tokenizer", "embedding",
+    "Kubernetes", "PostgreSQL", "TypeScript", "WebAssembly", "mitochondria", "photosynthesis",
+    "thermodynamics", "Schrödinger equation", "quantum entanglement", "CRISPR",
+    "polymerase chain reaction", "electrocardiogram", "myocardial infarction",
+    "pharmacokinetics", "macroeconomics", "elasticity of demand", "Keynesian",
+    "heteroskedasticity", "p-value", "confidence interval", "linear regression",
+    "logistic regression", "principal component analysis", "k-means clustering", "recursion",
+    "dynamic programming", "Dijkstra's algorithm", "hash table", "binary search tree",
+    "asymptotic complexity", "TCP handshake", "public-key cryptography"};
+const std::vector<std::string> kKoreanTerms = {
+    "고유값", "푸리에 변환", "경사 하강법", "역전파", "합성곱 신경망", "베이즈 추론",
+    "마르코프 연쇄", "확률 과정", "라플라스 변환", "힐베르트 공간", "엔트로피", "정규화",
+    "과적합", "하이퍼파라미터", "트랜스포머", "어텐션 메커니즘", "토크나이저", "임베딩",
+    "미토콘드리아", "광합성", "열역학", "슈뢰딩거 방정식", "양자 얽힘", "중합효소 연쇄 반응",
+    "심전도", "심근경색", "약동학", "거시경제학", "수요의 가격 탄력성", "케인스 학파",
+    "이분산성", "유의확률", "신뢰구간", "선형 회귀", "로지스틱 회귀", "주성분 분석", "군집화",
+    "재귀 함수", "동적 계획법", "다익스트라 알고리즘", "해시 테이블", "이진 탐색 트리",
+    "시간 복잡도", "공개키 암호", "운영체제", "교착 상태", "가상 메모리", "컴파일러",
+    "미분방정식", "행렬식"};
+
+// `terms` `times` over.
+std::vector<std::string> Repeated(const std::vector<std::string>& terms, int times) {
+  std::vector<std::string> repeated;
+  for (int i = 0; i < times; ++i) repeated.insert(repeated.end(), terms.begin(), terms.end());
+  return repeated;
+}
+
+// The message CheckGlossary refuses `glossary` with; empty when it takes it.
+std::string GlossaryRefusal(const Transcriber& transcriber,
+                            const std::vector<std::string>& glossary, Milliseconds longest) {
+  try {
+    transcriber.CheckGlossary(glossary, longest);
+    return "";
+  } catch (const std::invalid_argument& error) {
+    return error.what();
+  }
+}
 
 // The first `seconds` of a recording at 16 kHz mono; empty if it is missing.
 std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1e9) {
@@ -127,6 +171,15 @@ TEST_F(ModelsTest, DiarizesMeeting) {
   EXPECT_GE(speakers.size(), 2u);
 }
 
+TEST_F(ModelsTest, RefusesAGlossaryWhisperWouldCut) {
+  // Whisper keeps 223 tokens of a prompt, whatever the audio.
+  const auto whisper = Models()->OpenTranscriber();
+  EXPECT_EQ(GlossaryRefusal(*whisper, kEnglishTerms, Milliseconds{30000}), "");  // 206 tokens
+  EXPECT_EQ(GlossaryRefusal(*whisper, kKoreanTerms, Milliseconds{30000}),
+            "glossary is 317 tokens; this model takes at most 223");
+  EXPECT_EQ(GlossaryRefusal(*whisper, {}, Milliseconds{30000}), "");
+}
+
 TEST_F(ModelsTest, ReportsTheDeviceUsed) {
   EXPECT_EQ(Models(Device::kCpu)->OpenTranscriber()->Info().device, "CPU");
   bool has_gpu = false;
@@ -190,6 +243,32 @@ TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
       last = word.start;
     }
   }
+  for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
+    EXPECT_NE(text.find(word), std::string::npos) << text;
+  }
+}
+
+TEST_F(QwenTest, TakesAGlossaryThatLeavesRoomForTheAudioAndText) {
+  std::vector<std::string> terms = kEnglishTerms;  // 488 tokens with the Korean ones
+  terms.insert(terms.end(), kKoreanTerms.begin(), kKoreanTerms.end());
+  auto qwen = Open();
+  EXPECT_EQ(GlossaryRefusal(*qwen, terms, Milliseconds{180000}), "");
+  // Fewer positions are left next to longer audio.
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 7), Milliseconds{30000}), "");
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 7), Milliseconds{180000}),
+            "glossary is 3416 tokens; this model takes at most 2890 with 180 s of audio");
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 30), Milliseconds{30000}),
+            "glossary is 14640 tokens; this model takes at most 7240 with 30 s of audio");
+
+  // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
+  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
+  pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
+  std::string text;
+  qwen->Transcribe({.pcm = pcm, .language = "en", .glossary = terms},
+                   [&](const TranscribedWords& piece) {
+                     for (const Word& word : piece.words) text += " " + word.text;
+                   },
+                   [](double) {}, {});
   for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
     EXPECT_NE(text.find(word), std::string::npos) << text;
   }

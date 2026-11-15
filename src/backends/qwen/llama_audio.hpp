@@ -40,6 +40,8 @@ class LlamaAudio {
   const llama_vocab* vocab() const { return vocab_; }
   // Length of a row: the vocabulary for logits, else the hidden size.
   int row_size() const { return row_size_; }
+  // Positions the context holds: prompt, audio and output.
+  std::size_t context_size() const { return llama_n_ctx(context_); }
 
   // The one token `text` stands for (a special token such as "<asr_text>");
   // throws ModelError when it is not one.
@@ -57,6 +59,10 @@ class LlamaAudio {
             const std::function<bool(llama_token)>& want,
             const std::function<void(llama_token, const float*)>& on_row, bool last_row,
             const std::function<void(double)>& on_encoded, const StopToken& stop);
+  // Positions Feed() takes for the same prompt and audio, as mtmd tokenizes
+  // them, without running the model.
+  std::size_t Positions(std::string_view prompt, std::span<const float> pcm,
+                        std::size_t audio_tokens) const;
 
   // Appends `token` and returns its row. Throws Cancelled once `stop` is
   // requested, ModelError when the context is full.

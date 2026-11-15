@@ -39,6 +39,12 @@ class Transcriber {
   virtual ModelInfo Info() const = 0;
   // The longest audio one request may hold.
   virtual Milliseconds MaxAudio() const = 0;
+  // Throws std::invalid_argument, with its length and the limit in tokens,
+  // when `glossary` does not fit in the model's context next to requests of
+  // up to `longest` (at most MaxAudio()) and what the model may write for
+  // them. A model would otherwise drop part of it or fail midway.
+  virtual void CheckGlossary(std::span<const std::string> glossary,
+                             Milliseconds longest) const = 0;
   virtual void Transcribe(const TranscribeRequest& request,
                           const WordsCallback& on_words,
                           const FractionCallback& on_progress,

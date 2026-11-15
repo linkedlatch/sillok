@@ -4,6 +4,7 @@
 #include <exception>
 #include <fstream>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -130,6 +131,20 @@ class WhisperTranscriber final : public Transcriber {
   ModelInfo Info() const override { return info_; }
   // One window of the encoder.
   Milliseconds MaxAudio() const override { return Milliseconds{30000}; }
+
+  // whisper_full keeps the prompt to half the text context, a token of which
+  // marks it, and silently drops the start of a longer one. The other half
+  // is for its own text, whatever the audio.
+  void CheckGlossary(std::span<const std::string> glossary, Milliseconds) const override {
+    const std::string prompt = JoinGlossary(glossary);
+    if (prompt.empty()) return;
+    const int room = whisper_n_text_ctx(context_.get()) / 2 - 1;
+    const int count = CountTokens(prompt);
+    if (count > room) {
+      throw std::invalid_argument("glossary is " + std::to_string(count) +
+                                  " tokens; this model takes at most " + std::to_string(room));
+    }
+  }
 
   void Transcribe(const TranscribeRequest& request,
                   const WordsCallback& on_words,

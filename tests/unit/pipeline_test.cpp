@@ -313,5 +313,31 @@ TEST(PipelineTest, ModelsGetTheGlossary) {
   EXPECT_EQ(glossaries, (std::vector<std::vector<std::string>>{glossary, glossary}));
 }
 
+TEST(PipelineTest, RefusesAGlossaryTheModelHasNoRoomFor) {
+  const auto script = Speech(0, 5, Milliseconds{500});
+  FakeOptions options = OptionsFor(script);
+  options.max_audio = Milliseconds{20000};
+  options.glossary_room = 15;  // "sillok, Whisper"
+  FakeModels models(options);
+  PipelineOptions pipeline;
+  pipeline.glossary = {"sillok", "Whisper"};
+  RunFakes(RenderScript(script, Milliseconds{3000}), models, pipeline);
+  pipeline.segmenter.max_chunk = Milliseconds{5000};
+  RunFakes(RenderScript(script, Milliseconds{3000}), models, pipeline);
+  // Once a run, for the longest request: the model's limit or the pipeline's.
+  EXPECT_EQ(models.glossary_checks(),
+            (std::vector<Milliseconds>{Milliseconds{20000}, Milliseconds{5000}}));
+  EXPECT_EQ(models.transcribe_calls(), 2);
+
+  pipeline.glossary.push_back("x");
+  try {
+    RunFakes(RenderScript(script, Milliseconds{3000}), models, pipeline);
+    ADD_FAILURE() << "the glossary was taken";
+  } catch (const std::invalid_argument& error) {
+    EXPECT_STREQ(error.what(), "glossary is 18 tokens; this model takes at most 15");
+  }
+  EXPECT_EQ(models.transcribe_calls(), 2);  // refused before transcribing
+}
+
 }  // namespace
 }  // namespace sillok

@@ -142,6 +142,13 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * transcribes everything in that language. SILLOK_INVALID_ARGUMENT for a
  * language the model does not know. Each segment of the transcript carries
  * the language it was transcribed in.
+ * "glossary" lists terms the recording may contain (names, jargon), which
+ * the model is given with every piece it hears. The model holds the terms,
+ * the piece and its text in a fixed number of tokens, and would otherwise
+ * drop terms or stop short, so sillok_job_run() refuses a glossary that does
+ * not fit (SILLOK_INVALID_ARGUMENT, with its length in tokens and the
+ * limit) before transcribing. Whisper takes 223 tokens, about 50 English or
+ * 35 Korean terms; Qwen3-ASR about 7000 with pieces of 30 s.
  * "even_loudness": false leaves the pushed audio's loudness as it is, for a
  * recording whose loudness was evened out already: a job's copy for
  * listening back (sillok_job_save_audio) transcribes as the original did. */

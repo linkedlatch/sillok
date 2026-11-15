@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
+#include <string>
 
 #include "core/cancel.hpp"
 
@@ -123,6 +125,17 @@ class FakeTranscriber : public Transcriber {
 
   ModelInfo Info() const override { return {"fake-transcriber", "CPU", false}; }
   Milliseconds MaxAudio() const override { return models_.options_.max_audio; }
+
+  void CheckGlossary(std::span<const std::string> glossary, Milliseconds longest) const override {
+    models_.glossary_checks_.push_back(longest);
+    std::size_t count = 0;
+    for (const std::string& term : glossary) count += (count > 0 ? 2 : 0) + term.size();
+    if (count > models_.options_.glossary_room) {
+      throw std::invalid_argument("glossary is " + std::to_string(count) +
+                                  " tokens; this model takes at most " +
+                                  std::to_string(models_.options_.glossary_room));
+    }
+  }
 
   void Transcribe(const TranscribeRequest& request,
                   const WordsCallback& on_words,

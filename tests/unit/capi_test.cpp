@@ -147,6 +147,16 @@ TEST_F(CapiTest, TranscribesAndReportsProgress) {
   EXPECT_EQ(transcript["models"]["transcription"]["name"], "fake-transcriber");
 }
 
+TEST_F(CapiTest, RefusesAGlossaryTheModelHasNoRoomFor) {
+  FakeBackendOptions().glossary_room = 10;
+  sillok_job* job = Job(Engine(), R"({"glossary": ["sillok", "Whisper"]})");
+  Push(job, ScriptPcm(3));
+  char* out = nullptr;
+  EXPECT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_INVALID_ARGUMENT);
+  EXPECT_EQ(out, nullptr);
+  EXPECT_STREQ(sillok_last_error(), "glossary is 15 tokens; this model takes at most 10");
+}
+
 TEST_F(CapiTest, PreviewsSegmentsWhileTranscribing) {
   sillok_job* job = Job(Engine(), R"({"language": "en"})");
   Push(job, ScriptPcm(150));  // a minute: several windows
