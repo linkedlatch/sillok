@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -26,7 +29,19 @@ TEST(AudioBufferTest, RejectsLatePushes) {
   AudioBuffer audio;
   audio.Push(std::vector<float>(10, 0.0f));
   audio.Finish();
-  EXPECT_THROW(audio.Push(std::vector<float>(10, 0.0f)), std::logic_error);
+  EXPECT_THROW(audio.Push(std::vector<float>(10, 0.0f)), std::invalid_argument);
+}
+
+TEST(AudioBufferTest, NonFiniteSamplesAreSafe) {
+  AudioBuffer audio;
+  const float inf = std::numeric_limits<float>::infinity();
+  audio.Push(std::vector<float>{std::nanf(""), inf, -inf, -std::nanf("")});
+  audio.Finish();
+  const auto pcm = audio.Read({0, 4});
+  EXPECT_FLOAT_EQ(pcm[0], 0.0f);
+  EXPECT_FLOAT_EQ(pcm[1], 32767.0f / 32768.0f);
+  EXPECT_FLOAT_EQ(pcm[2], -1.0f);
+  EXPECT_FLOAT_EQ(pcm[3], 0.0f);
 }
 
 TEST(AudioBufferTest, ReadClampsAndSpansBlocks) {

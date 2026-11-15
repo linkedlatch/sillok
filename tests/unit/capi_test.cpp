@@ -190,7 +190,7 @@ TEST_F(CapiTest, AcceptsAnyRateAndChannelCount) {
   sillok_job* job = Job(Engine());
   const std::vector<float> stereo(48000 * 2, 0.0f);  // 1 s at 48 kHz
   ASSERT_EQ(sillok_job_push_audio(job, stereo.data(), 48000, 48000, 2), SILLOK_OK);
-  EXPECT_EQ(sillok_job_push_audio(job, stereo.data(), 100, 44100, 2), SILLOK_INVALID_ARGUMENT);
+  EXPECT_EQ(sillok_job_push_audio(job, stereo.data(), 100, 7999, 2), SILLOK_INVALID_ARGUMENT);
   EXPECT_NE(std::string(sillok_last_error()), "");
   char* out = nullptr;
   ASSERT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK);

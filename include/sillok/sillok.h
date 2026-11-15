@@ -40,7 +40,7 @@ typedef enum sillok_status {
   SILLOK_MODEL_ERROR = 2,      /* a model is missing, corrupt or failed */
   SILLOK_CANCELLED = 3,        /* the job was cancelled */
   SILLOK_BUSY = 4,             /* the engine is already running a job */
-  SILLOK_INTERNAL_ERROR = 5,
+  SILLOK_INTERNAL_ERROR = 5,   /* a bug or an unexpected failure inside the library */
   SILLOK_MEDIA_ERROR = 6       /* a file cannot be opened or has no audio to decode */
 } sillok_status;
 
@@ -151,10 +151,11 @@ SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
 
 /* Appends decoded audio: `frames` frames of `channels` interleaved float
  * samples in [-1, 1] at `sample_rate` Hz (8000-192000). Rate and channel
- * count must stay the same for the whole recording. Transcript times count
- * from the first sample pushed, so push the recording from its start, with
- * encoder priming already removed (decoders such as AVAudioFile and ffmpeg
- * do), for the times to match the original file. */
+ * count may change between calls; the recording stays one continuous 16 kHz
+ * mono stream. NaN samples count as silence, infinities as full scale.
+ * Transcript times count from the first sample pushed, so push the recording
+ * from its start, with encoder priming already removed (decoders such as
+ * AVAudioFile and ffmpeg do), for the times to match the original file. */
 SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
                                                const float* samples,
                                                size_t frames,

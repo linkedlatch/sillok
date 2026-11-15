@@ -21,7 +21,9 @@ constexpr std::size_t kWriteBufferSamples = std::size_t{1} << 16;
 constexpr std::string_view kPrefix = "sillok-audio-";
 constexpr std::string_view kExtension = ".pcm";
 
+// The one place all audio passes: NaN becomes silence, infinities clip.
 std::int16_t ToInt16(float value) {
+  if (std::isnan(value)) return 0;
   const float scaled = std::round(value * 32768.0f);
   return static_cast<std::int16_t>(std::clamp(scaled, -32768.0f, 32767.0f));
 }
@@ -128,7 +130,7 @@ AudioBuffer& AudioBuffer::operator=(AudioBuffer&&) noexcept = default;
 SampleIndex AudioBuffer::size() const { return file_->size(); }
 
 void AudioBuffer::Push(std::span<const float> samples) {
-  if (finished_) throw std::logic_error("audio already finished");
+  if (finished_) throw std::invalid_argument("audio already finished");
   for (const float value : samples) file_->Append(ToInt16(value));
 }
 

@@ -56,7 +56,8 @@ sillok_status Guard(Body&& body) noexcept {
   } catch (const std::invalid_argument& error) {
     return Fail(SILLOK_INVALID_ARGUMENT, error.what());
   } catch (const std::logic_error& error) {
-    return Fail(SILLOK_INVALID_ARGUMENT, error.what());
+    // Caller mistakes throw std::invalid_argument; any other logic error is a bug.
+    return Fail(SILLOK_INTERNAL_ERROR, error.what());
   } catch (const std::bad_alloc&) {
     return Fail(SILLOK_INTERNAL_ERROR, "out of memory");
   } catch (const std::exception& error) {

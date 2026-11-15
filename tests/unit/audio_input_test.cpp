@@ -182,19 +182,37 @@ TEST(AudioInputTest, RejectsUnsupportedRates) {
                std::invalid_argument);
 }
 
-TEST(AudioInputTest, RejectsFormatChangesAndLatePushes) {
+TEST(AudioInputTest, FollowsRateChanges) {
+  AudioBuffer audio;
+  AudioInput converter(audio, AudioInput::Loudness::kAsRecorded);
+  converter.Push(Sine(48000, 300.0, 1.0), 48000, 1);
+  EXPECT_NO_THROW(converter.Push(Sine(44100, 300.0, 1.0), 44100, 1));
+  EXPECT_NO_THROW(converter.Push(Sine(16000, 300.0, 0.5), 16000, 1));
+  converter.Finish();
+  EXPECT_NEAR(static_cast<double>(audio.size()), 2.5 * 16000.0, 4.0);
+  const auto out = audio.Read({0, audio.size()});
+  EXPECT_NEAR(Rms(std::span<const float>(out).subspan(20000, 4000)), 0.5 / std::sqrt(2.0), 0.02);
+}
+
+TEST(AudioInputTest, FollowsChannelChanges) {
+  AudioBuffer audio;
+  AudioInput converter(audio, AudioInput::Loudness::kAsRecorded);
+  converter.Push(std::vector<float>(1600, 0.25f), 16000, 1);
+  EXPECT_NO_THROW(converter.Push(std::vector<float>(1600 * 6, 0.25f), 16000, 6));
+  converter.Finish();
+  ASSERT_EQ(audio.size(), 3200);
+  EXPECT_FLOAT_EQ(audio.Read({3000, 3001})[0], 0.25f);
+}
+
+TEST(AudioInputTest, RejectsBadFormatsAndLatePushes) {
   AudioBuffer audio;
   AudioInput converter(audio);
   converter.Push(std::vector<float>(10, 0.0f), 16000, 1);
-  EXPECT_THROW(converter.Push(std::vector<float>(10, 0.0f), 44100, 1),
-               std::invalid_argument);
-  EXPECT_THROW(converter.Push(std::vector<float>(10, 0.0f), 16000, 2),
-               std::invalid_argument);
-  EXPECT_THROW(converter.Push(std::vector<float>(3, 0.0f), 16000, 2),
-               std::invalid_argument);
+  EXPECT_THROW(converter.Push(std::vector<float>(10, 0.0f), 100, 1), std::invalid_argument);
+  EXPECT_THROW(converter.Push(std::vector<float>(3, 0.0f), 16000, 2), std::invalid_argument);
   converter.Finish();
   EXPECT_TRUE(audio.finished());
-  EXPECT_THROW(converter.Push(std::vector<float>(10, 0.0f), 16000, 1), std::logic_error);
+  EXPECT_THROW(converter.Push(std::vector<float>(10, 0.0f), 16000, 1), std::invalid_argument);
 }
 
 }  // namespace

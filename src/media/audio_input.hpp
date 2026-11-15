@@ -28,7 +28,9 @@ class AudioInput {
   AudioInput& operator=(const AudioInput&) = delete;
 
   // Appends `interleaved` (frames x channels values in [-1, 1]) recorded at
-  // `sample_rate`. Rate and channel count must not change between calls.
+  // `sample_rate`. Rate and channel count may change between calls (a decoder
+  // may switch partway); the output stays one continuous stream. Throws
+  // std::invalid_argument after Finish().
   void Push(std::span<const float> interleaved, int sample_rate, int channels);
   // Flushes the resampler and finishes the buffer. Push is not allowed
   // afterwards.
@@ -46,7 +48,6 @@ class AudioInput {
   std::unique_ptr<LoudnessFilter> filter_;
   std::unique_ptr<SwrContext, SwrFree> swr_;
   int sample_rate_ = 0;
-  int channels_ = 0;
   std::vector<float> mono_;
   std::vector<float> resampled_;
 };

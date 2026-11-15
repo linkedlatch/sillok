@@ -27,18 +27,21 @@ AudioInput::~AudioInput() = default;
 
 void AudioInput::Push(std::span<const float> interleaved, int sample_rate,
                       int channels) {
-  if (audio_.finished()) throw std::logic_error("audio already finished");
+  if (audio_.finished()) throw std::invalid_argument("audio already finished");
   if (channels < 1 || channels > 64) {
     throw std::invalid_argument("channel count must be in [1, 64]");
   }
   if (interleaved.size() % static_cast<std::size_t>(channels) != 0) {
     throw std::invalid_argument("sample count is not a multiple of channels");
   }
-  if (!swr_) {
+  if (!swr_ || sample_rate != sample_rate_) {
     if (sample_rate < 8000 || sample_rate > 192000) {
       throw std::invalid_argument("unsupported sample rate " +
                                   std::to_string(sample_rate));
     }
+    // A decoder may change the rate partway (broadcast streams, some HE-AAC):
+    // drain the old resampler so the output stays one continuous stream.
+    if (swr_) Convert(nullptr, 0);
     SwrContext* context = nullptr;
     const AVChannelLayout mono = AV_CHANNEL_LAYOUT_MONO;
     if (swr_alloc_set_opts2(&context, &mono, AV_SAMPLE_FMT_FLT, kSampleRate, &mono,
@@ -48,9 +51,6 @@ void AudioInput::Push(std::span<const float> interleaved, int sample_rate,
     swr_.reset(context);
     if (swr_init(context) < 0) throw std::runtime_error("cannot set up resampling");
     sample_rate_ = sample_rate;
-    channels_ = channels;
-  } else if (sample_rate != sample_rate_ || channels != channels_) {
-    throw std::invalid_argument("sample rate or channels changed mid-stream");
   }
 
   const auto count = static_cast<std::size_t>(channels);
