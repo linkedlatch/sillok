@@ -1,2 +1,0 @@
-# Patches are applied with git apply, byte for byte.
-*.patch -text

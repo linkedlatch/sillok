@@ -14,9 +14,8 @@
 namespace sillok::qwen {
 
 // Qwen3-ForcedAligner (converted by llama.cpp's convert_hf_to_gguf.py)
-// through llama.cpp, which needs cmake/patches/llama.cpp-qwen3vl-output-head.patch
-// to load its 5000-class output layer. Throws ModelError if it cannot be
-// loaded.
+// through llama.cpp, which loads its 5000-class output layer since b12425.
+// Throws ModelError if it cannot be loaded.
 class QwenAligner {
  public:
   QwenAligner(const std::filesystem::path& model, const std::filesystem::path& mmproj,
