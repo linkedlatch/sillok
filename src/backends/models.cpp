@@ -83,26 +83,33 @@ constexpr char kQwenAlignerRepo[] =
     "https://huggingface.co/linkedlatch/Qwen3-ForcedAligner-0.6B-GGUF/resolve/"
     "501a5023b8a60d6baf0bb8f98084208dde4ad058/";
 
-CatalogModel Qwen() {
-  const auto file = [](const char* repo, const char* name, std::uint64_t size,
-                       const char* sha256) {
-    return CatalogFile{.file = name, .url = std::string(repo) + name, .size = size,
-                       .sha256 = sha256, .zip = false};
+struct QwenFile {
+  const char* name;
+  std::uint64_t size;
+  const char* sha256;
+};
+
+// One version of Qwen, its four files: the speech model and its audio encoder,
+// then the aligner and its. q8_0 compresses the two language models;
+// bf16 is the original weights throughout. Both use the same bf16 encoders.
+CatalogModel Qwen(const char* quantization, QwenFile asr, QwenFile aligner) {
+  const auto file = [](const char* repo, const QwenFile& f) {
+    return CatalogFile{.file = f.name, .url = std::string(repo) + f.name, .size = f.size,
+                       .sha256 = f.sha256, .zip = false};
   };
-  return {.id = "qwen3-asr-1.7b-q8_0",
+  return {.id = std::string("qwen3-asr-1.7b-") + quantization,
           .role = "transcription",
           .backend = "qwen",
           .family = "qwen3-asr-1.7b",
-          .quantization = "q8_0",
+          .quantization = quantization,
           .recommended = false,
-          .files = {file(kQwenAsrRepo, "Qwen3-ASR-1.7B-Q8_0.gguf", 2165034944,
-                         "58e22d0532d4eacaf034cfac17a6fed159f37c41390c710186783be439d1fc57"),
-                    file(kQwenAsrRepo, "mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
-                         "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"),
-                    file(kQwenAlignerRepo, "Qwen3-ForcedAligner-0.6B-Q8_0.gguf", 645025216,
-                         "c5b48ae7a04b808f7059de128069f0ad40577c724e9f064aa83bbf11bacefd32"),
-                    file(kQwenAlignerRepo, "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
-                         "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668")},
+          .files = {file(kQwenAsrRepo, asr),
+                    file(kQwenAsrRepo, {"mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
+                                        "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"}),
+                    file(kQwenAlignerRepo, aligner),
+                    file(kQwenAlignerRepo,
+                         {"mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
+                          "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668"})},
           .languages = Languages()};
 }
 
@@ -141,7 +148,16 @@ std::vector<CatalogModel> BuildCatalog() {
               WhisperFile("ggml-large-v3.bin", 3095033483,
                           "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"),
               large_v3_encoder),
-      Qwen(),
+      Qwen("q8_0",
+           {"Qwen3-ASR-1.7B-Q8_0.gguf", 2165034944,
+            "58e22d0532d4eacaf034cfac17a6fed159f37c41390c710186783be439d1fc57"},
+           {"Qwen3-ForcedAligner-0.6B-Q8_0.gguf", 645025216,
+            "c5b48ae7a04b808f7059de128069f0ad40577c724e9f064aa83bbf11bacefd32"}),
+      Qwen("bf16",
+           {"Qwen3-ASR-1.7B-bf16.gguf", 4069674944,
+            "1af18763dfafde2bbf071ef8a0952f7bee66f140c3565e5ccc5afb07dc1f9227"},
+           {"Qwen3-ForcedAligner-0.6B-bf16.gguf", 1208683456,
+            "40ee9feb7de271965eee27ed4bd33bdbbdb950a9c6c23f3a4c94702202fcffb8"}),
       {.id = "nemotron-3-diarization-q8_0",
        .role = "diarization",
        .backend = "sortformer",

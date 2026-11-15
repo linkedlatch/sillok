@@ -59,19 +59,20 @@ String familyName(String family) => switch (family) {
 /// "large-v3 turbo / q5_0"
 String modelName(CatalogModel model) => '${familyName(model.family)} / ${model.quantization}';
 
-/// "Accuracy high · speed medium · compressed · 574 MB"; f16 is a step
-/// slower than the compressed versions.
+/// "Accuracy high · speed medium · compressed · 574 MB"; the originals
+/// (f16, bf16) are a step slower than the compressed versions.
 String modelSummary(AppLocalizations l, CatalogModel model) {
   final speeds = [l.speedVerySlow, l.speedSlow, l.speedMedium];
   final (accuracy, speed) = model.family == 'large-v3' ? (l.accuracyHighest, 1) : (l.accuracyHigh, 2);
+  final original = model.quantization == 'f16' || model.quantization == 'bf16';
   final quantization = switch (model.quantization) {
-    'f16' => l.quantF16,
+    _ when original => l.quantF16,
     'q8_0' => l.quantQ8,
     _ => l.quantQ5,
   };
   return l.modelSummary(
     accuracy,
-    speeds[model.quantization == 'f16' ? speed - 1 : speed],
+    speeds[original ? speed - 1 : speed],
     quantization,
     formatBytes(model.size),
   );

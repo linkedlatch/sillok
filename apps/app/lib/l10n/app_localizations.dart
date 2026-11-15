@@ -671,7 +671,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsModelsHint.
   ///
   /// In en, this message translates to:
-  /// **'large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 is the original. The recommended model suits most devices.'**
+  /// **'large-v3 is slower than turbo and may be a little more accurate. q5_0 and q8_0 are compressed versions, smaller and faster; f16 and bf16 are the originals. The recommended model suits most devices.'**
   String get settingsModelsHint;
 
   /// No description provided for @modelRecommended.

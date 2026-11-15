@@ -349,7 +349,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get settingsModelsHint =>
-      'large-v3는 turbo보다 느리고 조금 더 정확할 수 있습니다. q5_0과 q8_0은 압축해 작고 빠른 버전이고, f16은 압축하지 않은 원본입니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
+      'large-v3는 turbo보다 느리고 조금 더 정확할 수 있습니다. q5_0과 q8_0은 압축해 작고 빠른 버전이고, f16과 bf16은 압축하지 않은 원본입니다. 대부분의 기기에는 권장 모델이 알맞습니다.';
 
   @override
   String get modelRecommended => '권장';
