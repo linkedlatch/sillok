@@ -129,6 +129,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get stepCopy => '다시 듣기 사본 저장';
 
   @override
+  String get stepAnalyze => '음성 구간 찾기';
+
+  @override
   String get stepTranscribe => '받아쓰기';
 
   @override

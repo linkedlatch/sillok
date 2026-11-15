@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <exception>
 #include <fstream>
-#include <limits>
 #include <span>
 #include <string>
 #include <vector>
@@ -23,7 +22,7 @@ struct Run {
   const WordsCallback& on_words;
   const FractionCallback& on_progress;
   const StopToken& stop;
-  SampleIndex samples = 0;  // of the recording
+  SampleIndex samples = 0;  // of the request audio
   int handed = 0;  // segments passed to on_words so far
   std::exception_ptr error;
 };
@@ -123,6 +122,8 @@ class WhisperTranscriber final : public Transcriber {
   }
 
   ModelInfo Info() const override { return info_; }
+  // One window of the encoder.
+  Milliseconds MaxAudio() const override { return Milliseconds{30000}; }
 
   void Transcribe(const TranscribeRequest& request,
                   const WordsCallback& on_words,
@@ -130,18 +131,11 @@ class WhisperTranscriber final : public Transcriber {
                   StopToken stop) override {
     // whisper_full checks the abort callback only after its encoder pass.
     ThrowIfStopped(stop);
-    // The whole recording in one call, as whisper.cpp takes it: it moves
-    // through it 30 s at a time on its own.
-    const std::vector<float> pcm = request.audio.Read({0, request.audio.size()});
-    if (pcm.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-      throw ModelError("the recording is too long for whisper.cpp");  // over 37 hours
-    }
-    ThrowIfStopped(stop);
     whisper_full_params params =
         whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.n_threads = threads_;
     const std::string language =
-        request.language.empty() ? DetectLanguage(pcm) : request.language;
+        request.language.empty() ? DetectLanguage(request.pcm) : request.language;
     ThrowIfStopped(stop);
     params.language = language.c_str();
     params.print_progress = false;
@@ -161,15 +155,15 @@ class WhisperTranscriber final : public Transcriber {
     Run run{.on_words = on_words,
             .on_progress = on_progress,
             .stop = stop,
-            .samples = static_cast<SampleIndex>(pcm.size()),
+            .samples = static_cast<SampleIndex>(request.pcm.size()),
             .error = nullptr};
     params.abort_callback = Aborted;
     params.abort_callback_user_data = &run;
     params.new_segment_callback = NewSegments;
     params.new_segment_callback_user_data = &run;
 
-    const int status =
-        whisper_full(context_.get(), params, pcm.data(), static_cast<int>(pcm.size()));
+    const int status = whisper_full(context_.get(), params, request.pcm.data(),
+                                    static_cast<int>(request.pcm.size()));
     if (status == 0) HandOver(context_.get(), run);
     if (run.error) std::rethrow_exception(run.error);
     ThrowIfStopped(stop);
@@ -182,10 +176,7 @@ class WhisperTranscriber final : public Transcriber {
   // The most likely of the configured languages, from the first 30 s, at the
   // cost of one more encoder pass. whisper.cpp's "auto" would pick among all
   // of Whisper's languages; this takes the same probabilities.
-  std::string DetectLanguage(std::span<const float> recording) const {
-    // Only what the language is told from, not the whole recording's mel.
-    const std::span<const float> pcm =
-        recording.first(std::min(recording.size(), static_cast<std::size_t>(kSampleRate) * 30));
+  std::string DetectLanguage(std::span<const float> pcm) const {
     if (whisper_pcm_to_mel(context_.get(), pcm.data(), static_cast<int>(pcm.size()), threads_) != 0) {
       throw ModelError("whisper_pcm_to_mel failed");
     }

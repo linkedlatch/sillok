@@ -52,6 +52,29 @@ std::string LanguageOf(const FakeOptions& options, int id) {
   return it == options.languages.end() ? "en" : it->second;
 }
 
+class FakeVoiceDetector : public VoiceDetector {
+ public:
+  explicit FakeVoiceDetector(LiveModels& live) : live_(live) { ++live_.detectors; }
+  ~FakeVoiceDetector() override { --live_.detectors; }
+
+  ModelInfo Info() const override { return {"fake-vad", "CPU", false}; }
+  int FrameSamples() const override { return 512; }
+  std::vector<float> Detect(std::span<const float> pcm) override {
+    std::vector<float> probabilities;
+    for (std::size_t begin = 0; begin < pcm.size(); begin += 512) {
+      float peak = 0.0f;
+      for (std::size_t i = begin; i < std::min(begin + 512, pcm.size()); ++i) {
+        peak = std::max(peak, std::abs(pcm[i]));
+      }
+      probabilities.push_back(peak > kSilence ? 1.0f : 0.0f);
+    }
+    return probabilities;
+  }
+
+ private:
+  LiveModels& live_;
+};
+
 class FakeDiarizer : public Diarizer {
  public:
   FakeDiarizer(const FakeOptions& options, LiveModels& live)
@@ -99,6 +122,7 @@ class FakeTranscriber : public Transcriber {
   ~FakeTranscriber() override { --models_.live_.transcribers; }
 
   ModelInfo Info() const override { return {"fake-transcriber", "CPU", false}; }
+  Milliseconds MaxAudio() const override { return models_.options_.max_audio; }
 
   void Transcribe(const TranscribeRequest& request,
                   const WordsCallback& on_words,
@@ -106,11 +130,13 @@ class FakeTranscriber : public Transcriber {
                   StopToken stop) override {
     ThrowIfStopped(stop);
     ++models_.transcribe_calls_;
+    if (static_cast<SampleIndex>(request.pcm.size()) > ToSamples(MaxAudio())) {
+      throw std::logic_error("a request longer than MaxAudio()");
+    }
     if (models_.options_.on_transcribe) models_.options_.on_transcribe(request);
     ThrowIfStopped(stop);
 
-    const std::vector<float> pcm = request.audio.Read({0, request.audio.size()});
-    const auto bursts = FindBursts(pcm, ToSamples(Milliseconds{100}));
+    const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
     // Without a language, the one spoken longest in the first 30 s, as
     // Whisper hears it.
     std::string language = request.language;
@@ -131,13 +157,13 @@ class FakeTranscriber : public Transcriber {
       const SampleIndex heard = ToSamples(piece.words.back().end);
       on_words(std::move(piece));
       piece = {.words = {}, .language = language};
-      on_progress(std::min(1.0, static_cast<double>(heard) / static_cast<double>(pcm.size())));
+      on_progress(std::min(1.0, static_cast<double>(heard) / static_cast<double>(request.pcm.size())));
     };
     for (std::size_t i = 0; i < bursts.size(); ++i) {
       const Burst& burst = bursts[i];
       // Decoded times are not exact.
       const auto jitter = Milliseconds{
-          (burst.id * 7919 + static_cast<int>(pcm.size() / 160)) % 81 -
+          (burst.id * 7919 + static_cast<int>(request.pcm.size() / 160)) % 81 -
           40};
       if (i % 5 == 0 && !piece.words.empty()) {
         hand_over();
@@ -174,6 +200,10 @@ AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
 
 std::string WordText(int id, const std::string& language) {
   return language + std::to_string(id);
+}
+
+std::unique_ptr<VoiceDetector> FakeModels::OpenVoiceDetector() {
+  return std::make_unique<FakeVoiceDetector>(live_);
 }
 
 std::unique_ptr<Transcriber> FakeModels::OpenTranscriber() {

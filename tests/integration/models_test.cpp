@@ -34,12 +34,13 @@ std::vector<float> ReadWav(const std::filesystem::path& path, double seconds = 1
   return audio.Read({0, std::min(audio.size(), static_cast<SampleIndex>(seconds * 16000))});
 }
 
-// A finished recording of `pcm`, as the pipeline hands it to a model.
-AudioBuffer Buffer(const std::vector<float>& pcm) {
+// `pcm` as the pipeline hears a recording of it alone.
+std::vector<float> EvenedOut(std::span<const float> pcm) {
   AudioBuffer audio;
-  audio.Push(pcm);
-  audio.Finish();
-  return audio;
+  AudioInput input(audio);
+  input.Push(pcm, kSampleRate, 1);
+  input.Finish();
+  return audio.Read({0, audio.size()});
 }
 
 class ModelsTest : public ::testing::Test {
@@ -56,6 +57,23 @@ class ModelsTest : public ::testing::Test {
   }
 };
 
+TEST_F(ModelsTest, VoiceDetectionFindsQuietSpeechAndIsDeterministic) {
+  // A recording near -50 dBFS (the set's -30 dBFS, 20 dB lower), raised as
+  // the pipeline raises it.
+  std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 30.0);
+  for (float& x : pcm) x *= 0.1f;
+  pcm = EvenedOut(pcm);
+  pcm.resize(pcm.size() / 512 * 512);
+  auto models = Models();
+  const auto first = models->OpenVoiceDetector()->Detect(pcm);
+  const auto second = models->OpenVoiceDetector()->Detect(pcm);
+  EXPECT_EQ(first, second);  // the LSTM state starts from zero every time
+  const auto speech = std::count_if(first.begin(), first.end(), [](float p) { return p >= 0.5f; });
+  EXPECT_GT(speech, static_cast<long>(first.size() / 3));
+  EXPECT_NE(*std::min_element(first.begin(), first.end()),
+            *std::max_element(first.begin(), first.end()));
+}
+
 TEST_F(ModelsTest, TranscribesEnglish) {
   // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
@@ -63,7 +81,7 @@ TEST_F(ModelsTest, TranscribesEnglish) {
   auto transcriber = Models()->OpenTranscriber();
   std::string text;
   transcriber->Transcribe(
-      {.audio = Buffer(pcm), .language = "en", .glossary = {}},
+      {.pcm = pcm, .language = "en", .glossary = {}},
       [&](const TranscribedWords& piece) {
         for (const Word& word : piece.words) text += " " + word.text;
       },
@@ -82,7 +100,7 @@ TEST_F(ModelsTest, DetectsLanguage) {
                                                             "es", "fr", "it", "pt", "ru"}));
   std::vector<std::string> detected;
   models->OpenTranscriber()->Transcribe(
-      {.audio = Buffer(pcm), .language = "", .glossary = {}},
+      {.pcm = pcm, .language = "", .glossary = {}},
       [&](const TranscribedWords& piece) { detected.push_back(piece.language); }, [](double) {}, {});
   ASSERT_FALSE(detected.empty());
   for (const std::string& language : detected) EXPECT_EQ(language, "ko");
@@ -143,7 +161,7 @@ TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
   pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
   std::vector<TranscribedWords> pieces;
   double progress = 0.0;
-  Open()->Transcribe({.audio = Buffer(pcm), .language = "", .glossary = {}},
+  Open()->Transcribe({.pcm = pcm, .language = "", .glossary = {}},
                      [&](TranscribedWords piece) { pieces.push_back(std::move(piece)); },
                      [&](double fraction) {
                        EXPECT_GE(fraction, progress);
@@ -168,27 +186,11 @@ TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
   }
 }
 
-TEST_F(QwenTest, TranscribesARecordingLongerThanItsPieces) {
-  // Over six minutes of English sentences: three pieces, with times in the
-  // recording.
-  const std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
-  std::vector<Milliseconds> starts;
-  Open()->Transcribe({.audio = Buffer(pcm), .language = "en", .glossary = {}},
-                     [&](TranscribedWords piece) {
-                       for (const Word& word : piece.words) starts.push_back(word.start);
-                     },
-                     [](double) {}, {});
-  ASSERT_FALSE(starts.empty());
-  EXPECT_TRUE(std::is_sorted(starts.begin(), starts.end()));
-  EXPECT_GT(starts.back(), Milliseconds{360000});
-  EXPECT_LE(starts.back(), Milliseconds{372000});
-}
-
 TEST_F(QwenTest, TellsKoreanAndStopsWhenAsked) {
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_ko.wav", 15.0);
   auto qwen = Open();
   std::vector<std::string> languages;
-  qwen->Transcribe({.audio = Buffer(pcm), .language = "", .glossary = {}},
+  qwen->Transcribe({.pcm = pcm, .language = "", .glossary = {}},
                    [&](TranscribedWords piece) { languages.push_back(piece.language); },
                    [](double) {}, {});
   ASSERT_FALSE(languages.empty());
@@ -196,7 +198,7 @@ TEST_F(QwenTest, TellsKoreanAndStopsWhenAsked) {
 
   StopSource source;
   source.RequestStop();
-  EXPECT_THROW(qwen->Transcribe({.audio = Buffer(pcm), .language = "ko", .glossary = {}},
+  EXPECT_THROW(qwen->Transcribe({.pcm = pcm, .language = "ko", .glossary = {}},
                                 [](TranscribedWords) {}, [](double) {}, source.Token()),
                Cancelled);
 }

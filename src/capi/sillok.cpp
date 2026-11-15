@@ -187,6 +187,11 @@ class ExitSafeModels : public ModelProvider {
   explicit ExitSafeModels(ModelProvider& models) : models_(models) {}
 
   std::vector<std::string> Languages() const override { return models_.Languages(); }
+  std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
+    auto model = models_.OpenVoiceDetector();
+    RegisterExitHandlerOnce(voice_detector_loaded);
+    return model;
+  }
   std::unique_ptr<Transcriber> OpenTranscriber() override {
     auto model = models_.OpenTranscriber();
     RegisterExitHandlerOnce(transcriber_loaded);
@@ -199,6 +204,7 @@ class ExitSafeModels : public ModelProvider {
   }
 
   static inline std::atomic<bool> engine_created = false;
+  static inline std::atomic<bool> voice_detector_loaded = false;
   static inline std::atomic<bool> transcriber_loaded = false;
   static inline std::atomic<bool> diarizer_loaded = false;
 

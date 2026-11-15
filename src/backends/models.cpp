@@ -17,6 +17,7 @@
 #include <whisper.h>
 
 #include "backends/ggml_devices.hpp"
+#include "backends/silero/silero_voice_detector.hpp"
 #include "backends/sortformer/sortformer_diarizer.hpp"
 #include "backends/qwen/qwen_transcriber.hpp"
 #include "backends/whisper/whisper_transcriber.hpp"
@@ -121,6 +122,19 @@ std::vector<CatalogModel> BuildCatalog() {
       "ggml-large-v3-turbo-encoder.mlmodelc.zip", 1173393014,
       "84bedfe895bd7b5de6e8e89a0803dfc5addf8c0c5bc4c937451716bf7cf7988a");
   return {
+      {.id = "silero-v6.2.0",
+       .role = "voice_detection",
+       .backend = "silero",
+       .family = "silero",
+       .quantization = "f32",
+       .recommended = true,
+       .files = {{.file = "ggml-silero-v6.2.0.bin",
+                  .url = "https://huggingface.co/ggml-org/whisper-vad/resolve/"
+                         "9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v6.2.0.bin",
+                  .size = 885098,
+                  .sha256 = "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
+                  .zip = false}},
+       .languages = {}},
       // Transcription: turbo, and large-v3, slower (32 decoder layers to
       // turbo's 4) for possibly a little more accuracy, each in the versions
       // the repository has. Only these two, to keep the choice short
@@ -221,10 +235,15 @@ class Models final : public ModelProvider {
         device_(ChooseDevice(config.device, config.gpu_index)),
         threads_(config.threads > 0 ? config.threads : DefaultThreads()),
         npu_(config.npu),
+        voice_detector_(FindModel("voice_detection", config.transcription_model)),
         transcriber_(FindModel("transcription", config.transcription_model)),
         diarizer_(FindModel("diarization", config.transcription_model)) {}
 
   std::vector<std::string> Languages() const override { return transcriber_.languages; }
+
+  std::unique_ptr<VoiceDetector> OpenVoiceDetector() override {
+    return OpenSilero({.model = Path(voice_detector_), .name = voice_detector_.id});
+  }
 
   std::unique_ptr<Transcriber> OpenTranscriber() override {
     if (transcriber_.backend == "qwen") {
@@ -271,6 +290,7 @@ class Models final : public ModelProvider {
   ComputeDevice device_;
   int threads_;
   bool npu_;
+  const CatalogModel& voice_detector_;
   const CatalogModel& transcriber_;
   const CatalogModel& diarizer_;
 };

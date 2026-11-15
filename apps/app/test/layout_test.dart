@@ -128,7 +128,7 @@ Future<void> _writeResult(Directory support) async {
       'created_ms': DateTime(2026, 11, 1, 9).millisecondsSinceEpoch,
       'duration_ms': 300000,
       'stats': {
-        'timings_ms': {'read': 1200, 'copy': 300, 'transcribe': 40000, 'diarize': 5000},
+        'timings_ms': {'read': 1200, 'copy': 300, 'analyze': 900, 'transcribe': 40000, 'diarize': 5000},
       },
     }),
   );
@@ -185,7 +185,7 @@ void main() {
             step: RunStep.transcribe,
             stepFraction: 0.4,
             remaining: Duration(minutes: 42),
-            timingsMs: {RunStep.read: 1200, RunStep.copy: 300},
+            timingsMs: {RunStep.read: 1200, RunStep.copy: 300, RunStep.analyze: 900},
           ),
           [
             for (var i = 0; i < 30; i++)
@@ -195,7 +195,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // The step's own progress, not a share of the whole run.
-        expect(find.text('Transcribing (1/2) · 40% · about 42:00 left'), findsOneWidget);
+        expect(find.text('Transcribing (2/3) · 40% · about 42:00 left'), findsOneWidget);
 
         // The running file.
         await tester.tap(find.text('팀 회의 녹음 2026-11-01 오후 세션 전체.m4a').first);

@@ -10,12 +10,13 @@
 #include "core/cancel.hpp"
 #include "core/model_provider.hpp"
 #include "core/postprocess.hpp"
+#include "core/segmenter.hpp"
 #include "core/speakers.hpp"
 #include "core/transcript.hpp"
 
 namespace sillok {
 
-enum class Stage { kTranscribe, kDiarize };
+enum class Stage { kAnalyze, kTranscribe, kDiarize };
 
 // Progress of `stage` as a fraction in [0, 1].
 using ProgressCallback = std::function<void(Stage stage, double fraction)>;
@@ -26,13 +27,13 @@ using ProgressCallback = std::function<void(Stage stage, double fraction)>;
 using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
 struct PipelineOptions {
-  // "auto", told by the model from the audio (Whisper from the start of the
-  // recording, Qwen from each piece it reads), or one of
+  // "auto", told from the start of each group of speech, or one of
   // ModelProvider::Languages() (ISO 639-1).
   std::string language = "auto";
   std::vector<std::string> glossary;
   bool diarize = false;
 
+  SegmenterOptions segmenter;
   PostprocessOptions postprocess;
 };
 

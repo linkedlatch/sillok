@@ -8,6 +8,7 @@
 
 #include "core/diarizer.hpp"
 #include "core/transcriber.hpp"
+#include "core/voice_detector.hpp"
 
 namespace sillok {
 
@@ -27,6 +28,7 @@ class ModelProvider {
   // the audio; ISO 639-1, except "yue" (Cantonese).
   virtual std::vector<std::string> Languages() const = 0;
 
+  virtual std::unique_ptr<VoiceDetector> OpenVoiceDetector() = 0;
   virtual std::unique_ptr<Transcriber> OpenTranscriber() = 0;
   virtual std::unique_ptr<Diarizer> OpenDiarizer() = 0;
 };

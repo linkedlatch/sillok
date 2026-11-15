@@ -7,9 +7,8 @@ target_link_libraries(sillok_ggml_devices PUBLIC sillok_core PRIVATE ggml)
 add_library(sillok_whisper_words STATIC whisper/whisper_words.cpp)
 target_link_libraries(sillok_whisper_words PUBLIC sillok_core)
 
-# Qwen3-ASR's and Qwen3-ForcedAligner's text handling and how the qwen-asr
-# package cuts long audio, testable without a model.
-add_library(sillok_qwen_text STATIC qwen/qwen_chunks.cpp qwen/qwen_text.cpp)
+# Qwen3-ASR's and Qwen3-ForcedAligner's text handling, testable without a model.
+add_library(sillok_qwen_text STATIC qwen/qwen_text.cpp)
 target_link_libraries(sillok_qwen_text PUBLIC sillok_core)
 
 add_library(sillok_qwen STATIC qwen/llama_audio.cpp qwen/qwen_aligner.cpp qwen/qwen_transcriber.cpp)
@@ -18,18 +17,21 @@ target_link_libraries(sillok_qwen PUBLIC sillok_ggml_devices sillok_qwen_text ll
 add_library(sillok_whisper STATIC whisper/whisper_transcriber.cpp)
 target_link_libraries(sillok_whisper PUBLIC sillok_ggml_devices PRIVATE sillok_whisper_words whisper)
 
+add_library(sillok_silero STATIC silero/silero_voice_detector.cpp)
+target_link_libraries(sillok_silero PUBLIC sillok_core PRIVATE whisper)
+
 add_library(sillok_sortformer STATIC sortformer/sortformer_diarizer.cpp)
 target_link_libraries(sillok_sortformer PUBLIC sillok_ggml_devices PRIVATE nemo_diar)
 
 add_library(sillok_models STATIC models.cpp)
 target_link_libraries(sillok_models
-    PUBLIC sillok_whisper sillok_qwen sillok_sortformer
+    PUBLIC sillok_whisper sillok_qwen sillok_silero sillok_sortformer
     PRIVATE whisper nemo_diar llama mtmd)
 
 if(SILLOK_COREML)
     target_compile_definitions(sillok_whisper PRIVATE SILLOK_COREML)
     target_compile_definitions(sillok_models PRIVATE SILLOK_COREML)
 endif()
-foreach(target sillok_ggml_devices sillok_whisper_words sillok_qwen_text sillok_qwen sillok_whisper sillok_sortformer sillok_models)
+foreach(target sillok_ggml_devices sillok_whisper_words sillok_qwen_text sillok_qwen sillok_whisper sillok_silero sillok_sortformer sillok_models)
     sillok_set_warnings(${target})
 endforeach()

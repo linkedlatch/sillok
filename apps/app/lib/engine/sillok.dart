@@ -25,8 +25,8 @@ class ModelFile {
   final bool zip;
 }
 
-/// A model of the catalog: "transcription" or "diarization", described by
-/// [family] and [quantization].
+/// A model of the catalog: "voice_detection", "transcription" or
+/// "diarization", described by [family] and [quantization].
 class CatalogModel {
   const CatalogModel({
     required this.id,

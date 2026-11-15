@@ -66,24 +66,71 @@ Transcript RunFakes(const AudioBuffer& audio, FakeModels& models,
   return RunPipeline(audio, options, models, progress, stop);
 }
 
-TEST(PipelineTest, GivesTheModelTheWholeRecordingOnce) {
-  // Speech, a long pause and more speech: one request with all of it,
-  // pauses included.
+TEST(PipelineTest, FillsEachRequestUpToTheModelsLimit) {
+  // A minute without a pause is cut into requests of at most the model's
+  // 30 s, at pauses between words; what is left goes with the speech after
+  // the long pause.
   auto script = Speech(0, 150, Milliseconds{500});
   const auto after = Speech(200, 10, Milliseconds{70000});
   script.insert(script.end(), after.begin(), after.end());
   FakeOptions options = OptionsFor(script);
-  SampleIndex heard = 0;
-  options.on_transcribe = [&](const TranscribeRequest& request) { heard = request.audio.size(); };
+  std::vector<std::size_t> heard;
+  options.on_transcribe = [&](const TranscribeRequest& request) {
+    heard.push_back(request.pcm.size());
+  };
   FakeModels models(options);
-  const AudioBuffer audio = RenderScript(script, Milliseconds{75000});
-  const Transcript transcript = RunFakes(audio, models);
-  EXPECT_EQ(models.transcribe_calls(), 1);
-  EXPECT_EQ(heard, audio.size());
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{75000}), models);
+  ASSERT_EQ(heard.size(), 3u);
+  // Cut pieces are at least half the limit (and the fake checks the limit).
+  EXPECT_GT(heard[0], static_cast<std::size_t>(ToSamples(Milliseconds{15000})));
+  EXPECT_GT(heard[1], static_cast<std::size_t>(ToSamples(Milliseconds{15000})));
   EXPECT_EQ(AllWords(transcript), Expected(script));
-  // The last word is at its time in the recording.
+}
+
+TEST(PipelineTest, HearsSpeechAcrossALongPauseTogether) {
+  // 20 s apart, but both fit in one request.
+  auto script = Speech(0, 5, Milliseconds{500});
+  const auto after = Speech(10, 5, Milliseconds{22500});
+  script.insert(script.end(), after.begin(), after.end());
+  FakeModels models(OptionsFor(script));
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{25000}), models);
+  EXPECT_EQ(models.transcribe_calls(), 1);
+  EXPECT_EQ(AllWords(transcript), Expected(script));
+  EXPECT_NEAR(static_cast<double>(transcript.segments.back().words.back().start.count()),
+              22500.0 + 4 * 400.0, 40.0);
+}
+
+TEST(PipelineTest, TakesTheShorterOfItsOwnAndTheModelsLimit) {
+  const auto script = Speech(0, 50, Milliseconds{500});
+  FakeOptions options = OptionsFor(script);
+  options.max_audio = Milliseconds{8000};
+  FakeModels models(options);
+  RunFakes(RenderScript(script, Milliseconds{21000}), models);
+  EXPECT_EQ(models.transcribe_calls(), 3);  // 20 s, in pieces of 4 to 8 s
+
+  FakeModels longer(OptionsFor(script));
+  PipelineOptions pipeline;
+  pipeline.segmenter.max_chunk = Milliseconds{12000};
+  RunFakes(RenderScript(script, Milliseconds{21000}), longer, pipeline);
+  EXPECT_EQ(longer.transcribe_calls(), 2);
+}
+
+TEST(PipelineTest, LeavesPausesOutOfWhatTheModelHears) {
+  // A pause of a second, under the gap that separates requests.
+  auto script = Speech(0, 5, Milliseconds{500});
+  const auto after = Speech(10, 5, Milliseconds{3500});
+  script.insert(script.end(), after.begin(), after.end());
+  std::size_t heard = 0;
+  FakeOptions options = OptionsFor(script);
+  options.on_transcribe = [&](const TranscribeRequest& request) { heard += request.pcm.size(); };
+  FakeModels models(options);
+  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{6000}), models);
+  EXPECT_EQ(models.transcribe_calls(), 1);
+  EXPECT_LT(heard, static_cast<std::size_t>(ToSamples(Milliseconds{4500})));
+  EXPECT_EQ(AllWords(transcript), Expected(script));
+  // The last word is back at its time in the recording.
   const Word& last = transcript.segments.back().words.back();
-  EXPECT_NEAR(static_cast<double>(last.start.count()), 70000.0 + 9 * 400.0, 40.0);
+  EXPECT_NEAR(static_cast<double>(last.start.count()), 3500.0 + 4 * 400.0, 40.0);
 }
 
 TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
@@ -104,13 +151,12 @@ TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
   EXPECT_NEAR(static_cast<double>(transcript.segments[0].start.count()), 30000.0, 40.0);
 }
 
-TEST(PipelineTest, SilenceGivesNoSegments) {
+TEST(PipelineTest, SilenceProducesNoTranscriptionModel) {
   FakeModels models(FakeOptions{});
   const Transcript transcript = RunFakes(RenderScript({}, Milliseconds{10000}), models);
   EXPECT_TRUE(transcript.segments.empty());
-  EXPECT_EQ(models.transcribe_calls(), 1);
-  EXPECT_EQ(transcript.models.count("transcription"), 1u);
-  EXPECT_EQ(transcript.models.count("diarization"), 0u);
+  EXPECT_EQ(models.transcribe_calls(), 0);
+  EXPECT_EQ(transcript.models.count("transcription"), 0u);
 }
 
 TEST(PipelineTest, TranscriberAndDiarizerNeverShareMemory) {
@@ -125,6 +171,7 @@ TEST(PipelineTest, TranscriberAndDiarizerNeverShareMemory) {
   EXPECT_FALSE(models.live().transcriber_with_diarizer);
   EXPECT_EQ(models.live().transcribers, 0);
   EXPECT_EQ(models.live().diarizers, 0);
+  EXPECT_EQ(models.live().detectors, 0);
   ASSERT_GE(transcript.segments.size(), 2u);
   EXPECT_EQ(transcript.segments.front().speaker, 0);
   EXPECT_EQ(transcript.segments.back().speaker, 1);
@@ -153,10 +200,11 @@ TEST(PipelineTest, ReportsProgressInStageOrder) {
   // Each stage is announced as it starts, before its model loads.
   std::map<Stage, double> first;
   for (const auto& [stage, fraction] : events) first.try_emplace(stage, fraction);
-  EXPECT_EQ(first.size(), 2u);
+  EXPECT_EQ(first.size(), 3u);
   for (const auto& [stage, fraction] : first) EXPECT_EQ(fraction, 0.0);
   std::map<Stage, double> last;
   for (const auto& [stage, fraction] : events) last[stage] = fraction;
+  EXPECT_DOUBLE_EQ(last[Stage::kAnalyze], 1.0);
   EXPECT_DOUBLE_EQ(last[Stage::kTranscribe], 1.0);
   EXPECT_DOUBLE_EQ(last[Stage::kDiarize], 1.0);
 }
@@ -193,11 +241,13 @@ TEST(PipelineTest, CancelFromAnotherThread) {
   EXPECT_EQ(models.transcribe_calls(), 1);
 }
 
-TEST(PipelineTest, LeavesTheLanguageToTheModel) {
-  // Korean, then English after 30 s: the fake tells one language from the
-  // first 30 s, as Whisper does, and the pipeline keeps what it decoded.
+TEST(PipelineTest, DetectsTheLanguageOfEachRequest) {
+  // Korean, then English: each request in its own language, told from its
+  // speech, so the English word in the Korean request stays Korean.
   auto script = Speech(0, 10, Milliseconds{500}, "ko");
-  const auto english = Speech(200, 10, Milliseconds{35000}, "en");
+  script.push_back({.id = 50, .start = Milliseconds{4500}, .end = Milliseconds{4800},
+                    .language = "en", .speaker = 0});
+  const auto english = Speech(200, 10, Milliseconds{10000}, "en");
   script.insert(script.end(), english.begin(), english.end());
   FakeOptions options = OptionsFor(script);
   std::vector<std::string> requested;
@@ -205,13 +255,24 @@ TEST(PipelineTest, LeavesTheLanguageToTheModel) {
     requested.push_back(request.language);
   };
   FakeModels models(options);
-  const Transcript transcript = RunFakes(RenderScript(script, Milliseconds{40000}), models);
-  EXPECT_EQ(requested, (std::vector<std::string>{""}));
-  ASSERT_FALSE(transcript.segments.empty());
-  for (const Segment& segment : transcript.segments) EXPECT_EQ(segment.language, "ko");
+  PipelineOptions pipeline;
+  pipeline.segmenter.max_chunk = Milliseconds{5000};  // one request each
+  const Transcript transcript =
+      RunFakes(RenderScript(script, Milliseconds{15000}), models, pipeline);
+  EXPECT_EQ(requested, (std::vector<std::string>{"", ""}));
+  std::vector<std::string> words;
+  for (const Segment& segment : transcript.segments) {
+    for (const Word& word : segment.words) words.push_back(segment.language + ":" + word.text);
+  }
+  std::vector<std::string> expected;
+  for (const ScriptWord& word : script) {
+    const std::string language = word.start < Milliseconds{10000} ? "ko" : "en";
+    expected.push_back(language + ":" + WordText(word.id, language));
+  }
+  EXPECT_EQ(words, expected);
 }
 
-TEST(PipelineTest, FixedLanguageIsGivenToTheModel) {
+TEST(PipelineTest, FixedLanguageIsGivenToEveryRequest) {
   auto script = Speech(0, 10, Milliseconds{500}, "ko");
   const auto english = Speech(200, 10, Milliseconds{10000}, "en");
   script.insert(script.end(), english.begin(), english.end());
@@ -222,10 +283,11 @@ TEST(PipelineTest, FixedLanguageIsGivenToTheModel) {
   };
   FakeModels models(options);
   PipelineOptions pipeline;
+  pipeline.segmenter.max_chunk = Milliseconds{5000};  // one request each
   pipeline.language = "ko";
   const Transcript transcript =
       RunFakes(RenderScript(script, Milliseconds{15000}), models, pipeline);
-  EXPECT_EQ(requested, (std::vector<std::string>{"ko"}));
+  EXPECT_EQ(requested, (std::vector<std::string>{"ko", "ko"}));
   for (const Segment& segment : transcript.segments) EXPECT_EQ(segment.language, "ko");
 
   pipeline.language = "fr";  // not one of the model's languages
@@ -244,10 +306,11 @@ TEST(PipelineTest, ModelsGetTheGlossary) {
   };
   FakeModels models(options);
   PipelineOptions pipeline;
+  pipeline.segmenter.max_chunk = Milliseconds{3000};  // one request each
   pipeline.glossary = {"sillok", "Whisper"};
   RunFakes(RenderScript(script, Milliseconds{13000}), models, pipeline);
   const std::vector<std::string> glossary = {"sillok", "Whisper"};
-  EXPECT_EQ(glossaries, (std::vector<std::vector<std::string>>{glossary}));
+  EXPECT_EQ(glossaries, (std::vector<std::vector<std::string>>{glossary, glossary}));
 }
 
 }  // namespace

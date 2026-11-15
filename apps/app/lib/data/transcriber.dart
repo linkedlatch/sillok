@@ -146,12 +146,12 @@ class RunState {
   final Duration? remaining;
 
   /// Reading the copy, before the steps shown with numbers.
-  bool get preparing => step.index < RunStep.transcribe.index;
+  bool get preparing => step.index < RunStep.analyze.index;
 
   /// The step's place among the shown steps, from 1: finding speech,
   /// transcribing and telling speakers apart.
-  int get stepNumber => step.index - RunStep.transcribe.index + 1;
-  int get stepCount => settings.diarize ? 2 : 1;
+  int get stepNumber => step.index - RunStep.analyze.index + 1;
+  int get stepCount => settings.diarize ? 3 : 2;
 
   /// Milliseconds of the steps done so far.
   final Map<RunStep, int> timingsMs;

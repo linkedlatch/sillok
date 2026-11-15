@@ -22,7 +22,7 @@ class QwenAligner {
   QwenAligner(const std::filesystem::path& model, const std::filesystem::path& mmproj,
               const ComputeDevice& device, int threads);
 
-  // Where the units of a transcript of `pcm` (16 kHz, at most about 185 s) start
+  // Where the units of a transcript of `pcm` (16 kHz, at most 180 s) start
   // and end, in milliseconds, two per unit, as the model places them (before
   // FixTimestamps). `on_progress` receives the fraction done.
   std::vector<int> Align(std::span<const float> pcm, std::span<const AlignUnit> units,

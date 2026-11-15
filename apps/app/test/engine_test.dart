@@ -33,6 +33,7 @@ void main() {
       expect(Sillok.version, startsWith('sillok '));
       final catalog = Sillok.catalog();
       expect(catalog.where((m) => m.recommended).map((m) => m.role).toSet(), {
+        'voice_detection',
         'transcription',
         'diarization',
       });
@@ -101,7 +102,7 @@ void main() {
         final transcript = Transcript.parse(done.transcriptJson);
         expect(transcript.segments, isNotEmpty);
         expect(previews, greaterThan(0));
-        expect(steps, {RunStep.read, RunStep.transcribe, RunStep.diarize});
+        expect(steps, {RunStep.read, RunStep.analyze, RunStep.transcribe, RunStep.diarize});
       },
       timeout: const Timeout(Duration(minutes: 10)),
     );

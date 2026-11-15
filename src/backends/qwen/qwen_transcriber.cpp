@@ -11,7 +11,6 @@
 
 #include "backends/qwen/llama_audio.hpp"
 #include "backends/qwen/qwen_aligner.hpp"
-#include "backends/qwen/qwen_chunks.hpp"
 #include "backends/qwen/qwen_text.hpp"
 #include "core/model_provider.hpp"
 #include "core/postprocess.hpp"
@@ -21,7 +20,7 @@ namespace {
 
 using qwen::LlamaAudio;
 
-// Shares of a piece's progress: encoding the audio, writing the text
+// Shares of a request's progress: encoding the audio, writing the text
 // (estimated from its length), aligning.
 constexpr double kEncodeShare = 0.1;
 constexpr double kAlignFrom = 0.85;
@@ -30,6 +29,11 @@ constexpr double kTokensPerSecond = 5.0;
 // Text tokens at most: far more than any speech gives, a stop for a model
 // caught in a loop.
 std::size_t MaxTokens(std::size_t samples) { return 64 + 16 * samples / kSampleRate; }
+// What the qwen-asr package hears at once with word times
+// (MAX_FORCE_ALIGN_INPUT_SECONDS), the aligner's limit.
+constexpr Milliseconds kMaxAudio{180000};
+// Shorter audio is padded with silence to this length (MIN_ASR_INPUT_SECONDS).
+constexpr std::size_t kMinSamples = kSampleRate / 2;
 
 // Whether `tokens` end in a pattern of up to 20 tokens repeated 20 times:
 // the model is caught in a loop (FixRepetitions then keeps it once).
@@ -73,45 +77,19 @@ class QwenTranscriber final : public Transcriber {
   }
 
   ModelInfo Info() const override { return info_; }
+  Milliseconds MaxAudio() const override { return kMaxAudio; }
 
-  // The recording in qwen-asr's pieces, one after the other, each with its
-  // own language when none is given.
-  void Transcribe(const TranscribeRequest& request, const WordsCallback& on_words,
+  void Transcribe(const TranscribeRequest& given, const WordsCallback& on_words,
                   const FractionCallback& on_progress, StopToken stop) override {
-    const std::vector<SampleRange> chunks = qwen::AudioChunks(request.audio);
-    const auto total = static_cast<double>(request.audio.size());
-    for (const SampleRange& chunk : chunks) {
-      ThrowIfStopped(stop);
-      std::vector<float> pcm = request.audio.Read(chunk);
-      if (static_cast<SampleIndex>(pcm.size()) < qwen::kMinChunk) {
-        pcm.resize(static_cast<std::size_t>(qwen::kMinChunk), 0.0f);
-      }
-      const Milliseconds offset = ToMilliseconds(chunk.begin);
-      TranscribeChunk(
-          pcm, request,
-          [&](TranscribedWords words) {
-            for (Word& word : words.words) {
-              word.start += offset;
-              word.end += offset;
-            }
-            on_words(std::move(words));
-          },
-          [&](double fraction) {
-            on_progress((static_cast<double>(chunk.begin) +
-                         fraction * static_cast<double>(chunk.length())) /
-                        total);
-          },
-          stop);
+    ThrowIfStopped(stop);
+    std::vector<float> padded;
+    TranscribeRequest request = given;
+    if (request.pcm.size() < kMinSamples) {
+      padded.assign(request.pcm.begin(), request.pcm.end());
+      padded.resize(kMinSamples, 0.0f);
+      request.pcm = padded;
     }
-    on_progress(1.0);
-  }
-
- private:
-  // One piece, with times from its start.
-  void TranscribeChunk(std::span<const float> pcm, const TranscribeRequest& request,
-                       const WordsCallback& on_words, const FractionCallback& on_progress,
-                       const StopToken& stop) {
-    const qwen::AsrOutput heard = Listen(pcm, request, on_progress, stop);
+    const qwen::AsrOutput heard = Listen(request, on_progress, stop);
     if (heard.language.empty() || heard.text.empty()) {
       on_progress(1.0);
       return;
@@ -123,7 +101,7 @@ class QwenTranscriber final : public Transcriber {
     }
     std::vector<Milliseconds> times;
     for (const int ms : qwen::FixTimestamps(aligner_.Align(
-             pcm, units,
+             request.pcm, units,
              [&](double fraction) { on_progress(kAlignFrom + (1.0 - kAlignFrom) * fraction); },
              stop))) {
       times.emplace_back(ms);
@@ -140,9 +118,10 @@ class QwenTranscriber final : public Transcriber {
     on_progress(1.0);
   }
 
-  // Qwen3-ASR's transcript of `pcm`, greedy as the package decodes.
-  qwen::AsrOutput Listen(std::span<const float> pcm, const TranscribeRequest& request,
-                         const FractionCallback& on_progress, const StopToken& stop) {
+ private:
+  // Qwen3-ASR's transcript of the request, greedy as the package decodes.
+  qwen::AsrOutput Listen(const TranscribeRequest& request, const FractionCallback& on_progress,
+                         const StopToken& stop) {
     std::string context;
     for (const std::string& term : request.glossary) {
       if (!context.empty()) context += ", ";
@@ -155,13 +134,13 @@ class QwenTranscriber final : public Transcriber {
     }
     std::vector<float> logits;
     asr_.Feed(
-        prompt, pcm, qwen::AudioTokens(pcm.size()), {},
+        prompt, request.pcm, qwen::AudioTokens(request.pcm.size()), {},
         [&](llama_token, const float* row) { logits.assign(row, row + asr_.row_size()); }, true,
         [&](double fraction) { on_progress(kEncodeShare * fraction); }, stop);
 
-    const std::size_t limit = MaxTokens(pcm.size());
+    const std::size_t limit = MaxTokens(request.pcm.size());
     const double expected =
-        std::max(1.0, kTokensPerSecond * static_cast<double>(pcm.size()) / kSampleRate);
+        std::max(1.0, kTokensPerSecond * static_cast<double>(request.pcm.size()) / kSampleRate);
     std::vector<llama_token> tokens;
     std::string decoded;
     // Without a language, the output starts with one of language_starts_.

@@ -296,6 +296,12 @@ abstract class AppLocalizations {
   /// **'Saving a copy for listening'**
   String get stepCopy;
 
+  /// No description provided for @stepAnalyze.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding speech'**
+  String get stepAnalyze;
+
   /// No description provided for @stepTranscribe.
   ///
   /// In en, this message translates to:

@@ -37,6 +37,7 @@ String formatDate(int ms) {
 String stepName(AppLocalizations l, RunStep step) => switch (step) {
   RunStep.read => l.stepRead,
   RunStep.copy => l.stepCopy,
+  RunStep.analyze => l.stepAnalyze,
   RunStep.transcribe => l.stepTranscribe,
   RunStep.diarize => l.stepDiarize,
 };

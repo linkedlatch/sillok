@@ -24,9 +24,9 @@ struct QwenConfig {
 };
 
 // Qwen3-ASR through llama.cpp, with word times from Qwen3-ForcedAligner, as
-// the qwen-asr package runs them: the recording in its pieces of up to about
-// 3 minutes (qwen_chunks.hpp), the aligner's limit. Both models stay loaded.
-// Throws ModelError if a model cannot be loaded.
+// the qwen-asr package runs them. Both models stay loaded. A request is at
+// most 180 s, the aligner's limit. Throws ModelError if a model cannot be
+// loaded.
 std::unique_ptr<Transcriber> OpenQwen(const QwenConfig& config);
 
 }  // namespace sillok

@@ -6,6 +6,7 @@ add_library(sillok_core STATIC
     files.cpp
     pipeline.cpp
     postprocess.cpp
+    segmenter.cpp
     sha256.cpp
     speakers.cpp
     utf8.cpp

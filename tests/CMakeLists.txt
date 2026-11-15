@@ -16,15 +16,15 @@ add_executable(sillok_unit_tests
     unit/audio_test.cpp
     unit/output_test.cpp
     unit/pipeline_test.cpp
+    unit/segmenter_test.cpp
     unit/text_test.cpp)
 target_link_libraries(sillok_unit_tests PRIVATE sillok_fakes GTest::gtest_main)
 sillok_set_warnings(sillok_unit_tests)
 gtest_discover_tests(sillok_unit_tests)
 
-# Model-free tests of the backends' own text and audio handling.
+# Model-free tests of the backends' own text handling.
 if(TARGET sillok_whisper_words)
-    add_executable(sillok_backend_unit_tests unit/whisper_words_test.cpp unit/qwen_text_test.cpp
-        unit/qwen_chunks_test.cpp)
+    add_executable(sillok_backend_unit_tests unit/whisper_words_test.cpp unit/qwen_text_test.cpp)
     target_link_libraries(sillok_backend_unit_tests PRIVATE
         sillok_whisper_words sillok_qwen_text GTest::gtest_main)
     sillok_set_warnings(sillok_backend_unit_tests)

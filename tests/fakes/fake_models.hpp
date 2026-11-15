@@ -32,6 +32,7 @@ std::string WordText(int id, const std::string& language);
 
 // Counts live fake models, to check which ones share memory.
 struct LiveModels {
+  std::atomic<int> detectors = 0;
   std::atomic<int> transcribers = 0;
   std::atomic<int> diarizers = 0;
   // Set when a transcriber and a diarizer were alive at the same time.
@@ -43,6 +44,8 @@ struct FakeOptions {
   std::map<int, std::string> languages;
   // Speaker of each word id, for diarization.
   std::map<int, int> speakers;
+  // The longest request the transcriber takes; a longer one fails the test.
+  Milliseconds max_audio{30000};
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
 };
@@ -54,6 +57,7 @@ class FakeModels : public ModelProvider {
 
   std::vector<std::string> Languages() const override { return {"en", "ko"}; }
 
+  std::unique_ptr<VoiceDetector> OpenVoiceDetector() override;
   std::unique_ptr<Transcriber> OpenTranscriber() override;
   std::unique_ptr<Diarizer> OpenDiarizer() override;
 

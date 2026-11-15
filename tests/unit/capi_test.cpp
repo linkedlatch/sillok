@@ -142,7 +142,7 @@ TEST_F(CapiTest, TranscribesAndReportsProgress) {
   }
   EXPECT_EQ(text, "en0 en1 en2 en3 en4 en5 en6 en7 en8 en9 ");
   ASSERT_FALSE(stages.empty());
-  EXPECT_EQ(stages.front(), SILLOK_STAGE_TRANSCRIBE);
+  EXPECT_EQ(stages.front(), SILLOK_STAGE_ANALYZE);
   EXPECT_EQ(stages.back(), SILLOK_STAGE_TRANSCRIBE);
   EXPECT_EQ(transcript["models"]["transcription"]["name"], "fake-transcriber");
 }
