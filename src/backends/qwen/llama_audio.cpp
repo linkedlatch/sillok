@@ -60,9 +60,12 @@ struct LlamaAudio::Batch {
 
 LlamaAudio::LlamaAudio(const LlamaAudioConfig& config) : embeddings_(config.embeddings) {
   ggml_backend_dev_t gpu = GgmlGpu(config.device);
+  // An empty list on the CPU: a null list would mean every GPU, and llama.cpp
+  // would then put the compute buffers in pinned memory, all of it resident
+  // (0.75 GB more for Qwen at q8_0).
   ggml_backend_dev_t devices[] = {gpu, nullptr};
   llama_model_params model_params = llama_model_default_params();
-  model_params.devices = gpu != nullptr ? devices : nullptr;
+  model_params.devices = devices;
   model_params.n_gpu_layers = gpu != nullptr ? -1 : 0;
   const std::string text_path = PathToUtf8(config.text_model);
   model_ = llama_model_load_from_file(text_path.c_str(), model_params);
