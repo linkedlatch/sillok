@@ -16,7 +16,6 @@ void main() {
   // A request on the real models for [audio], with its copy in [dir].
   JobRequest request(Directory dir, {required bool prepare, required Map<String, Object?> options}) => JobRequest(
     modelsDir: models!,
-    tempDir: dir.path,
     gpuIndex: null,
     npu: false,
     transcriptionModel: null,
@@ -52,7 +51,6 @@ void main() {
       final run = JobRun.start(
         JobRequest(
           modelsDir: dir.path,
-          tempDir: dir.path,
           gpuIndex: null,
           npu: false,
           transcriptionModel: null,

@@ -19,7 +19,6 @@ import 'native.dart';
 class JobRequest {
   const JobRequest({
     required this.modelsDir,
-    required this.tempDir,
     required this.gpuIndex,
     required this.npu,
     required this.transcriptionModel,
@@ -30,7 +29,6 @@ class JobRequest {
   });
 
   final String modelsDir;
-  final String tempDir;
 
   /// The GPU among the library's GPUs, or null for the CPU.
   final int? gpuIndex;
@@ -45,7 +43,6 @@ class JobRequest {
 
   String get engineConfig => jsonEncode({
     'models_dir': modelsDir,
-    'temp_dir': tempDir,
     'device': gpuIndex == null ? 'cpu' : 'gpu',
     'gpu_index': gpuIndex ?? 0,
     'npu': npu,

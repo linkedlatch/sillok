@@ -105,8 +105,6 @@ class AppState extends ChangeNotifier {
   Future<void> start() async {
     _support = await getApplicationSupportDirectory();
     await _loadAppLanguage();
-    final cache = await getApplicationCacheDirectory();
-    await cache.create(recursive: true);
     modelsDir = Directory('${_support.path}${Platform.pathSeparator}models');
     store = JobStore(Directory('${_support.path}${Platform.pathSeparator}jobs'));
     transcriber = Transcriber(
@@ -115,7 +113,6 @@ class AppState extends ChangeNotifier {
       keepAwake: KeepAwake.system(),
       request: (item, lane, copyPath) => JobRequest(
         modelsDir: modelsDir.path,
-        tempDir: cache.path,
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
