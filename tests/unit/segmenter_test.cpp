@@ -26,8 +26,8 @@ TEST(FindSpeechTest, BridgesPausesDropsBlipsAndPads) {
   SegmenterOptions options;
   options.min_silence = Milliseconds{500};
   options.min_speech = Milliseconds{250};
-  options.padding = Milliseconds{100};
-  options.tail = Milliseconds{0};
+  options.before = Milliseconds{100};
+  options.after = Milliseconds{100};
   // Speech 10-40, pause of 5 frames (160 ms), speech 45-60, blip 100-102,
   // speech 200-260 after a long pause.
   const auto p = Probabilities(300, {{10, 40}, {45, 60}, {100, 102}, {200, 260}});
@@ -41,8 +41,8 @@ TEST(FindSpeechTest, BridgesPausesDropsBlipsAndPads) {
 
 TEST(FindSpeechTest, UsesHysteresis) {
   SegmenterOptions options;
-  options.padding = Milliseconds{0};
-  options.tail = Milliseconds{0};
+  options.before = Milliseconds{0};
+  options.after = Milliseconds{0};
   std::vector<float> p = {0.1f, 0.6f, 0.4f, 0.4f, 0.3f, 0.1f};
   p.resize(20, 0.0f);
   std::fill(p.begin() + 1, p.begin() + 12, 0.4f);  // stays above 0.35
@@ -55,8 +55,8 @@ TEST(FindSpeechTest, UsesHysteresis) {
 
 TEST(FindSpeechTest, KeepsTheTailAfterSpeech) {
   SegmenterOptions options;
-  options.padding = Milliseconds{10};
-  options.tail = Milliseconds{100};
+  options.before = Milliseconds{10};
+  options.after = Milliseconds{110};
   const auto speech = FindSpeech(Probabilities(300, {{100, 200}}), kFrame, Frames(300), options);
   ASSERT_EQ(speech.size(), 1u);
   EXPECT_EQ(speech[0].begin, Frames(100) - 160);

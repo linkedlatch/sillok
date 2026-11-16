@@ -10,14 +10,17 @@
 namespace sillok {
 
 // The defaults are whisper.cpp's (whisper_vad_default_params), but for
-// max_chunk.
+// `before` and max_chunk.
 struct SegmenterOptions {
   float speech_threshold = 0.5f;    // a frame at or above this starts speech
   float silence_threshold = 0.35f;  // a frame below this ends it
   Milliseconds min_speech{250};     // shorter speech is dropped
   Milliseconds min_silence{100};    // shorter pauses are bridged
-  Milliseconds padding{30};         // kept before and after speech
-  Milliseconds tail{100};           // kept after speech as well
+  // Kept before speech: Silero tells a soft onset (ㅎ, ㅅ, s, f) late, and
+  // whisper.cpp's 30 ms lost the first syllable of 23 of 40 sentences of the
+  // pause set (docs/DESIGN.md D64).
+  Milliseconds before{100};
+  Milliseconds after{130};          // kept after speech (whisper.cpp's 30 + 100)
   // The most speech, joined, that the model hears at once, as WhisperX and
   // faster-whisper hand Whisper its 30 s window; less when the model takes
   // less (Transcriber::MaxAudio()).

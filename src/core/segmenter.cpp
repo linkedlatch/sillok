@@ -42,8 +42,8 @@ std::vector<SampleRange> FindSpeech(std::span<const float> probabilities,
   }
 
   std::vector<SampleRange> speech;
-  const SampleIndex before = ToSamples(options.padding);
-  const SampleIndex after = before + ToSamples(options.tail);
+  const SampleIndex before = ToSamples(options.before);
+  const SampleIndex after = ToSamples(options.after);
   for (const SampleRange& range : bridged) {
     if (range.length() < ToSamples(options.min_speech)) continue;
     const SampleRange padded{std::max<SampleIndex>(0, range.begin - before),

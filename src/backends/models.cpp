@@ -236,9 +236,10 @@ void ConfigureLogging() {
   });
 }
 
+// Every logical core: on a 6-core, 12-thread Ryzen, 12 threads ran Whisper
+// on the CPU 7% faster than 8 and 18% faster than 6 (docs/DESIGN.md D64).
 int DefaultThreads() {
-  return static_cast<int>(
-      std::clamp(std::thread::hardware_concurrency(), 1u, 8u));
+  return static_cast<int>(std::max(std::thread::hardware_concurrency(), 1u));
 }
 
 class Models final : public ModelProvider {
