@@ -33,10 +33,23 @@ constexpr char kWhisperRepo[] =
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/"
     "5359861c739e955e79d9a303bcbc70fb988958b1/";
 
-// The languages sillok transcribes (docs/DESIGN.md D43): those
-// Qwen3-ForcedAligner gives word times in, so that every model offers the
-// same ones and automatic detection picks among them alone.
-const std::vector<std::string>& Languages() {
+// Whisper's languages, all of them (docs/DESIGN.md D58), in whisper.cpp's
+// order. Javanese is "jv" as in ISO 639-1; whisper.cpp calls it "jw".
+const std::vector<std::string>& WhisperLanguages() {
+  static const std::vector<std::string> languages = {
+      "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr", "pl", "ca", "nl", "ar",
+      "sv", "it", "id", "hi", "fi", "vi", "he", "uk", "el", "ms", "cs", "ro", "da", "hu",
+      "ta", "no", "th", "ur", "hr", "bg", "lt", "la", "mi", "ml", "cy", "sk", "te", "fa",
+      "lv", "bn", "sr", "az", "sl", "kn", "et", "mk", "br", "eu", "is", "hy", "ne", "mn",
+      "bs", "kk", "sq", "sw", "gl", "mr", "pa", "si", "km", "sn", "yo", "so", "af", "oc",
+      "ka", "be", "tg", "sd", "gu", "am", "yi", "lo", "uz", "fo", "ht", "ps", "tk", "nn",
+      "mt", "sa", "lb", "my", "bo", "tl", "mg", "as", "tt", "haw", "ln", "ha", "ba", "jv",
+      "su", "yue"};
+  return languages;
+}
+
+// Qwen's: those Qwen3-ForcedAligner gives word times in (docs/DESIGN.md D43).
+const std::vector<std::string>& QwenLanguages() {
   static const std::vector<std::string> languages = {
       "ko", "en", "ja", "zh", "yue", "de", "es", "fr", "it", "pt", "ru"};
   return languages;
@@ -65,7 +78,7 @@ CatalogModel Whisper(const char* family, const char* quantization,
                      .quantization = quantization,
                      .recommended = recommended,
                      .files = {std::move(model)},
-                     .languages = Languages()};
+                     .languages = WhisperLanguages()};
 #ifdef SILLOK_COREML
   entry.files.push_back(std::move(encoder));
 #else
@@ -111,7 +124,7 @@ CatalogModel Qwen(const char* quantization, QwenFile asr, QwenFile aligner) {
                     file(kQwenAlignerRepo,
                          {"mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
                           "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668"})},
-          .languages = Languages()};
+          .languages = QwenLanguages()};
 }
 
 std::vector<CatalogModel> BuildCatalog() {

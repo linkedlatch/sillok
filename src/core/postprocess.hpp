@@ -21,7 +21,7 @@ bool EndsSentence(std::string_view word);
 // punctuation, and then halves sentences longer than max_segment_duration
 // until none is: at the longest pause between words if there is one, else
 // between the words nearest the middle. A model may give a sentence in
-// pieces or several in one segment, or a whole group of speech as one.
+// pieces or several in one segment, or a whole chunk of speech as one.
 std::vector<Segment> SplitSegments(std::vector<Segment> segments,
                                    const PostprocessOptions& options);
 

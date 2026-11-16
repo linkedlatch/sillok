@@ -1,9 +1,9 @@
 # sillok
 
 On-device transcription with speaker diarization, as a C++20 library with a C
-ABI. Eleven languages (Korean, English, Japanese, Chinese, Cantonese, German,
-Spanish, French, Italian, Portuguese, Russian), including recordings that
-switch between them.
+ABI. Whisper's 100 languages, or with Qwen3-ASR eleven (Korean, English,
+Japanese, Chinese, Cantonese, German, Spanish, French, Italian, Portuguese,
+Russian), including recordings that switch between them.
 
 - Transcription: Whisper large-v3-turbo (q5_0) through whisper.cpp, or Qwen3-ASR 1.7B
   with Qwen3-ForcedAligner word times through llama.cpp

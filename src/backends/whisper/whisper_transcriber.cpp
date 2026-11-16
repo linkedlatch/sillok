@@ -5,6 +5,7 @@
 #include <fstream>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <whisper.h>
@@ -16,6 +17,11 @@
 
 namespace sillok {
 namespace {
+
+// A language's code in whisper.cpp and back: Javanese is "jw" there and "jv"
+// in sillok (ISO 639-1); the others are the same.
+std::string ToWhisper(const std::string& code) { return code == "jv" ? "jw" : code; }
+std::string FromWhisper(std::string_view code) { return code == "jw" ? "jv" : std::string(code); }
 
 // What the callbacks of one whisper_full call need.
 struct Run {
@@ -42,7 +48,7 @@ void HandOver(whisper_context* context, Run& run) {
     for (; run.handed < total; ++run.handed) {
       const int i = run.handed;
       // The language it was told to decode in.
-      const std::string language = whisper_lang_str(whisper_full_lang_id(context));
+      const std::string language = FromWhisper(whisper_lang_str(whisper_full_lang_id(context)));
       std::vector<Token> tokens;
       const int count = whisper_full_n_tokens(context, i);
       for (int j = 0; j < count; ++j) {
@@ -53,7 +59,7 @@ void HandOver(whisper_context* context, Run& run) {
                           .start = Milliseconds{token.t0 * 10},
                           .end = Milliseconds{std::max(token.t0, token.t1) * 10}});
       }
-      std::vector<Word> words = AssembleWords(tokens, Milliseconds{0}, language);
+      std::vector<Word> words = AssembleWords(tokens, language);
       if (words.empty()) continue;
       const SampleIndex heard = std::min(ToSamples(words.back().end), run.samples);
       run.on_words({.words = std::move(words), .language = language});
@@ -111,7 +117,7 @@ class WhisperTranscriber final : public Transcriber {
                        : LoadWithoutPath(config.model, params));
     if (!context_) throw ModelError("cannot load the Whisper model " + path);
     for (const std::string& language : config.languages) {
-      const int id = whisper_lang_id(language.c_str());
+      const int id = whisper_lang_id(ToWhisper(language).c_str());
       if (id < 0) throw ModelError("Whisper does not know the language " + language);
       language_ids_.push_back(id);
     }
@@ -135,7 +141,7 @@ class WhisperTranscriber final : public Transcriber {
         whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.n_threads = threads_;
     const std::string language =
-        request.language.empty() ? DetectLanguage(request.pcm) : request.language;
+        ToWhisper(request.language.empty() ? DetectLanguage(request.pcm) : request.language);
     ThrowIfStopped(stop);
     params.language = language.c_str();
     params.print_progress = false;
@@ -173,9 +179,10 @@ class WhisperTranscriber final : public Transcriber {
   }
 
  private:
-  // The most likely of the configured languages, from the first 30 s, at the
-  // cost of one more encoder pass. whisper.cpp's "auto" would pick among all
-  // of Whisper's languages; this takes the same probabilities.
+  // The most likely of the configured languages (the catalog lists all of
+  // Whisper's), from the request (one encoder window), at the cost of one
+  // more encoder pass, as whisper.cpp's "auto" does; this takes the same
+  // probabilities.
   std::string DetectLanguage(std::span<const float> pcm) const {
     if (whisper_pcm_to_mel(context_.get(), pcm.data(), static_cast<int>(pcm.size()), threads_) != 0) {
       throw ModelError("whisper_pcm_to_mel failed");
@@ -190,7 +197,7 @@ class WhisperTranscriber final : public Transcriber {
           return probabilities[static_cast<std::size_t>(a)] < probabilities[static_cast<std::size_t>(b)];
         });
     if (best == language_ids_.end()) throw ModelError("no languages to tell apart");
-    return whisper_lang_str(*best);
+    return FromWhisper(whisper_lang_str(*best));
   }
 
   // Length of `text` in prompt tokens.

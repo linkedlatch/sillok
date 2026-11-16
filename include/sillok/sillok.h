@@ -84,8 +84,10 @@ SILLOK_API void sillok_free_string(char* text);
  * names another transcription model. A "zip" file is an optional
  * accelerator (the Core ML encoder on Apple) that the app extracts into the
  * directory. Files may be shared between models. A transcription model lists
- * the "languages" a job's "language" may name (ISO 639-1, except "yue" for
- * Cantonese); "auto" picks among them alone. */
+ * the "languages" a job's "language" may name (ISO 639-1 where there is a
+ * code, else "haw" for Hawaiian and "yue" for Cantonese): all of Whisper's
+ * for a Whisper model, the eleven Qwen3-ForcedAligner aligns for Qwen;
+ * "auto" picks among them alone. */
 SILLOK_API sillok_status sillok_model_catalog(char** out_json);
 
 /* The catalog entries an engine uses, one per role, for the app to download

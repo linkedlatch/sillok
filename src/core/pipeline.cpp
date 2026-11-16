@@ -59,7 +59,7 @@ std::vector<Segment> TranscribeSpeech(
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
   const auto transcriber = models.OpenTranscriber();
-  const std::vector<std::vector<SampleRange>> groups =
+  const std::vector<std::vector<SampleRange>> chunks =
       ChunkSpeech(speech.regions, speech.probabilities, speech.frame_samples,
                   std::min(options.segmenter.max_chunk, transcriber->MaxAudio()));
   // Each chunk's language is told from its own speech: a recording may change
@@ -69,14 +69,14 @@ std::vector<Segment> TranscribeSpeech(
   std::vector<Segment> segments;
   SampleIndex total_samples = 0;
   SampleIndex done_samples = 0;
-  for (const std::vector<SampleRange>& group : groups) total_samples += JoinedSpeech(group).size();
+  for (const std::vector<SampleRange>& chunk : chunks) total_samples += JoinedSpeech(chunk).size();
 
-  for (const std::vector<SampleRange>& group : groups) {
+  for (const std::vector<SampleRange>& chunk : chunks) {
     ThrowIfStopped(stop);
-    const JoinedSpeech joined(group);
+    const JoinedSpeech joined(chunk);
     std::vector<float> pcm(static_cast<std::size_t>(joined.size()), 0.0f);
-    for (std::size_t i = 0; i < group.size(); ++i) {
-      const std::vector<float> part = audio.Read(group[i]);
+    for (std::size_t i = 0; i < chunk.size(); ++i) {
+      const std::vector<float> part = audio.Read(chunk[i]);
       std::copy(part.begin(), part.end(),
                 pcm.begin() + static_cast<std::ptrdiff_t>(joined.Offset(i)));
     }

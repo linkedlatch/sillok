@@ -26,13 +26,15 @@ OUTPUT = os.path.join(ROOT, "apps", "app", "lib", "ui", "language_names.g.dart")
 
 
 def catalog_codes():
-    """The catalog's language codes, in its own order."""
+    """The language codes of every list in the catalog, each once, in the
+    order they first appear."""
     with open(MODELS, encoding="utf-8") as file:
         source = file.read()
-    match = re.search(r"static const std::vector<std::string> languages = \{([^}]*)\}", source)
-    if match is None:
+    lists = re.findall(r"static const std::vector<std::string> languages = \{([^}]*)\}", source)
+    if not lists:
         sys.exit(f"found no languages in {MODELS}")
-    return re.findall(r'"([a-z]+)"', match.group(1))
+    codes = [code for found in lists for code in re.findall(r'"([a-z]+)"', found)]
+    return list(dict.fromkeys(codes))
 
 
 def app_locales():

@@ -22,7 +22,7 @@ struct Segment {
   Milliseconds start{0};
   Milliseconds end{0};
   std::string text;
-  std::string language;  // ISO 639-1
+  std::string language;  // a catalog code (ISO 639-1 where there is one)
   std::optional<int> speaker;
   std::vector<Word> words;
 };

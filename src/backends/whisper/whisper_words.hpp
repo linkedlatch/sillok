@@ -19,12 +19,12 @@ struct Token {
   Milliseconds end{0};
 };
 
-// Groups decoded tokens into words and shifts their times by `offset`.
+// Groups decoded tokens into words, with the tokens' times.
 // In languages with spaces a word starts at a token that begins with a space;
 // otherwise every token starts one. A UTF-8 character split over tokens stays
 // in one word, and the result is always well-formed UTF-8.
 std::vector<Word> AssembleWords(std::span<const Token> tokens,
-                                Milliseconds offset, std::string_view language);
+                                std::string_view language);
 
 // The glossary as one prompt: the terms separated by ", ".
 std::string JoinGlossary(std::span<const std::string> glossary);

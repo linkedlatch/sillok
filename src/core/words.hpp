@@ -11,7 +11,7 @@
 
 namespace sillok {
 
-// Whether `language` (ISO 639-1) separates words with spaces.
+// Whether `language` (a catalog code) separates words with spaces.
 bool UsesSpaces(std::string_view language);
 
 // Running text of `words` in `language`.

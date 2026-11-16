@@ -9,7 +9,6 @@
 namespace sillok {
 
 std::vector<Word> AssembleWords(std::span<const Token> tokens,
-                                Milliseconds offset,
                                 std::string_view language) {
   const bool uses_spaces = UsesSpaces(language);
   std::vector<Word> words;
@@ -27,13 +26,13 @@ std::vector<Word> AssembleWords(std::span<const Token> tokens,
         (!continues_character && (!uses_spaces || bytes.starts_with(' ')));
     if (starts_word) {
       words.push_back(Word{.text = {},
-                           .start = token.start + offset,
-                           .end = token.end + offset,
+                           .start = token.start,
+                           .end = token.end,
                            .speaker = std::nullopt});
     }
     Word& word = words.back();
     word.text += bytes;
-    word.end = token.end + offset;
+    word.end = token.end;
   }
   if (!pending.empty() && !words.empty()) words.back().text += pending;
 

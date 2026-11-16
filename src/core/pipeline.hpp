@@ -27,7 +27,7 @@ using ProgressCallback = std::function<void(Stage stage, double fraction)>;
 using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
 struct PipelineOptions {
-  // "auto", told from the start of each group of speech, or one of
+  // "auto", told by the model for each chunk of speech (ChunkSpeech), or one of
   // ModelProvider::Languages() (ISO 639-1).
   std::string language = "auto";
   std::vector<std::string> glossary;

@@ -55,7 +55,7 @@ struct CatalogModel {
   bool recommended = false;  // its role's default
   std::vector<CatalogFile> files;
   // Of a transcription model: the languages it transcribes, told or told
-  // apart from the audio; ISO 639-1, except "yue" (Cantonese).
+  // apart from the audio; ISO 639-1, else "haw" and "yue".
   std::vector<std::string> languages;
 };
 

@@ -94,10 +94,13 @@ TEST_F(ModelsTest, TranscribesEnglish) {
 TEST_F(ModelsTest, DetectsLanguage) {
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_ko.wav", 15.0);
   auto models = Models();
-  // The languages Qwen3-ForcedAligner knows (docs/DESIGN.md D43); "auto"
-  // picks among them alone.
-  EXPECT_EQ(models->Languages(), (std::vector<std::string>{"ko", "en", "ja", "zh", "yue", "de",
-                                                            "es", "fr", "it", "pt", "ru"}));
+  // All of Whisper's (docs/DESIGN.md D58), Javanese as "jv"; "auto" picks
+  // among them.
+  const std::vector<std::string> languages = models->Languages();
+  EXPECT_EQ(languages.size(), 100u);
+  EXPECT_EQ(languages.front(), "en");
+  EXPECT_NE(std::find(languages.begin(), languages.end(), "jv"), languages.end());
+  EXPECT_EQ(std::find(languages.begin(), languages.end(), "jw"), languages.end());
   std::vector<std::string> detected;
   models->OpenTranscriber()->Transcribe(
       {.pcm = pcm, .language = "", .glossary = {}},

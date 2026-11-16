@@ -25,7 +25,7 @@ class ModelProvider {
   virtual ~ModelProvider() = default;
 
   // Languages the transcription model transcribes, told or told apart from
-  // the audio; ISO 639-1, except "yue" (Cantonese).
+  // the audio; ISO 639-1, else "haw" and "yue".
   virtual std::vector<std::string> Languages() const = 0;
 
   virtual std::unique_ptr<VoiceDetector> OpenVoiceDetector() = 0;

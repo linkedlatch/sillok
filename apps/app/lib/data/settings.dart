@@ -22,8 +22,8 @@ class JobSettings {
     npu: json['npu'] as bool? ?? true,
   );
 
-  /// "auto", told at each long pause, or one of the transcription model's
-  /// languages ("ko", "en", ...).
+  /// "auto", told by the model for each chunk of speech it hears, or one of
+  /// the transcription model's languages ("ko", "en", ...).
   final String language;
 
   /// The language last chosen from the list of all, kept at hand beside the
