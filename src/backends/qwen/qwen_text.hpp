@@ -49,7 +49,9 @@ struct AlignUnit {
 // The aligner's units of `text` in `language` (a code). Korean words are
 // split as soynlp's LTokenizer does with the package's dictionary; everything
 // else at spaces, with each CJK ideograph a unit of its own. Japanese takes
-// this second way too, where the package uses the nagisa tagger.
+// this second way too, where the package uses the nagisa tagger, and is also
+// split at what is not kept (、。！？「」…), which the tagger always parts
+// from words.
 std::vector<AlignUnit> AlignUnits(std::string_view text, std::string_view language);
 
 // The package's fix_timestamp: times (two per unit) off the longest

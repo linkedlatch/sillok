@@ -307,6 +307,15 @@ std::vector<AlignUnit> AlignUnits(std::string_view text, std::string_view langua
   for (const auto& [begin, end] : SplitAtSpaces(chars)) {
     if (language == "ko") {
       AddKorean(chars, begin, end, units);
+    } else if (language == "ja") {
+      // nagisa parts punctuation from words, so a run of kept characters
+      // ends at it.
+      for (std::size_t i = begin; i < end;) {
+        while (i < end && !IsKept(chars[i])) ++i;
+        const std::size_t run = i;
+        while (i < end && IsKept(chars[i])) ++i;
+        AddSpaced(chars, run, i, units);
+      }
     } else {
       AddSpaced(chars, begin, end, units);
     }

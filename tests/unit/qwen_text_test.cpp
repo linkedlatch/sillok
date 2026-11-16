@@ -48,6 +48,31 @@ TEST(QwenTextTest, SplitsOtherLanguagesAtSpacesAndIdeographs) {
                                       "はPythonを", "使", "います"}));
 }
 
+TEST(QwenTextTest, SplitsJapaneseAtPunctuation) {
+  // nagisa gives ありがとう|ござい|ます and parts the punctuation; a run of
+  // kana stops at the punctuation at least.
+  const std::string text = "「ありがとう、ございます。」";
+  const auto units = AlignUnits(text, "ja");
+  EXPECT_EQ(Texts(units), (std::vector<std::string>{"ありがとう", "ございます"}));
+  ASSERT_EQ(units.size(), 2u);
+  EXPECT_EQ(units[0].begin, 1u);
+  EXPECT_EQ(units[0].end, 6u);
+  EXPECT_EQ(units[1].begin, 7u);
+  EXPECT_EQ(units[1].end, 12u);
+  const auto words = TimedWords(text, "ja", units, Times({0, 10, 20, 30}));
+  ASSERT_EQ(words.size(), 2u);
+  EXPECT_EQ(words[0].text, "「ありがとう、");
+  EXPECT_EQ(words[1].text, "ございます。」");
+
+  EXPECT_EQ(Texts(AlignUnits("東京へ、ようこそ！ここは、すごいですね？", "ja")),
+            (std::vector<std::string>{"東", "京", "へ", "ようこそ", "ここは", "すごいですね"}));
+  EXPECT_EQ(Texts(AlignUnits("ええと・・・カタカナ…ひらがな", "ja")),
+            (std::vector<std::string>{"ええと", "カタカナ", "ひらがな"}));
+  // Other languages as the package: punctuation inside a word drops out.
+  EXPECT_EQ(Texts(AlignUnits("ありがとう、ございます", "zh")),
+            (std::vector<std::string>{"ありがとうございます"}));
+}
+
 TEST(QwenTextTest, UnitsKnowWhereTheyAre) {
   const auto units = AlignUnits("안녕하세요, 여러분.", "ko");
   ASSERT_EQ(units.size(), 3u);
