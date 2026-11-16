@@ -5,8 +5,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
+#include <regex>
 #include <set>
 #include <string>
 #include <utility>
@@ -14,6 +17,7 @@
 
 #include "backends/models.hpp"
 #include "backends/qwen/qwen_aligner.hpp"
+#include "backends/qwen/qwen_text.hpp"
 #include "backends/qwen/qwen_transcriber.hpp"
 #include "core/cancel.hpp"
 #include "core/model_provider.hpp"
@@ -212,6 +216,63 @@ qwen::QwenAligner OpenAligner() {
   return qwen::QwenAligner(kModels / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
                            kModels / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
                            ChooseDevice(Device::kGpu, 0), 8);
+}
+
+// Words of an AMI words file (punctuation left out) starting in [from, to)
+// seconds, with their start times.
+std::vector<std::pair<std::string, double>> AmiWords(const std::filesystem::path& path,
+                                                     double from, double to) {
+  // Read with its size known, as gcc 13 wrongly warns of a null dereference
+  // in istreambuf_iterator.
+  std::ifstream in(path, std::ios::binary);
+  std::string xml(static_cast<std::size_t>(std::filesystem::file_size(path)), '\0');
+  in.read(xml.data(), static_cast<std::streamsize>(xml.size()));
+  // Punctuation has punc="true" after its times.
+  const std::regex word(R"re(starttime="([\d.]+)" endtime="[\d.]+">([^<]*)</w>)re");
+  std::vector<std::pair<std::string, double>> words;
+  for (auto it = std::sregex_iterator(xml.begin(), xml.end(), word); it != std::sregex_iterator(); ++it) {
+    const double start = std::stod((*it)[1].str());
+    std::string text = (*it)[2].str();
+    for (std::size_t at; (at = text.find("&#39;")) != std::string::npos;) text.replace(at, 5, "'");
+    if (start >= from && start < to) words.emplace_back(std::move(text), start);
+  }
+  return words;
+}
+
+TEST_F(QwenTest, AlignerPlacesWordsWhereTheAnnotationHasThem) {
+  // 26 s of one speaker in an AMI meeting (no one else speaks from 140.85 to
+  // 168.79 s), against the corpus's manual word times.
+  const std::filesystem::path annotation = kAudio / "download" / "ES2004a.B.words.xml";
+  const std::filesystem::path recording = kAudio / "download" / "ES2004a.Mix-Headset.wav";
+  if (!std::filesystem::exists(annotation) || !std::filesystem::exists(recording)) {
+    GTEST_SKIP() << "AMI ES2004a not found";
+  }
+  constexpr double kFrom = 142.0;
+  constexpr double kTo = 168.5;
+  const auto reference = AmiWords(annotation, kFrom, kTo);
+  ASSERT_GT(reference.size(), 60u);
+  std::string text;
+  for (const auto& [word, start] : reference) text += (text.empty() ? "" : " ") + word;
+  const auto units = qwen::AlignUnits(text, "en");
+  ASSERT_EQ(units.size(), reference.size()) << text;
+
+  std::vector<float> pcm = ReadWav(recording, kTo);
+  pcm.erase(pcm.begin(), pcm.begin() + static_cast<std::ptrdiff_t>(kFrom * kSampleRate));
+  pcm = EvenedOut(pcm);
+  const std::vector<int> times = qwen::FixTimestamps(OpenAligner().Align(pcm, units, {}, {}));
+  ASSERT_EQ(times.size(), units.size() * 2);
+  std::size_t near = 0;
+  double total = 0.0;
+  for (std::size_t i = 0; i < units.size(); ++i) {
+    const double error = std::abs(kFrom + times[i * 2] / 1000.0 - reference[i].second);
+    total += error;
+    if (error <= 0.3) ++near;
+  }
+  std::printf("%zu of %zu word starts within 0.3 s, %.3f s off on average\n", near, units.size(),
+              total / static_cast<double>(units.size()));
+  // All 73 within 0.3 s and 0.03 s off on average with b12425 on Vulkan.
+  EXPECT_GE(near, units.size() * 9 / 10);
+  EXPECT_LE(total / static_cast<double>(units.size()), 0.15);
 }
 
 TEST_F(QwenTest, AlignerSaysWhenTheWordsDoNotFit) {
