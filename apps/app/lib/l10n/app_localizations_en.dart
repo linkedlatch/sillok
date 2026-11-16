@@ -307,7 +307,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String infoTotal(String time, String ratio) {
-    return 'Total: $time ($ratio× the recording)';
+    return 'Total: $time ($ratio× real time)';
   }
 
   @override

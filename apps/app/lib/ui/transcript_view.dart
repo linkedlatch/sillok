@@ -393,8 +393,8 @@ class _TranscriptViewState extends State<TranscriptView> {
               Text(l.infoLength(formatTime(meta.durationMs))),
               for (final step in RunStep.values)
                 if (meta.timingsMs[step.name] case final ms?) Text(l.stepTime(stepName(l, step), formatTime(ms))),
-              if (meta.durationMs > 0)
-                Text(l.infoTotal(formatTime(total), (total / meta.durationMs).toStringAsFixed(2))),
+              if (meta.durationMs > 0 && total > 0)
+                Text(l.infoTotal(formatTime(total), (meta.durationMs / total).toStringAsFixed(2))),
               if (transcription != null)
                 Text(
                   l.infoDevice(

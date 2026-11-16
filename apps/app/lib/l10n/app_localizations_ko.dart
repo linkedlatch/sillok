@@ -302,7 +302,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String infoTotal(String time, String ratio) {
-    return '합계: $time (원본의 $ratio배)';
+    return '합계: $time ($ratio배속)';
   }
 
   @override

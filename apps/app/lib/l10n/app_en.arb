@@ -249,7 +249,7 @@
       }
     }
   },
-  "infoTotal": "Total: {time} ({ratio}× the recording)",
+  "infoTotal": "Total: {time} ({ratio}× real time)",
   "@infoTotal": {
     "placeholders": {
       "time": {

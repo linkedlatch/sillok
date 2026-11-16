@@ -85,7 +85,7 @@
   "pause": "일시 정지",
   "info": "처리 정보",
   "infoLength": "원본 길이: {time}",
-  "infoTotal": "합계: {time} (원본의 {ratio}배)",
+  "infoTotal": "합계: {time} ({ratio}배속)",
   "infoDevice": "전사 장치: {device}",
   "infoFellBack": "{device} (GPU를 쓸 수 없어 대체)",
   "resultMissing": "이 결과를 읽을 수 없습니다.",

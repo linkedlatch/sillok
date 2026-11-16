@@ -605,7 +605,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoTotal.
   ///
   /// In en, this message translates to:
-  /// **'Total: {time} ({ratio}× the recording)'**
+  /// **'Total: {time} ({ratio}× real time)'**
   String infoTotal(String time, String ratio);
 
   /// No description provided for @infoDevice.
