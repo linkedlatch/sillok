@@ -13,8 +13,10 @@
 #include <vector>
 
 #include "backends/models.hpp"
+#include "backends/qwen/qwen_aligner.hpp"
 #include "backends/qwen/qwen_transcriber.hpp"
 #include "core/cancel.hpp"
+#include "core/model_provider.hpp"
 #include "media/audio_file.hpp"
 #include "media/audio_input.hpp"
 
@@ -204,6 +206,29 @@ TEST_F(QwenTest, TellsKoreanAndStopsWhenAsked) {
   EXPECT_THROW(qwen->Transcribe({.pcm = pcm, .language = "ko", .glossary = {}},
                                 [](TranscribedWords) {}, [](double) {}, source.Token()),
                Cancelled);
+}
+
+qwen::QwenAligner OpenAligner() {
+  return qwen::QwenAligner(kModels / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
+                           kModels / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
+                           ChooseDevice(Device::kGpu, 0), 8);
+}
+
+TEST_F(QwenTest, AlignerSaysWhenTheWordsDoNotFit) {
+  // 3 s of audio is 39 positions, mtmd's markers 2 and each unit "a" with its
+  // slots 3: 2717 units fill the 8192 positions.
+  const std::vector<float> pcm(3 * kSampleRate, 0.0f);
+  std::vector<qwen::AlignUnit> units(2717, {.text = "a", .begin = 0, .end = 0});
+  auto aligner = OpenAligner();
+  EXPECT_EQ(aligner.Align(pcm, units, {}, {}).size(), units.size() * 2);
+  units.push_back(units.back());
+  try {
+    aligner.Align(pcm, units, {}, {});
+    ADD_FAILURE() << "no error";
+  } catch (const ModelError& error) {
+    EXPECT_NE(std::string(error.what()).find("too many words for the aligner"), std::string::npos)
+        << error.what();
+  }
 }
 
 }  // namespace

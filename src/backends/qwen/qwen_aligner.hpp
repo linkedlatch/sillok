@@ -23,7 +23,9 @@ class QwenAligner {
 
   // Where the units of a transcript of `pcm` (16 kHz, at most 180 s) start
   // and end, in milliseconds, two per unit, as the model places them (before
-  // FixTimestamps). `on_progress` receives the fraction done.
+  // FixTimestamps). `on_progress` receives the fraction done. Throws
+  // ModelError when the audio and the units do not fit the model at once
+  // (8192 positions: 180 s of audio leaves room for about 1900 units).
   std::vector<int> Align(std::span<const float> pcm, std::span<const AlignUnit> units,
                          const std::function<void(double)>& on_progress, const StopToken& stop);
 
