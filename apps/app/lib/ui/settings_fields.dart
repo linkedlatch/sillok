@@ -39,6 +39,23 @@ class _SettingsFieldsState extends State<SettingsFields> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,
       children: [
+        // The model first: the languages offered are the model's.
+        if (models.isNotEmpty)
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: models.any((m) => m.id == model) ? model : null,
+            decoration: InputDecoration(labelText: l.transcriptionModel),
+            items: [for (final m in models) DropdownMenuItem(value: m.id, child: Text(modelName(m)))],
+            // A language the new model does not know goes back to automatic.
+            onChanged: (id) => widget.onChanged(
+              settings.copyWith(
+                transcriptionModel: () => id,
+                language: _languages(state, id ?? state.recommendedTranscription.id).contains(settings.language)
+                    ? null
+                    : 'auto',
+              ),
+            ),
+          ),
         Text(l.language, style: Theme.of(context).textTheme.titleSmall),
         LanguageField(
           value: settings.language,
@@ -61,22 +78,6 @@ class _SettingsFieldsState extends State<SettingsFields> {
           decoration: InputDecoration(labelText: l.glossary, helperText: l.glossaryHint, helperMaxLines: 2),
           onChanged: (text) => widget.onChanged(settings.copyWith(glossary: parseGlossary(text))),
         ),
-        if (models.isNotEmpty)
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: models.any((m) => m.id == model) ? model : null,
-            decoration: InputDecoration(labelText: l.transcriptionModel),
-            items: [for (final m in models) DropdownMenuItem(value: m.id, child: Text(modelName(m)))],
-            // A language the new model does not know goes back to automatic.
-            onChanged: (id) => widget.onChanged(
-              settings.copyWith(
-                transcriptionModel: () => id,
-                language: _languages(state, id ?? state.recommendedTranscription.id).contains(settings.language)
-                    ? null
-                    : 'auto',
-              ),
-            ),
-          ),
         if (state.gpus.isNotEmpty)
           DropdownButtonFormField<int>(
             isExpanded: true,
@@ -112,13 +113,13 @@ List<String> _languages(AppState state, String id) =>
     state.transcriptionModels.where((m) => m.id == id).firstOrNull?.languages ??
     state.recommendedTranscription.languages;
 
-/// "Automatic · Tell speakers apart · large-v3 turbo / q5_0"
+/// "large-v3 turbo / q5_0 · Automatic · Tell speakers apart"
 String settingsSummary(AppLocalizations l, AppState state, JobSettings settings) {
   final model = state.catalog.where((m) => m.id == (settings.transcriptionModel ?? state.recommendedTranscription.id));
   return [
+    if (model.isNotEmpty) modelName(model.first),
     languageName(l, settings.language),
     settings.diarize ? l.diarize : l.diarizeOff,
-    if (model.isNotEmpty) modelName(model.first),
     if (state.gpus.isNotEmpty) _deviceName(l, state, settings),
   ].join(' · ');
 }
