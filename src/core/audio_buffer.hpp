@@ -1,8 +1,7 @@
 #ifndef SILLOK_CORE_AUDIO_BUFFER_HPP_
 #define SILLOK_CORE_AUDIO_BUFFER_HPP_
 
-#include <filesystem>
-#include <memory>
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -10,34 +9,33 @@
 
 namespace sillok {
 
-// Recording as 16 kHz mono 16-bit samples, kept in a temporary file so that
-// memory use does not grow with the length of the recording; readers load
-// only the range they need. media/audio_input.hpp converts other formats.
+// Recording as 16 kHz mono 16-bit samples in memory, 115 MB an hour: little
+// next to the models, and half of what floats would take.
+// media/audio_input.hpp converts other formats.
 class AudioBuffer {
  public:
-  // Creates the temporary file in `temp_dir`. Throws std::runtime_error if
-  // that is not possible.
-  explicit AudioBuffer(const std::filesystem::path& temp_dir =
-                           std::filesystem::temp_directory_path());
-  ~AudioBuffer();
-  AudioBuffer(AudioBuffer&&) noexcept;
-  AudioBuffer& operator=(AudioBuffer&&) noexcept;
+  AudioBuffer() = default;
+  // Move-only: a copy of a long recording is never wanted.
+  AudioBuffer(const AudioBuffer&) = delete;
+  AudioBuffer& operator=(const AudioBuffer&) = delete;
+  AudioBuffer(AudioBuffer&&) noexcept = default;
+  AudioBuffer& operator=(AudioBuffer&&) noexcept = default;
 
-  // Appends 16 kHz mono samples in [-1, 1]; louder ones are clipped.
+  // Appends 16 kHz mono samples in [-1, 1]; louder ones are clipped. Throws
+  // std::bad_alloc when memory runs out.
   void Push(std::span<const float> samples);
   // Ends the recording. Push is not allowed afterwards.
   void Finish() { finished_ = true; }
 
-  SampleIndex size() const;
+  SampleIndex size() const { return static_cast<SampleIndex>(samples_.size()); }
   bool finished() const { return finished_; }
 
-  // Samples in `range` (clamped to the buffer) as floats in [-1, 1).
+  // Samples in `range` (clamped to the buffer) as floats in [-1, 1). Several
+  // threads may read at once, but not while one pushes.
   std::vector<float> Read(SampleRange range) const;
 
  private:
-  class File;
-
-  std::unique_ptr<File> file_;
+  std::vector<std::int16_t> samples_;
   bool finished_ = false;
 };
 

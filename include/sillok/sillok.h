@@ -113,7 +113,7 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
 
 /* `config_json`: {"models_dir": "...", "device": "cpu" | "gpu",
  *                 "gpu_index": 0, "threads": 0, "npu": false,
- *                 "temp_dir": "...", "transcription_model": "<catalog id>"}
+ *                 "transcription_model": "<catalog id>"}
  * Without "transcription_model" the recommended one is used. Only the
  * engine's models need to be in "models_dir".
  * "npu" runs the transcription encoder on the NPU when the model's
@@ -121,8 +121,6 @@ SILLOK_API sillok_status sillok_devices(char** out_json);
  * Engine), with either device; without that file the encoder runs on
  * "device". With "device": "cpu" and "npu": false, neither a GPU nor an NPU
  * is used.
- * Jobs keep their recording in a file in "temp_dir" (default: the system's
- * temporary directory), so memory does not grow with its length.
  * Models are loaded while a job runs, one stage at a time, and freed
  * afterwards. Jobs keep the engine alive, so the engine may be destroyed
  * before its jobs. */
@@ -162,7 +160,9 @@ SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
  * mono stream. NaN samples count as silence, infinities as full scale.
  * Transcript times count from the first sample pushed, so push the recording
  * from its start, with encoder priming already removed (decoders such as
- * AVAudioFile and ffmpeg do), for the times to match the original file. */
+ * AVAudioFile and ffmpeg do), for the times to match the original file.
+ * The job keeps the recording in memory as 16-bit samples, about 115 MB an
+ * hour; SILLOK_INTERNAL_ERROR ("out of memory") when it does not fit. */
 SILLOK_API sillok_status sillok_job_push_audio(sillok_job* job,
                                                const float* samples,
                                                size_t frames,

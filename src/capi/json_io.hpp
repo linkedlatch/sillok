@@ -17,14 +17,7 @@
 namespace sillok {
 
 // Engine configuration of the C ABI.
-struct EngineSettings {
-  EngineConfig models;
-  // Where a job keeps its recording; empty for the system's temporary
-  // directory.
-  std::filesystem::path temp_dir;
-};
-
-EngineSettings ParseEngineConfig(std::string_view json);
+EngineConfig ParseEngineConfig(std::string_view json);
 
 // Job options of the C ABI.
 struct JobOptions {

@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <span>
 #include <stdexcept>
-#include <filesystem>
-#include <fstream>
+#include <thread>
 #include <vector>
 
 #include "core/audio_buffer.hpp"
@@ -44,7 +44,7 @@ TEST(AudioBufferTest, NonFiniteSamplesAreSafe) {
   EXPECT_FLOAT_EQ(pcm[3], 0.0f);
 }
 
-TEST(AudioBufferTest, ReadClampsAndSpansBlocks) {
+TEST(AudioBufferTest, ReadClampsToTheRecording) {
   AudioBuffer audio;
   std::vector<float> pcm((1 << 20) + 100);
   for (std::size_t i = 0; i < pcm.size(); ++i) {
@@ -59,51 +59,46 @@ TEST(AudioBufferTest, ReadClampsAndSpansBlocks) {
   EXPECT_EQ(audio.Read({audio.size() - 2, audio.size() + 50}).size(), 2u);
 }
 
-std::filesystem::path FreshDirectory(const char* name) {
-  const auto dir = std::filesystem::temp_directory_path() / name;
-  std::filesystem::remove_all(dir);
-  std::filesystem::create_directories(dir);
-  return dir;
-}
-
-TEST(AudioBufferTest, KeepsSamplesInATemporaryFile) {
-  const auto dir = FreshDirectory("sillok-audio-buffer-test");
-  {
-    AudioBuffer audio(dir);
-    std::vector<float> pcm(16000 * 10);
-    for (std::size_t i = 0; i < pcm.size(); ++i) {
-      pcm[i] = static_cast<float>(i % 1000) / 2000.0f;
-    }
-    audio.Push(pcm);
-    audio.Finish();
-    const auto middle = audio.Read({123456, 123460});
-    EXPECT_NEAR(middle[0], pcm[123456], 1.0 / 32768.0);
-    AudioBuffer moved = std::move(audio);
-    EXPECT_EQ(moved.size(), 160000);
-    EXPECT_NEAR(moved.Read({159999, 160000})[0], pcm[159999], 1.0 / 32768.0);
-#ifndef _WIN32
-    // The file has no name while in use, so nothing can be left behind.
-    EXPECT_TRUE(std::filesystem::is_empty(dir));
-#endif
+TEST(AudioBufferTest, JoinsPushesAndMoves) {
+  AudioBuffer audio;
+  std::vector<float> pcm(16000 * 70);  // past the first minute reserved
+  for (std::size_t i = 0; i < pcm.size(); ++i) {
+    pcm[i] = static_cast<float>(i % 1000) / 2000.0f;
   }
-  EXPECT_TRUE(std::filesystem::is_empty(dir));
-  std::filesystem::remove_all(dir);
+  for (std::size_t i = 0; i < pcm.size(); i += 4096) {
+    audio.Push(std::span(pcm).subspan(i, std::min<std::size_t>(4096, pcm.size() - i)));
+  }
+  audio.Finish();
+  ASSERT_EQ(audio.size(), static_cast<SampleIndex>(pcm.size()));
+  EXPECT_NEAR(audio.Read({123456, 123460})[0], pcm[123456], 1.0 / 32768.0);
+  AudioBuffer moved = std::move(audio);
+  EXPECT_TRUE(moved.finished());
+  EXPECT_NEAR(moved.Read({1119999, 1120000})[0], pcm[1119999], 1.0 / 32768.0);
 }
 
-TEST(AudioBufferTest, RemovesFilesLeftByEarlierRuns) {
-  const auto dir = FreshDirectory("sillok-audio-leftover-test");
-  std::ofstream(dir / "sillok-audio-00000000deadbeef.pcm") << "old";
-  std::ofstream(dir / "unrelated.pcm") << "keep";
-  { AudioBuffer audio(dir); }
-  EXPECT_FALSE(std::filesystem::exists(dir / "sillok-audio-00000000deadbeef.pcm"));
-  EXPECT_TRUE(std::filesystem::exists(dir / "unrelated.pcm"));
-  std::filesystem::remove_all(dir);
+TEST(AudioBufferTest, ReadsFromSeveralThreadsAtOnce) {
+  AudioBuffer audio;
+  std::vector<float> pcm(16000 * 10);
+  for (std::size_t i = 0; i < pcm.size(); ++i) {
+    pcm[i] = static_cast<float>(i % 777) / 1000.0f;
+  }
+  audio.Push(pcm);
+  audio.Finish();
+  const std::vector<float> expected = audio.Read({0, audio.size()});
+  std::vector<int> mismatches(4, 0);
+  std::vector<std::thread> threads;
+  for (std::size_t t = 0; t < mismatches.size(); ++t) {
+    threads.emplace_back([&, t] {
+      for (SampleIndex begin = static_cast<SampleIndex>(t) * 1000; begin < audio.size();
+           begin += 7919) {
+        const std::vector<float> part = audio.Read({begin, begin + 3000});
+        mismatches[t] += !std::equal(part.begin(), part.end(),
+                                     expected.begin() + static_cast<std::ptrdiff_t>(begin));
+      }
+    });
+  }
+  for (std::thread& thread : threads) thread.join();
+  EXPECT_EQ(mismatches, std::vector<int>(4, 0));
 }
-
-TEST(AudioBufferTest, NeedsAWritableDirectory) {
-  EXPECT_THROW(AudioBuffer(std::filesystem::temp_directory_path() / "sillok-no-such-dir"),
-               std::runtime_error);
-}
-
 }  // namespace
 }  // namespace sillok

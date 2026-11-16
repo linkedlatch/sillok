@@ -81,7 +81,6 @@ void RequireArgument(bool ok, const char* message) {
 
 struct EngineState {
   std::unique_ptr<ModelProvider> models;
-  std::filesystem::path temp_dir;
   std::atomic<bool> busy = false;
 };
 
@@ -99,14 +98,13 @@ struct sillok_job {
              sillok::JobOptions job_options)
       : engine(std::move(engine_state)),
         options(std::move(job_options.pipeline)),
-        audio(engine->temp_dir),
         input(audio, job_options.even_loudness ? sillok::AudioInput::Loudness::kEvenedOut
                                                : sillok::AudioInput::Loudness::kAsRecorded) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
-  sillok::AudioBuffer audio;  // kept in a temporary file
-  sillok::AudioInput input;   // converts pushed audio into `audio`
+  sillok::AudioBuffer audio;
+  sillok::AudioInput input;  // converts pushed audio into `audio`
   sillok::StopSource stop;
   bool ran = false;
   sillok_segments_fn on_segments = nullptr;
@@ -331,16 +329,9 @@ sillok_status sillok_engine_create(const char* config_json,
     RequireArgument(config_json != nullptr && out_engine != nullptr,
                     "config_json and out_engine are required");
     *out_engine = nullptr;
-    const sillok::EngineSettings settings = sillok::ParseEngineConfig(config_json);
+    const sillok::EngineConfig config = sillok::ParseEngineConfig(config_json);
     auto state = std::make_shared<sillok::EngineState>();
-    state->temp_dir = settings.temp_dir.empty()
-                          ? std::filesystem::temp_directory_path()
-                          : settings.temp_dir;
-    if (!std::filesystem::is_directory(state->temp_dir)) {
-      throw std::invalid_argument("temp_dir is not a directory: " +
-                                  sillok::PathToUtf8(state->temp_dir));
-    }
-    state->models = sillok::OpenModels(settings.models);
+    state->models = sillok::OpenModels(config);
     sillok::RegisterExitHandlerOnce(sillok::ExitSafeModels::engine_created);
     *out_engine = new sillok_engine{std::move(state)};
     return SILLOK_OK;

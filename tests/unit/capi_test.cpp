@@ -230,9 +230,6 @@ TEST_F(CapiTest, RejectsBadInput) {
   EXPECT_NE(std::string(sillok_last_error()).find("devise"), std::string::npos);
   EXPECT_EQ(sillok_engine_create(R"({"models_dir": "/no/such/dir"})", &engine),
             SILLOK_MODEL_ERROR);
-  const Json bad_temp = {{"models_dir", PathToUtf8(models_dir_)},
-                         {"temp_dir", "/no/such/temp/dir"}};
-  EXPECT_EQ(sillok_engine_create(bad_temp.dump().c_str(), &engine), SILLOK_INVALID_ARGUMENT);
   const Json bad_npu = {{"models_dir", PathToUtf8(models_dir_)}, {"npu", "yes"}};
   EXPECT_EQ(sillok_engine_create(bad_npu.dump().c_str(), &engine), SILLOK_INVALID_ARGUMENT);
   EXPECT_EQ(engine, nullptr);
