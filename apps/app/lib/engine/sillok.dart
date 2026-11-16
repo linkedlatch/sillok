@@ -26,11 +26,13 @@ class ModelFile {
 }
 
 /// A model of the catalog: "voice_detection", "transcription" or
-/// "diarization", described by [family] and [quantization].
+/// "diarization", run by [backend] ("whisper", "qwen", ...) and described by
+/// [family] and [quantization].
 class CatalogModel {
   const CatalogModel({
     required this.id,
     required this.role,
+    this.backend = '',
     required this.family,
     required this.quantization,
     required this.recommended,
@@ -41,6 +43,7 @@ class CatalogModel {
   factory CatalogModel.fromJson(Map<String, dynamic> json) => CatalogModel(
     id: json['id'] as String,
     role: json['role'] as String,
+    backend: json['backend'] as String? ?? '',
     family: json['family'] as String,
     quantization: json['quantization'] as String,
     recommended: json['recommended'] as bool,
@@ -50,6 +53,7 @@ class CatalogModel {
 
   final String id;
   final String role;
+  final String backend;
   final String family;
   final String quantization;
   final bool recommended;

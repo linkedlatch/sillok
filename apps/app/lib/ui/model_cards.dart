@@ -8,7 +8,8 @@ import '../l10n/app_localizations.dart';
 import 'format.dart';
 import 'home.dart';
 
-/// A card for each transcription model, in catalog order.
+/// A card for each transcription model under the name of what runs it
+/// (Whisper, Qwen3-ASR), in catalog order.
 class ModelCards extends StatelessWidget {
   const ModelCards({super.key, required this.state, this.onChanged});
 
@@ -19,14 +20,20 @@ class ModelCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final families = <String, List<CatalogModel>>{};
+    final backends = <String, Map<String, List<CatalogModel>>>{};
     for (final model in state.transcriptionModels) {
-      families.putIfAbsent(model.family, () => []).add(model);
+      backends.putIfAbsent(model.backend, () => {}).putIfAbsent(model.family, () => []).add(model);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final versions in families.values) _ModelCard(state: state, versions: versions, onChanged: onChanged),
+        for (final MapEntry(key: backend, value: families) in backends.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: Text(backendName(backend), style: Theme.of(context).textTheme.titleSmall),
+          ),
+          for (final versions in families.values) _ModelCard(state: state, versions: versions, onChanged: onChanged),
+        ],
       ],
     );
   }

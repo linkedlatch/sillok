@@ -19,7 +19,7 @@ import 'settings_fields.dart';
 
 /// A file's text over a player (DESIGN D36): a finished result, or a file in
 /// the queue with what is transcribed so far, while it transcribes or waits.
-/// Choosing a sentence plays it from a second before and shows what is
+/// Choosing a sentence plays it from its start and shows what is
 /// otherwise hidden: its exact times and language. Dragging the player's
 /// slider shows the sentence at that time, and letting go goes to it.
 ///
@@ -101,9 +101,7 @@ class _TranscriptViewState extends State<TranscriptView> {
 
   String get _title {
     if (widget.entry case final entry?) return entry.meta.title;
-    final name = _item?.name ?? '';
-    final dot = name.lastIndexOf('.');
-    return dot > 0 ? name.substring(0, dot) : name;
+    return fileTitle(_item?.name ?? '');
   }
 
   @override
@@ -250,12 +248,17 @@ class _TranscriptViewState extends State<TranscriptView> {
     return view is RenderBox && view.attached ? view.localToGlobal(Offset.zero) & view.size : null;
   }
 
+  /// The search as typed, to compare in lower case; empty shows everything.
+  String get _query => _search.text.trim().toLowerCase();
+
+  /// Whether [paragraph] passes the search for [query], so that it is shown.
+  bool _shows(Paragraph paragraph, String query) =>
+      query.isEmpty || paragraph.segments.any((s) => _segments[s].text.toLowerCase().contains(query));
+
   /// Whether [segment] passes the search, so that its paragraph is shown.
   bool _inSearch(int segment) {
-    final query = _search.text.trim().toLowerCase();
-    if (query.isEmpty) return true;
     final paragraph = _paragraphs.where((p) => p.segments.contains(segment)).firstOrNull;
-    return paragraph != null && paragraph.segments.any((s) => _segments[s].text.toLowerCase().contains(query));
+    return paragraph != null && _shows(paragraph, _query);
   }
 
   void _onPosition(Duration position) {
@@ -413,10 +416,10 @@ class _TranscriptViewState extends State<TranscriptView> {
     final theme = Theme.of(context);
     if (!_loaded) return const Center(child: CircularProgressIndicator());
     if (widget.entry != null && _transcript == null) return Center(child: Text(l.resultMissing));
-    final query = _search.text.trim().toLowerCase();
+    final query = _query;
     final shown = [
       for (final (i, p) in _paragraphs.indexed)
-        if (query.isEmpty || p.segments.any((s) => _segments[s].text.toLowerCase().contains(query))) i,
+        if (_shows(p, query)) i,
     ];
     return LayoutBuilder(
       builder: (context, constraints) {

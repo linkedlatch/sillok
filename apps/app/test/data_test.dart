@@ -153,6 +153,13 @@ void main() {
     expect(playingGroups(const []), isEmpty);
   });
 
+  test('a result is titled after its file, without the extension', () {
+    expect(fileTitle('강의 1주차.m4a'), '강의 1주차');
+    expect(fileTitle('notes.v2.wav'), 'notes.v2');
+    expect(fileTitle('.hidden'), '.hidden');
+    expect(fileTitle('README'), 'README');
+  });
+
   test('preparing evens out the original, transcribing takes the copy as it is', () {
     const settings = JobSettings(language: 'ko', diarize: true, glossary: ['Raft']);
     expect(jobOptions(settings, Lane.prepare), isEmpty);

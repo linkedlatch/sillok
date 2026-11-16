@@ -51,6 +51,13 @@ String errorText(AppLocalizations l, RunError error) => switch (error.status) {
   _ => l.errorEngine(error.message),
 };
 
+/// "Whisper", "Qwen3-ASR": what the models of a backend are called together.
+String backendName(String backend) => switch (backend) {
+  'whisper' => 'Whisper',
+  'qwen' => 'Qwen3-ASR',
+  _ => backend,
+};
+
 /// "large-v3 turbo", "Qwen3-ASR 1.7B"
 String familyName(String family) => switch (family) {
   'qwen3-asr-1.7b' => 'Qwen3-ASR 1.7B',
@@ -71,10 +78,5 @@ String modelSummary(AppLocalizations l, CatalogModel model) {
     'q8_0' => l.quantQ8,
     _ => l.quantQ5,
   };
-  return l.modelSummary(
-    accuracy,
-    speeds[original ? speed - 1 : speed],
-    quantization,
-    formatBytes(model.size),
-  );
+  return l.modelSummary(accuracy, speeds[original ? speed - 1 : speed], quantization, formatBytes(model.size));
 }

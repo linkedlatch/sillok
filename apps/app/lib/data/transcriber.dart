@@ -23,6 +23,12 @@ import 'settings.dart';
 import 'store.dart';
 import 'transcript.dart';
 
+/// A file's name without its extension, as its result is titled.
+String fileTitle(String name) {
+  final dot = name.lastIndexOf('.');
+  return dot > 0 ? name.substring(0, dot) : name;
+}
+
 class QueueItem {
   const QueueItem({
     required this.key,
@@ -358,9 +364,7 @@ class Transcriber extends ChangeNotifier {
     }
     _preparing = item.key;
     notifyListeners();
-    final job = _prepareJob = JobRun.start(
-      request(item, Lane.prepare, store.audioOf(id).path),
-    );
+    final job = _prepareJob = JobRun.start(request(item, Lane.prepare, store.audioOf(id).path));
     JobEvent? last;
     await for (final event in job.events) {
       last = event;
@@ -423,9 +427,7 @@ class Transcriber extends ChangeNotifier {
     );
     notifyListeners();
 
-    final job = _job = JobRun.start(
-      request(item, Lane.transcribe, store.audioOf(id).path),
-    );
+    final job = _job = JobRun.start(request(item, Lane.transcribe, store.audioOf(id).path));
     JobEvent? last;
     await for (final event in job.events) {
       last = event;
@@ -466,7 +468,7 @@ class Transcriber extends ChangeNotifier {
         await store.writeMeta(
           id,
           JobMeta(
-            title: _title(item.name),
+            title: fileTitle(item.name),
             source: item.name,
             createdMs: created,
             durationMs: transcript.durationMs,
@@ -483,19 +485,16 @@ class Transcriber extends ChangeNotifier {
         await store.delete(id);
       case JobFailed(:final status, :final message):
         // The folder stays with the copy, which a retry reads.
-        _queue = [for (final q in _queue) q.key == item.key ? q.withError(RunError(status, message)) : q];
+        _fail(item.key, RunError(status, message));
       default:
-        _queue = [
-          for (final q in _queue) q.key == item.key ? q.withError(const RunError(Status.internalError, '')) : q,
-        ];
+        _fail(item.key, const RunError(Status.internalError, ''));
     }
     await _save();
     notifyListeners();
   }
 
-  static String _title(String name) {
-    final dot = name.lastIndexOf('.');
-    return dot > 0 ? name.substring(0, dot) : name;
+  void _fail(String key, RunError error) {
+    if (_current(key) case final item?) _replace(item.withError(error));
   }
 
   Future<void> _save() async {

@@ -247,22 +247,13 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
 
-    show(
-      ModelDownloading(
-        DownloadProgress(ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0),
-      ),
-    );
+    show(ModelDownloading(_startProgress(files)));
     try {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
       final dir = modelsDir.path;
       final statuses = await _check(dir, verifyHash: true);
-      final damaged = statuses.where((s) => s.status == 'wrong_hash' || s.status == 'wrong_size').toList();
-      for (final file in damaged) {
-        final path = File('${modelsDir.path}${Platform.pathSeparator}${file.file}');
-        if (path.existsSync()) await path.delete();
-      }
-      if (damaged.isNotEmpty) notice = const DamagedModels();
+      if (await _removeDamaged(statuses)) notice = const DamagedModels();
       await _unpack(files, statuses);
       _downloading = null;
       _setStatuses(await _check(dir, verifyHash: false));
@@ -295,11 +286,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
 
-    show(
-      ModelDownloading(
-        DownloadProgress(ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0),
-      ),
-    );
+    show(ModelDownloading(_startProgress(files)));
     try {
       await _downloader.download(modelsDir, files, (progress) => show(ModelDownloading(progress)));
       show(const ModelVerifying());
@@ -311,6 +298,20 @@ class AppState extends ChangeNotifier {
     }
     _acceleratorBusy = null;
     await checkModels();
+  }
+
+  /// Progress before downloading [files]: what an earlier stop left of them.
+  DownloadProgress _startProgress(List<ModelFile> files) =>
+      DownloadProgress(ModelDownloader.downloaded(modelsDir, files), files.fold(0, (sum, f) => sum + f.size), 0);
+
+  /// Deletes the files [statuses] found damaged; whether there were any.
+  Future<bool> _removeDamaged(List<FileStatus> statuses) async {
+    final damaged = statuses.where((s) => s.status == 'wrong_hash' || s.status == 'wrong_size').toList();
+    for (final file in damaged) {
+      final path = File('${modelsDir.path}${Platform.pathSeparator}${file.file}');
+      if (path.existsSync()) await path.delete();
+    }
+    return damaged.isNotEmpty;
   }
 
   /// Unpacks the archives among [files] that were checked whole, then removes
@@ -357,14 +358,8 @@ class AppState extends ChangeNotifier {
 
   /// Checks every model file's hash and removes damaged ones.
   Future<void> verifyModels() async {
-    final dir = modelsDir.path;
-    final statuses = await _check(dir, verifyHash: true);
-    final damaged = statuses.where((s) => s.status == 'wrong_hash' || s.status == 'wrong_size');
-    for (final file in damaged) {
-      final path = File('${modelsDir.path}${Platform.pathSeparator}${file.file}');
-      if (path.existsSync()) await path.delete();
-    }
-    notice = damaged.isEmpty ? const ModelsVerified() : const DamagedModels();
+    final damaged = await _removeDamaged(await _check(modelsDir.path, verifyHash: true));
+    notice = damaged ? const DamagedModels() : const ModelsVerified();
     await checkModels();
   }
 

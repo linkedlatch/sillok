@@ -294,6 +294,12 @@ void main() {
 
   testWidgets('the first start offers each model, with the NPU encoder on Apple', (tester) async {
     await start(tester, _sizes['desktop']!, result: false);
+    // Under the names of what runs them.
+    expect(find.text('Whisper'), findsOneWidget);
+    expect(find.text('Qwen3-ASR'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Whisper')).dy, lessThan(tester.getTopLeft(find.text('large-v3 turbo')).dy));
+    expect(tester.getTopLeft(find.text('large-v3')).dy, lessThan(tester.getTopLeft(find.text('Qwen3-ASR')).dy));
+    expect(tester.getTopLeft(find.text('Qwen3-ASR')).dy, lessThan(tester.getTopLeft(find.text('Qwen3-ASR 1.7B')).dy));
     expect(find.text('large-v3 turbo'), findsOneWidget);
     expect(find.text('large-v3'), findsOneWidget);
     expect(find.text('Qwen3-ASR 1.7B'), findsOneWidget);
