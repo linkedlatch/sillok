@@ -19,6 +19,7 @@
 #include "backends/ggml_devices.hpp"
 #include "backends/silero/silero_voice_detector.hpp"
 #include "backends/sortformer/sortformer_diarizer.hpp"
+#include "backends/qwen/qwen_aligner.hpp"
 #include "backends/qwen/qwen_transcriber.hpp"
 #include "backends/whisper/whisper_transcriber.hpp"
 #include "core/files.hpp"
@@ -79,6 +80,15 @@ CatalogModel Whisper(const char* family, const char* quantization,
                      .recommended = recommended,
                      .files = {std::move(model)},
                      .languages = WhisperLanguages()};
+  // Memory: the weights, the caches (beam search keeps seven copies of the
+  // decoder's) and the GPU's compute buffers (the CPU's are smaller), in MB
+  // as whisper.cpp reports them; large-v3 has 32 decoder layers, turbo 4
+  // (docs/DESIGN.md D65).
+  const bool turbo = std::string_view(family) == "large-v3-turbo";
+  const double weights_mb = static_cast<double>(model.size) / 1e6;
+  const double caches_mb = turbo ? 31.46 + 7.86 + 7 * 10.49 : 251.66 + 7.86 + 7 * 83.89;
+  const double compute_mb = turbo ? 233.07 : 240.75;
+  entry.memory = static_cast<std::uint64_t>((weights_mb + caches_mb + compute_mb) * 1e6);
 #ifdef SILLOK_COREML
   entry.files.push_back(std::move(encoder));
 #else
@@ -111,20 +121,33 @@ CatalogModel Qwen(const char* quantization, QwenFile asr, QwenFile aligner) {
     return CatalogFile{.file = f.name, .url = std::string(repo) + f.name, .size = f.size,
                        .sha256 = f.sha256, .zip = false};
   };
-  return {.id = std::string("qwen3-asr-1.7b-") + quantization,
-          .role = "transcription",
-          .backend = "qwen",
-          .family = "qwen3-asr-1.7b",
-          .quantization = quantization,
-          .recommended = false,
-          .files = {file(kQwenAsrRepo, asr),
-                    file(kQwenAsrRepo, {"mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
-                                        "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"}),
-                    file(kQwenAlignerRepo, aligner),
-                    file(kQwenAlignerRepo,
-                         {"mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
-                          "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668"})},
-          .languages = QwenLanguages()};
+  CatalogModel entry{.id = std::string("qwen3-asr-1.7b-") + quantization,
+                   .role = "transcription",
+                   .backend = "qwen",
+                   .family = "qwen3-asr-1.7b",
+                   .quantization = quantization,
+                   .recommended = false,
+                   .files = {file(kQwenAsrRepo, asr),
+                             file(kQwenAsrRepo,
+                                  {"mmproj-Qwen3-ASR-1.7B-bf16.gguf", 641773984,
+                                   "8882e9ddab3186f9aa71b1417c847177913e1466655ac944cf86e9b846735d62"}),
+                             file(kQwenAlignerRepo, aligner),
+                             file(kQwenAlignerRepo,
+                                  {"mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf", 639672832,
+                                   "88638835f2f97fe800df82401e0145b199fb0884d4d2dc654ae4d3a70d484668"})},
+                   .languages = QwenLanguages()};
+  entry.aligner = true;
+  // Memory: the larger stage, as the speech model is freed before the
+  // aligner loads; each takes its two files, its KV cache (28 layers, 8192
+  // positions, 1024 wide, f16: 896 MiB), llama.cpp's compute buffers on the
+  // GPU (the speech model 345, the aligner 622 MiB; the CPU's are smaller)
+  // and its audio encoder's 159 MiB, which mtmd takes 8 s of audio at a time
+  // whatever the chunk (docs/DESIGN.md D65).
+  constexpr std::uint64_t kMiB = 1024 * 1024;
+  const std::uint64_t speech = entry.files[0].size + entry.files[1].size + (896 + 345 + 159) * kMiB;
+  const std::uint64_t aligning = entry.files[2].size + entry.files[3].size + (896 + 622 + 159) * kMiB;
+  entry.memory = std::max(speech, aligning);
+  return entry;
 }
 
 std::vector<CatalogModel> BuildCatalog() {
@@ -263,8 +286,6 @@ class Models final : public ModelProvider {
     if (transcriber_.backend == "qwen") {
       return OpenQwen({.asr_model = Path(transcriber_, 0),
                        .asr_mmproj = Path(transcriber_, 1),
-                       .aligner_model = Path(transcriber_, 2),
-                       .aligner_mmproj = Path(transcriber_, 3),
                        .name = transcriber_.id,
                        .device = device_,
                        .threads = threads_,
@@ -283,6 +304,18 @@ class Models final : public ModelProvider {
                         .threads = threads_,
                         .core_ml = core_ml,
                         .languages = transcriber_.languages});
+  }
+
+  // Qwen's word times come from Qwen3-ForcedAligner, its third and fourth
+  // files (the one model with an aligner); Whisper's with its words.
+  std::unique_ptr<Aligner> OpenAligner() override {
+    if (!transcriber_.aligner) return nullptr;
+    const std::filesystem::path model = Path(transcriber_, 2);
+    return OpenQwenAligner({.model = model,
+                            .mmproj = Path(transcriber_, 3),
+                            .name = PathToUtf8(model.stem()),
+                            .device = device_,
+                            .threads = threads_});
   }
 
   std::unique_ptr<Diarizer> OpenDiarizer() override {

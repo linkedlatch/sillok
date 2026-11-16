@@ -13,10 +13,13 @@
 namespace sillok {
 
 // Consecutive words a model transcribed, typically a sentence. Times are
-// relative to the start of the request audio; speakers are not set.
+// relative to the start of the request audio; speakers are not set. A model
+// whose word times come from an Aligner (ModelProvider::OpenAligner) gives
+// no words but the `text` it heard in the request, once.
 struct TranscribedWords {
   std::vector<Word> words;
   std::string language;  // what they were transcribed as, one of ModelProvider::Languages()
+  std::string text;      // without words: the text, for the aligner
 };
 
 struct TranscribeRequest {

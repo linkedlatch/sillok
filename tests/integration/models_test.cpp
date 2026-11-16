@@ -191,7 +191,40 @@ TEST_F(ModelsTest, ReportsTheDeviceUsed) {
   }
 }
 
-// Qwen3-ASR with Qwen3-ForcedAligner, opened directly (apart from the
+// The memory each transcription model takes, worked out in the catalog,
+// against what docs/DESIGN.md D65 measured (the theory leaves out about
+// 50 MiB of program, FFmpeg and recording).
+TEST(CatalogTest, KnowsTheMemoryEachTranscriberTakes) {
+  const auto memory = [](const std::string& id) {
+    for (const CatalogModel& model : ModelCatalog()) {
+      if (model.id == id) return static_cast<double>(model.memory) / (1u << 30);
+    }
+    return 0.0;
+  };
+  EXPECT_NEAR(memory("whisper-large-v3-turbo-q5_0"), 0.86, 0.01);
+  EXPECT_NEAR(memory("whisper-large-v3-f16"), 3.89, 0.01);
+  EXPECT_NEAR(memory("qwen3-asr-1.7b-q8_0"), 3.98, 0.02);
+  EXPECT_NEAR(memory("qwen3-asr-1.7b-bf16"), 5.76, 0.02);
+  // All the files at once, or with an aligner, which runs alone, the larger
+  // half.
+  for (const CatalogModel& model : ModelCatalog()) {
+    if (model.role != "transcription") continue;
+    std::vector<std::uint64_t> sizes;
+    for (const CatalogFile& file : model.files) {
+      if (!file.zip) sizes.push_back(file.size);
+    }
+    std::uint64_t loaded = 0;
+    if (model.aligner) {
+      ASSERT_EQ(sizes.size(), 4u) << model.id;
+      loaded = std::max(sizes[0] + sizes[1], sizes[2] + sizes[3]);
+    } else {
+      for (const std::uint64_t size : sizes) loaded += size;
+    }
+    EXPECT_GT(model.memory, loaded) << model.id;
+  }
+}
+
+// Qwen3-ASR and Qwen3-ForcedAligner, opened directly (apart from the
 // catalog, with two languages).
 class QwenTest : public ::testing::Test {
  protected:
@@ -208,16 +241,21 @@ class QwenTest : public ::testing::Test {
   static std::unique_ptr<Transcriber> Open() {
     return OpenQwen({.asr_model = kModels / "Qwen3-ASR-1.7B-Q8_0.gguf",
                      .asr_mmproj = kModels / "mmproj-Qwen3-ASR-1.7B-bf16.gguf",
-                     .aligner_model = kModels / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
-                     .aligner_mmproj = kModels / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
                      .name = "qwen3-asr-1.7b",
                      .device = ChooseDevice(Device::kGpu, 0),
                      .threads = 8,
                      .languages = {"ko", "en"}});
   }
+  static std::unique_ptr<Aligner> OpenWordAligner() {
+    return OpenQwenAligner({.model = kModels / "Qwen3-ForcedAligner-0.6B-Q8_0.gguf",
+                            .mmproj = kModels / "mmproj-Qwen3-ForcedAligner-0.6B-bf16.gguf",
+                            .name = "qwen3-forcedaligner-0.6b",
+                            .device = ChooseDevice(Device::kGpu, 0),
+                            .threads = 8});
+  }
 };
 
-TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
+TEST_F(QwenTest, TranscribesEnglishAndTheAlignerTimesIt) {
   // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
   pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
@@ -231,21 +269,33 @@ TEST_F(QwenTest, TranscribesAndAlignsEnglish) {
                      },
                      {});
   EXPECT_EQ(progress, 1.0);
+  // The text alone, once.
+  ASSERT_EQ(pieces.size(), 1u);
+  EXPECT_TRUE(pieces[0].words.empty());
+  EXPECT_EQ(pieces[0].language, "en");
+  for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
+    EXPECT_NE(pieces[0].text.find(word), std::string::npos) << pieces[0].text;
+  }
+
+  progress = 0.0;
+  const std::vector<Word> words = OpenWordAligner()->Align(
+      {.pcm = pcm, .text = pieces[0].text, .language = "en"},
+      [&](double fraction) {
+        EXPECT_GE(fraction, progress);
+        progress = fraction;
+      },
+      {});
+  EXPECT_EQ(progress, 1.0);
   std::string text;
   Milliseconds last{0};
-  for (const TranscribedWords& piece : pieces) {
-    EXPECT_EQ(piece.language, "en");
-    for (const Word& word : piece.words) {
-      text += " " + word.text;
-      EXPECT_GE(word.start, last) << word.text;
-      EXPECT_GE(word.end, word.start) << word.text;
-      EXPECT_LE(word.end, Milliseconds{8000}) << word.text;
-      last = word.start;
-    }
+  for (const Word& word : words) {
+    text += (text.empty() ? "" : " ") + word.text;
+    EXPECT_GE(word.start, last) << word.text;
+    EXPECT_GE(word.end, word.start) << word.text;
+    EXPECT_LE(word.end, Milliseconds{8000}) << word.text;
+    last = word.start;
   }
-  for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
-    EXPECT_NE(text.find(word), std::string::npos) << text;
-  }
+  EXPECT_EQ(text, pieces[0].text);
 }
 
 TEST_F(QwenTest, TakesAGlossaryThatLeavesRoomForTheAudioAndText) {
@@ -265,10 +315,7 @@ TEST_F(QwenTest, TakesAGlossaryThatLeavesRoomForTheAudioAndText) {
   pcm.erase(pcm.begin(), pcm.begin() + 364 * 16000);
   std::string text;
   qwen->Transcribe({.pcm = pcm, .language = "en", .glossary = terms},
-                   [&](const TranscribedWords& piece) {
-                     for (const Word& word : piece.words) text += " " + word.text;
-                   },
-                   [](double) {}, {});
+                   [&](const TranscribedWords& piece) { text += piece.text; }, [](double) {}, {});
   for (const char* word : {"subsequently", "relocated", "Hospital", "Cambridge."}) {
     EXPECT_NE(text.find(word), std::string::npos) << text;
   }

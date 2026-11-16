@@ -244,7 +244,11 @@ std::string CatalogToJson(const std::vector<CatalogModel>& catalog) {
                   {"quantization", model.quantization},
                   {"recommended", model.recommended},
                   {"files", std::move(files)}};
-    if (model.role == "transcription") entry["languages"] = model.languages;
+    if (model.role == "transcription") {
+      entry["languages"] = model.languages;
+      entry["aligner"] = model.aligner;
+      entry["memory"] = model.memory;
+    }
     models.push_back(std::move(entry));
   }
   return Dump(models);

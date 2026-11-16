@@ -12,21 +12,19 @@
 namespace sillok {
 
 struct QwenConfig {
-  std::filesystem::path asr_model;       // Qwen3-ASR's language model (GGUF)
-  std::filesystem::path asr_mmproj;      // and its audio encoder
-  std::filesystem::path aligner_model;   // Qwen3-ForcedAligner's language model
-  std::filesystem::path aligner_mmproj;  // and its audio encoder
-  std::string name;                      // for ModelInfo
+  std::filesystem::path asr_model;   // Qwen3-ASR's language model (GGUF)
+  std::filesystem::path asr_mmproj;  // and its audio encoder
+  std::string name;                  // for ModelInfo
   ComputeDevice device;
   int threads = 4;
   // The languages it may be told or tell from the audio (codes).
   std::vector<std::string> languages;
 };
 
-// Qwen3-ASR through llama.cpp, with word times from Qwen3-ForcedAligner, as
-// the qwen-asr package runs them. Both models stay loaded. A request is at
-// most 180 s, the aligner's limit. Throws ModelError if a model cannot be
-// loaded.
+// Qwen3-ASR through llama.cpp, as the qwen-asr package runs it. It hands
+// over the text it heard without word times, which Qwen3-ForcedAligner
+// gives (OpenQwenAligner). A request is at most 180 s, the aligner's limit.
+// Throws ModelError if the model cannot be loaded.
 std::unique_ptr<Transcriber> OpenQwen(const QwenConfig& config);
 
 }  // namespace sillok

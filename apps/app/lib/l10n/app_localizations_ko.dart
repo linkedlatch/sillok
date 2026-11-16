@@ -135,6 +135,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get stepTranscribe => '받아쓰기';
 
   @override
+  String get stepAlign => '단어 시각 맞추기';
+
+  @override
   String get stepDiarize => '화자 구분';
 
   @override
@@ -367,6 +370,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get accuracyHigh => '높음';
+
+  @override
+  String modelMemory(String size) {
+    return '권장 여유 메모리 $size';
+  }
 
   @override
   String get speedVerySlow => '매우 느림';

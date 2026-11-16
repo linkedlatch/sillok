@@ -26,6 +26,7 @@ class JobRequest {
     required this.source,
     required this.copyPath,
     required this.prepare,
+    this.aligns = false,
   });
 
   final String modelsDir;
@@ -41,6 +42,9 @@ class JobRequest {
   final String copyPath;
   final bool prepare;
 
+  /// Whether the transcription model's word times come in [RunStep.align].
+  final bool aligns;
+
   String get engineConfig => jsonEncode({
     'models_dir': modelsDir,
     'device': gpuIndex == null ? 'cpu' : 'gpu',
@@ -50,8 +54,9 @@ class JobRequest {
   });
 }
 
-/// The steps of a run, in order. The last three are the library's stages.
-enum RunStep { read, copy, analyze, transcribe, diarize }
+/// The steps of a run, in order. The last four are the library's stages;
+/// [align] runs for a model with an aligner.
+enum RunStep { read, copy, analyze, transcribe, align, diarize }
 
 sealed class JobEvent {}
 

@@ -196,6 +196,11 @@ class ExitSafeModels : public ModelProvider {
     RegisterExitHandlerOnce(transcriber_loaded);
     return model;
   }
+  std::unique_ptr<Aligner> OpenAligner() override {
+    auto model = models_.OpenAligner();
+    if (model) RegisterExitHandlerOnce(aligner_loaded);
+    return model;
+  }
   std::unique_ptr<Diarizer> OpenDiarizer() override {
     auto model = models_.OpenDiarizer();
     RegisterExitHandlerOnce(diarizer_loaded);
@@ -205,6 +210,7 @@ class ExitSafeModels : public ModelProvider {
   static inline std::atomic<bool> engine_created = false;
   static inline std::atomic<bool> voice_detector_loaded = false;
   static inline std::atomic<bool> transcriber_loaded = false;
+  static inline std::atomic<bool> aligner_loaded = false;
   static inline std::atomic<bool> diarizer_loaded = false;
 
  private:

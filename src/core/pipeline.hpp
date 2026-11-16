@@ -16,13 +16,14 @@
 
 namespace sillok {
 
-enum class Stage { kAnalyze, kTranscribe, kDiarize };
+enum class Stage { kAnalyze, kTranscribe, kAlign, kDiarize };
 
 // Progress of `stage` as a fraction in [0, 1].
 using ProgressCallback = std::function<void(Stage stage, double fraction)>;
 
-// Transcribed segments, in order, as the transcription stage decodes them.
-// They preview the transcript, which then adds speakers and splits long
+// Transcribed segments, in order, as the transcription stage decodes them,
+// or, for a transcriber without word times, as the alignment stage times
+// them. They preview the transcript, which then adds speakers and splits long
 // segments.
 using SegmentsCallback = std::function<void(std::span<const Segment> segments)>;
 
@@ -38,8 +39,8 @@ struct PipelineOptions {
 };
 
 // Transcribes `audio` (finished). Models are opened one stage at a time and
-// freed before the next stage, so the transcription and diarization models
-// are never in memory together. Throws Cancelled once `stop` is requested.
+// freed before the next stage, so the transcription, alignment and
+// diarization models are never in memory together. Throws Cancelled once `stop` is requested.
 // Throws std::invalid_argument for a language the model does not know.
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,

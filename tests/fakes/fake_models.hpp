@@ -34,7 +34,10 @@ std::string WordText(int id, const std::string& language);
 struct LiveModels {
   std::atomic<int> detectors = 0;
   std::atomic<int> transcribers = 0;
+  std::atomic<int> aligners = 0;
   std::atomic<int> diarizers = 0;
+  // Set when an aligner was opened while a transcriber was alive.
+  std::atomic<bool> aligner_with_transcriber = false;
   // Set when a transcriber and a diarizer were alive at the same time.
   std::atomic<bool> transcriber_with_diarizer = false;
 };
@@ -51,6 +54,9 @@ struct FakeOptions {
   std::size_t glossary_room = 1000;
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
+  // The transcriber hands over each request's text without word times, and
+  // an aligner times its words, as Qwen does.
+  bool separate_alignment = false;
 };
 
 // Provider of fake models that work on RenderScript() audio.
@@ -62,6 +68,7 @@ class FakeModels : public ModelProvider {
 
   std::unique_ptr<VoiceDetector> OpenVoiceDetector() override;
   std::unique_ptr<Transcriber> OpenTranscriber() override;
+  std::unique_ptr<Aligner> OpenAligner() override;
   std::unique_ptr<Diarizer> OpenDiarizer() override;
 
   LiveModels& live() { return live_; }

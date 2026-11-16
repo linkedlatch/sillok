@@ -119,6 +119,7 @@
   "stepCopy": "Saving a copy for listening",
   "stepAnalyze": "Finding speech",
   "stepTranscribe": "Transcribing",
+  "stepAlign": "Timing words",
   "stepDiarize": "Telling speakers apart",
   "addTitle": "{count, plural, =1{Transcribe a file} other{Transcribe {count} files}}",
   "@addTitle": {
@@ -334,6 +335,14 @@
   },
   "accuracyHighest": "highest",
   "accuracyHigh": "high",
+  "modelMemory": "Recommended free memory: {size}",
+  "@modelMemory": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
   "speedVerySlow": "very slow",
   "speedSlow": "slow",
   "speedMedium": "medium",

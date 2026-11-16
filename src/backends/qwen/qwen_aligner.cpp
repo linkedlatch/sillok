@@ -1,7 +1,9 @@
 #include "backends/qwen/qwen_aligner.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <mtmd.h>
 
@@ -72,3 +74,58 @@ std::vector<int> QwenAligner::Align(std::span<const float> pcm, std::span<const 
 }
 
 }  // namespace sillok::qwen
+
+namespace sillok {
+namespace {
+
+// The package's limit (MAX_FORCE_ALIGN_INPUT_SECONDS), and shorter audio is
+// padded with silence to MIN_ASR_INPUT_SECONDS.
+constexpr Milliseconds kMaxAudio{180000};
+constexpr std::size_t kMinSamples = kSampleRate / 2;
+
+class WordAligner final : public Aligner {
+ public:
+  explicit WordAligner(const QwenAlignerConfig& config)
+      : aligner_(config.model, config.mmproj, config.device, config.threads),
+        info_{.name = config.name,
+              .device = config.device.name,
+              .fell_back_to_cpu = config.device.fell_back_to_cpu} {}
+
+  ModelInfo Info() const override { return info_; }
+  Milliseconds MaxAudio() const override { return kMaxAudio; }
+
+  std::vector<Word> Align(const AlignRequest& request, const FractionCallback& on_progress,
+                          StopToken stop) override {
+    ThrowIfStopped(stop);
+    const std::vector<qwen::AlignUnit> units = qwen::AlignUnits(request.text, request.language);
+    if (units.empty()) {
+      on_progress(1.0);
+      return {};
+    }
+    std::span<const float> pcm = request.pcm;
+    std::vector<float> padded;
+    if (pcm.size() < kMinSamples) {
+      padded.assign(pcm.begin(), pcm.end());
+      padded.resize(kMinSamples, 0.0f);
+      pcm = padded;
+    }
+    std::vector<Milliseconds> times;
+    for (const int ms : qwen::FixTimestamps(aligner_.Align(pcm, units, on_progress, stop))) {
+      times.emplace_back(ms);
+    }
+    on_progress(1.0);
+    return qwen::TimedWords(request.text, request.language, units, times);
+  }
+
+ private:
+  qwen::QwenAligner aligner_;
+  ModelInfo info_;
+};
+
+}  // namespace
+
+std::unique_ptr<Aligner> OpenQwenAligner(const QwenAlignerConfig& config) {
+  return std::make_unique<WordAligner>(config);
+}
+
+}  // namespace sillok

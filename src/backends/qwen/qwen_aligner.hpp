@@ -3,12 +3,15 @@
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "backends/ggml_devices.hpp"
 #include "backends/qwen/llama_audio.hpp"
 #include "backends/qwen/qwen_text.hpp"
+#include "core/aligner.hpp"
 #include "core/cancel.hpp"
 
 namespace sillok::qwen {
@@ -35,5 +38,22 @@ class QwenAligner {
 };
 
 }  // namespace sillok::qwen
+
+namespace sillok {
+
+struct QwenAlignerConfig {
+  std::filesystem::path model;   // Qwen3-ForcedAligner's language model (GGUF)
+  std::filesystem::path mmproj;  // and its audio encoder
+  std::string name;              // for ModelInfo
+  ComputeDevice device;
+  int threads = 4;
+};
+
+// Word times for Qwen3-ASR's text from Qwen3-ForcedAligner, as the qwen-asr
+// package places them: requests of at most 180 s, shorter ones padded with
+// silence to 0.5 s. Throws ModelError if the model cannot be loaded.
+std::unique_ptr<Aligner> OpenQwenAligner(const QwenAlignerConfig& config);
+
+}  // namespace sillok
 
 #endif  // SILLOK_BACKENDS_QWEN_QWEN_ALIGNER_HPP_

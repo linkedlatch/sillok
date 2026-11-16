@@ -138,6 +138,7 @@ class RunState {
     required this.stepFraction,
     required this.remaining,
     required this.timingsMs,
+    this.aligns = false,
     this.cancelling = false,
   });
 
@@ -154,10 +155,21 @@ class RunState {
   /// Reading the copy, before the steps shown with numbers.
   bool get preparing => step.index < RunStep.analyze.index;
 
-  /// The step's place among the shown steps, from 1: finding speech,
-  /// transcribing and telling speakers apart.
-  int get stepNumber => step.index - RunStep.analyze.index + 1;
-  int get stepCount => settings.diarize ? 3 : 2;
+  /// Whether the model's word times come in a step of their own.
+  final bool aligns;
+
+  /// The steps shown with numbers: finding speech, transcribing, timing
+  /// words (for a model with an aligner) and telling speakers apart.
+  List<RunStep> get _shown => [
+    RunStep.analyze,
+    RunStep.transcribe,
+    if (aligns) RunStep.align,
+    if (settings.diarize) RunStep.diarize,
+  ];
+
+  /// The step's place among the shown steps, from 1.
+  int get stepNumber => _shown.indexOf(step) + 1;
+  int get stepCount => _shown.length;
 
   /// Milliseconds of the steps done so far.
   final Map<RunStep, int> timingsMs;
@@ -173,6 +185,7 @@ class RunState {
     stepFraction: stepFraction,
     remaining: remaining,
     timingsMs: timingsMs,
+    aligns: aligns,
     cancelling: true,
   );
 }
@@ -416,6 +429,7 @@ class Transcriber extends ChangeNotifier {
     final timings = <RunStep, int>{};
     var stepStarted = 0;
     _previews = [];
+    final jobRequest = request(item, Lane.transcribe, store.audioOf(id).path);
     _run = RunState(
       key: item.key,
       name: item.name,
@@ -424,10 +438,11 @@ class Transcriber extends ChangeNotifier {
       stepFraction: 0,
       remaining: null,
       timingsMs: const {},
+      aligns: jobRequest.aligns,
     );
     notifyListeners();
 
-    final job = _job = JobRun.start(request(item, Lane.transcribe, store.audioOf(id).path));
+    final job = _job = JobRun.start(jobRequest);
     JobEvent? last;
     await for (final event in job.events) {
       last = event;
@@ -447,6 +462,7 @@ class Transcriber extends ChangeNotifier {
             stepFraction: fraction,
             remaining: fraction >= 0.03 && elapsed.inSeconds >= 20 ? elapsed * ((1 - fraction) / fraction) : null,
             timingsMs: Map.unmodifiable(timings),
+            aligns: previous.aligns,
             cancelling: previous.cancelling,
           );
           notifyListeners();

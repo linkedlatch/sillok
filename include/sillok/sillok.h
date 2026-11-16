@@ -47,7 +47,8 @@ typedef enum sillok_status {
 typedef enum sillok_stage {
   SILLOK_STAGE_ANALYZE = 0,    /* finding speech */
   SILLOK_STAGE_TRANSCRIBE = 1,
-  SILLOK_STAGE_DIARIZE = 2
+  SILLOK_STAGE_ALIGN = 2,      /* word times, for a model with an aligner */
+  SILLOK_STAGE_DIARIZE = 3
 } sillok_stage;
 
 typedef struct sillok_engine sillok_engine;
@@ -76,7 +77,8 @@ SILLOK_API void sillok_free_string(char* text);
  *   "recommended": true,
  *   "files": [{"file": "...", "url": "...", "size": 574041195,
  *              "sha256": "...", "zip": false}, ...],
- *   "languages": ["ko", "en", "ja", ...]}, ...]
+ *   "languages": ["ko", "en", "ja", ...], "aligner": false,
+ *   "memory": 919220000}, ...]
  * Roles are "voice_detection", "transcription" and "diarization", and
  * "backend" names what runs a model ("silero", "whisper", "qwen",
  * "sortformer"); an engine
@@ -87,7 +89,10 @@ SILLOK_API void sillok_free_string(char* text);
  * the "languages" a job's "language" may name (ISO 639-1 where there is a
  * code, else "haw" for Hawaiian and "yue" for Cantonese): all of Whisper's
  * for a Whisper model, the eleven Qwen3-ForcedAligner aligns for Qwen;
- * "auto" picks among them alone. */
+ * "auto" picks among them alone. "aligner" says whether its word times come
+ * from an aligner of its own, which a job runs in the align stage. Its
+ * "memory" is the bytes it takes while it runs, worked out from its buffers,
+ * CPU or GPU alike: the free memory a job with it wants. */
 SILLOK_API sillok_status sillok_model_catalog(char** out_json);
 
 /* The catalog entries an engine uses, one per role, for the app to download
@@ -211,12 +216,13 @@ SILLOK_API sillok_status sillok_job_save_audio(sillok_job* job, const char* path
                                                sillok_file_progress_fn progress,
                                                void* user_data);
 
-/* Segments of the transcript as the transcription stage finishes them, for
- * the app to show while the job runs: `segments_json` is an array of
- * segments as in the transcript document (below), without "speaker". They
- * are previews; the transcript sillok_job_run() returns then adds speakers
- * and splits long segments. Called
- * on the thread running sillok_job_run(); the string lives for the call. */
+/* Segments of the transcript as the transcription stage finishes them (the
+ * align stage, for a model with an aligner), for the app to show while the
+ * job runs: `segments_json` is an array of segments as in the transcript
+ * document (below), without "speaker". They are previews; the transcript
+ * sillok_job_run() returns then adds speakers and splits long segments.
+ * Called on the thread running sillok_job_run(); the string lives for the
+ * call. */
 typedef void (*sillok_segments_fn)(void* user_data, const char* segments_json);
 
 /* Sets the job's segment callback before it runs; NULL removes it. */
@@ -238,6 +244,8 @@ SILLOK_API sillok_status sillok_job_on_segments(sillok_job* job,
  *                           "speaker": 0}, ...]}, ...],
  *  "models": {"transcription": {"name": "...", "device": "...",
  *                               "fell_back_to_cpu": false}, ...}}
+ * "models" names the model of each stage that ran: "voice_detection",
+ * "transcription", "alignment" (a model with an aligner) and "diarization".
  * "speaker" is absent without diarization.
  * Times locate sentences well enough to listen back to them; word times are
  * approximate. To play a segment, start about a second before "start_ms":

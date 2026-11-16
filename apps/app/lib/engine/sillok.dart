@@ -38,6 +38,8 @@ class CatalogModel {
     required this.recommended,
     required this.files,
     this.languages = const [],
+    this.aligner = false,
+    this.memory = 0,
   });
 
   factory CatalogModel.fromJson(Map<String, dynamic> json) => CatalogModel(
@@ -49,6 +51,8 @@ class CatalogModel {
     recommended: json['recommended'] as bool,
     files: [for (final file in json['files'] as List) ModelFile.fromJson(file as Map<String, dynamic>)],
     languages: [for (final code in json['languages'] as List? ?? const []) code as String],
+    aligner: json['aligner'] as bool? ?? false,
+    memory: (json['memory'] as num?)?.toInt() ?? 0,
   );
 
   final String id;
@@ -61,6 +65,14 @@ class CatalogModel {
 
   /// Of a transcription model: the languages a job may name.
   final List<String> languages;
+
+  /// Of a transcription model: whether an aligner of its own gives its words
+  /// their times, in a step of its own ([RunStep.align]).
+  final bool aligner;
+
+  /// Of a transcription model: the bytes it takes while it runs, the free
+  /// memory a job with it wants.
+  final int memory;
 
   bool get isTranscription => role == 'transcription';
 

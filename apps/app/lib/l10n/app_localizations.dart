@@ -308,6 +308,12 @@ abstract class AppLocalizations {
   /// **'Transcribing'**
   String get stepTranscribe;
 
+  /// No description provided for @stepAlign.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing words'**
+  String get stepAlign;
+
   /// No description provided for @stepDiarize.
   ///
   /// In en, this message translates to:
@@ -703,6 +709,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'high'**
   String get accuracyHigh;
+
+  /// No description provided for @modelMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended free memory: {size}'**
+  String modelMemory(String size);
 
   /// No description provided for @speedVerySlow.
   ///

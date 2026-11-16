@@ -108,6 +108,8 @@ class _ModelCardState extends State<_ModelCard> {
               onSelectionChanged: (ids) => setState(() => _chosen = ids.first),
             ),
             Text(modelSummary(l, model), style: Theme.of(context).textTheme.bodySmall),
+            if (model.memory > 0)
+              Text(l.modelMemory(formatBytes(model.memory)), style: Theme.of(context).textTheme.bodySmall),
             if (accelerator != null) _AcceleratorControl(state: state, model: model, status: accelerator),
             if (ready)
               TextButton(

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sillok/data/transcriber.dart';
+import 'package:sillok/engine/job_run.dart';
 import 'package:sillok/engine/native.dart';
 import 'package:sillok/data/keep_awake.dart';
 import 'package:sillok/data/media_types.dart';
@@ -158,6 +159,26 @@ void main() {
     expect(fileTitle('notes.v2.wav'), 'notes.v2');
     expect(fileTitle('.hidden'), '.hidden');
     expect(fileTitle('README'), 'README');
+  });
+
+  test('steps are numbered among those the run has: timing words only with an aligner', () {
+    RunState run(RunStep step, {required bool aligns, required bool diarize}) => RunState(
+      key: 'k',
+      name: 'n',
+      settings: JobSettings(language: 'ko', diarize: diarize),
+      step: step,
+      stepFraction: 0,
+      remaining: null,
+      timingsMs: const {},
+      aligns: aligns,
+    );
+    final whisper = run(RunStep.diarize, aligns: false, diarize: true);
+    expect((whisper.stepNumber, whisper.stepCount), (3, 3));
+    final qwen = run(RunStep.align, aligns: true, diarize: true);
+    expect((qwen.stepNumber, qwen.stepCount), (3, 4));
+    final qwenAlone = run(RunStep.diarize, aligns: true, diarize: true);
+    expect((qwenAlone.stepNumber, qwenAlone.stepCount), (4, 4));
+    expect(run(RunStep.transcribe, aligns: true, diarize: false).stepCount, 3);
   });
 
   test('preparing evens out the original, transcribing takes the copy as it is', () {

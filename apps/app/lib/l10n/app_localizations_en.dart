@@ -135,6 +135,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepTranscribe => 'Transcribing';
 
   @override
+  String get stepAlign => 'Timing words';
+
+  @override
   String get stepDiarize => 'Telling speakers apart';
 
   @override
@@ -372,6 +375,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accuracyHigh => 'high';
+
+  @override
+  String modelMemory(String size) {
+    return 'Recommended free memory: $size';
+  }
 
   @override
   String get speedVerySlow => 'very slow';

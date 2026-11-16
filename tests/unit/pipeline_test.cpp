@@ -178,6 +178,42 @@ TEST(PipelineTest, TranscriberAndDiarizerNeverShareMemory) {
   EXPECT_EQ(transcript.models.count("diarization"), 1u);
 }
 
+TEST(PipelineTest, AlignsTextWithoutTimesInAStageOfItsOwn) {
+  auto script = Speech(0, 10, Milliseconds{1000});
+  auto second = Speech(10, 10, Milliseconds{6000});
+  for (ScriptWord& word : second) word.speaker = 1;
+  script.insert(script.end(), second.begin(), second.end());
+  FakeOptions fakes = OptionsFor(script);
+  fakes.separate_alignment = true;
+  FakeModels models(fakes);
+  PipelineOptions options;
+  options.diarize = true;
+  Stage stage = Stage::kAnalyze;
+  std::vector<Stage> stages;
+  std::vector<Stage> previews;
+  const Transcript transcript = RunPipeline(
+      RenderScript(script, Milliseconds{12000}), options, models,
+      [&](Stage now, double) {
+        stage = now;
+        if (stages.empty() || stages.back() != now) stages.push_back(now);
+      },
+      {}, [&](std::span<const Segment> segments) { previews.insert(previews.end(), segments.size(), stage); });
+
+  EXPECT_EQ(AllWords(transcript), Expected(script));
+  // The aligner's times, back in the recording.
+  EXPECT_EQ(transcript.segments.front().words.front().start, Milliseconds{1000});
+  EXPECT_EQ(transcript.segments.back().words.back().end, Milliseconds{9900});
+  EXPECT_EQ(transcript.segments.back().speaker, 1);
+  EXPECT_EQ(stages, (std::vector<Stage>{Stage::kAnalyze, Stage::kTranscribe, Stage::kAlign,
+                                        Stage::kDiarize}));
+  // Previews come with times, so from the aligner.
+  ASSERT_FALSE(previews.empty());
+  for (const Stage at : previews) EXPECT_EQ(at, Stage::kAlign);
+  EXPECT_FALSE(models.live().aligner_with_transcriber);
+  EXPECT_EQ(models.live().aligners, 0);
+  EXPECT_EQ(transcript.models.count("alignment"), 1u);
+}
+
 TEST(PipelineTest, ReportsProgressInStageOrder) {
   const auto script = Speech(0, 100, Milliseconds{500});
   FakeModels models(OptionsFor(script));

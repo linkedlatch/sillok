@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "core/aligner.hpp"
 #include "core/diarizer.hpp"
 #include "core/transcriber.hpp"
 #include "core/voice_detector.hpp"
@@ -30,6 +31,9 @@ class ModelProvider {
 
   virtual std::unique_ptr<VoiceDetector> OpenVoiceDetector() = 0;
   virtual std::unique_ptr<Transcriber> OpenTranscriber() = 0;
+  // The model that gives the transcriber's text its word times, or null when
+  // the transcriber's words come with them.
+  virtual std::unique_ptr<Aligner> OpenAligner() = 0;
   virtual std::unique_ptr<Diarizer> OpenDiarizer() = 0;
 };
 

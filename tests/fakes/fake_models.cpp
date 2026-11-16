@@ -147,6 +147,17 @@ class FakeTranscriber : public Transcriber {
       throw std::logic_error("a request longer than MaxAudio()");
     }
     if (models_.options_.on_transcribe) models_.options_.on_transcribe(request);
+    if (models_.options_.separate_alignment) {
+      TranscribeText(request, on_words, on_progress, stop);
+    } else {
+      TranscribeTimed(request, on_words, on_progress, stop);
+    }
+  }
+
+ private:
+  // Words with their times, as Whisper hears them.
+  void TranscribeTimed(const TranscribeRequest& request, const WordsCallback& on_words,
+                       const FractionCallback& on_progress, StopToken stop) {
     ThrowIfStopped(stop);
 
     const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
@@ -192,9 +203,64 @@ class FakeTranscriber : public Transcriber {
     if (!piece.words.empty()) hand_over();
   }
 
- private:
+  // The words of TranscribeTimed, as text alone.
+  void TranscribeText(const TranscribeRequest& request, const WordsCallback& on_words,
+                      const FractionCallback& on_progress, StopToken stop) {
+    std::string text;
+    std::string language;
+    TranscribeTimed(
+        request,
+        [&](TranscribedWords piece) {
+          language = piece.language;
+          for (const Word& word : piece.words) text += (text.empty() ? "" : " ") + word.text;
+        },
+        [](double) {}, stop);
+    if (!text.empty()) on_words({.words = {}, .language = language, .text = text});
+    on_progress(1.0);
+  }
+
   FakeModels& models_;
 };
+
+namespace {
+
+// Times each word of the text at the burst it was heard in, in order.
+class FakeAligner : public Aligner {
+ public:
+  explicit FakeAligner(LiveModels& live) : live_(live) {
+    ++live_.aligners;
+    if (live_.transcribers > 0) live_.aligner_with_transcriber = true;
+  }
+  ~FakeAligner() override { --live_.aligners; }
+
+  ModelInfo Info() const override { return {"fake-aligner", "CPU", false}; }
+  Milliseconds MaxAudio() const override { return Milliseconds{180000}; }
+
+  std::vector<Word> Align(const AlignRequest& request, const FractionCallback& on_progress,
+                          StopToken stop) override {
+    ThrowIfStopped(stop);
+    const auto bursts = FindBursts(request.pcm, ToSamples(Milliseconds{100}));
+    std::vector<Word> words;
+    std::size_t from = 0;
+    for (std::size_t i = 0; from < request.text.size(); ++i) {
+      std::size_t to = request.text.find(' ', from);
+      if (to == std::string::npos) to = request.text.size();
+      if (i >= bursts.size()) throw std::logic_error("more words than bursts");
+      words.push_back({.text = request.text.substr(from, to - from),
+                       .start = ToMilliseconds(bursts[i].begin),
+                       .end = ToMilliseconds(bursts[i].end),
+                       .speaker = std::nullopt});
+      from = to + 1;
+    }
+    on_progress(1.0);
+    return words;
+  }
+
+ private:
+  LiveModels& live_;
+};
+
+}  // namespace
 
 AudioBuffer RenderScript(const std::vector<ScriptWord>& words,
                          Milliseconds duration) {
@@ -221,6 +287,11 @@ std::unique_ptr<VoiceDetector> FakeModels::OpenVoiceDetector() {
 
 std::unique_ptr<Transcriber> FakeModels::OpenTranscriber() {
   return std::make_unique<FakeTranscriber>(*this);
+}
+
+std::unique_ptr<Aligner> FakeModels::OpenAligner() {
+  if (!options_.separate_alignment) return nullptr;
+  return std::make_unique<FakeAligner>(live_);
 }
 
 std::unique_ptr<Diarizer> FakeModels::OpenDiarizer() {

@@ -57,6 +57,14 @@ struct CatalogModel {
   // Of a transcription model: the languages it transcribes, told or told
   // apart from the audio; ISO 639-1, else "haw" and "yue".
   std::vector<std::string> languages;
+  // Of a transcription model: whether its word times come from an aligner of
+  // its own (ModelProvider::OpenAligner), which a job runs in a stage after
+  // transcription.
+  bool aligner = false;
+  // Of a transcription model: the memory it takes while it runs, in bytes,
+  // the larger of the CPU's and the GPU's, worked out from its buffers
+  // (docs/DESIGN.md D65).
+  std::uint64_t memory = 0;
 };
 
 // The models of this build; one model of each role is recommended.

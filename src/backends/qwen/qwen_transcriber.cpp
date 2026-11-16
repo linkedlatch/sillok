@@ -12,27 +12,24 @@
 #include <mtmd.h>
 
 #include "backends/qwen/llama_audio.hpp"
-#include "backends/qwen/qwen_aligner.hpp"
 #include "backends/qwen/qwen_text.hpp"
 #include "core/model_provider.hpp"
-#include "core/postprocess.hpp"
 
 namespace sillok {
 namespace {
 
 using qwen::LlamaAudio;
 
-// Shares of a request's progress: encoding the audio, writing the text
-// (estimated from its length), aligning.
+// Share of a request's progress in encoding the audio; writing the text
+// (estimated from its length) takes the rest.
 constexpr double kEncodeShare = 0.1;
-constexpr double kAlignFrom = 0.85;
 // Expected tokens a second of speech, to estimate how far the text is.
 constexpr double kTokensPerSecond = 5.0;
 // Text tokens at most: far more than any speech gives, a stop for a model
 // caught in a loop.
 std::size_t MaxTokens(std::size_t samples) { return 64 + 16 * samples / kSampleRate; }
 // What the qwen-asr package hears at once with word times
-// (MAX_FORCE_ALIGN_INPUT_SECONDS), the aligner's limit.
+// (MAX_FORCE_ALIGN_INPUT_SECONDS), its aligner's limit (OpenQwenAligner).
 constexpr Milliseconds kMaxAudio{180000};
 // Shorter audio is padded with silence to this length (MIN_ASR_INPUT_SECONDS).
 constexpr std::size_t kMinSamples = kSampleRate / 2;
@@ -80,7 +77,6 @@ class QwenTranscriber final : public Transcriber {
               .threads = config.threads,
               .context = 8192,
               .embeddings = false}),
-        aligner_(config.aligner_model, config.aligner_mmproj, config.device, config.threads),
         info_{.name = config.name,
               .device = config.device.name,
               .fell_back_to_cpu = config.device.fell_back_to_cpu} {
@@ -134,32 +130,11 @@ class QwenTranscriber final : public Transcriber {
       padded.resize(kMinSamples, 0.0f);
       request.pcm = padded;
     }
-    const qwen::AsrOutput heard = Listen(request, on_progress, stop);
-    if (heard.language.empty() || heard.text.empty()) {
-      on_progress(1.0);
-      return;
+    qwen::AsrOutput heard = Listen(request, on_progress, stop);
+    // The text alone: its word times come from the aligner.
+    if (!heard.language.empty() && !heard.text.empty()) {
+      on_words({.words = {}, .language = std::move(heard.language), .text = std::move(heard.text)});
     }
-    const std::vector<qwen::AlignUnit> units = qwen::AlignUnits(heard.text, heard.language);
-    if (units.empty()) {
-      on_progress(1.0);
-      return;
-    }
-    std::vector<Milliseconds> times;
-    for (const int ms : qwen::FixTimestamps(aligner_.Align(
-             request.pcm, units,
-             [&](double fraction) { on_progress(kAlignFrom + (1.0 - kAlignFrom) * fraction); },
-             stop))) {
-      times.emplace_back(ms);
-    }
-    std::vector<Word> words = qwen::TimedWords(heard.text, heard.language, units, times);
-    // Sentence by sentence, as the transcript shows them.
-    std::vector<Word> sentence;
-    for (Word& word : words) {
-      const bool ends = EndsSentence(word.text);
-      sentence.push_back(std::move(word));
-      if (ends) on_words({.words = std::exchange(sentence, {}), .language = heard.language});
-    }
-    if (!sentence.empty()) on_words({.words = std::move(sentence), .language = heard.language});
     on_progress(1.0);
   }
 
@@ -194,8 +169,8 @@ class QwenTranscriber final : public Transcriber {
       if (tokens.size() % 16 == 0 && EndsInLoop(tokens)) break;
       const float* row = asr_.Next(next, stop);
       logits.assign(row, row + asr_.row_size());
-      on_progress(kEncodeShare + (kAlignFrom - kEncodeShare) *
-                                     std::min(1.0, static_cast<double>(tokens.size()) / expected));
+      on_progress(kEncodeShare +
+                  (1.0 - kEncodeShare) * std::min(1.0, static_cast<double>(tokens.size()) / expected));
     }
     return qwen::ParseAsrOutput(decoded, request.language);
   }
@@ -225,7 +200,6 @@ class QwenTranscriber final : public Transcriber {
   }
 
   LlamaAudio asr_;
-  qwen::QwenAligner aligner_;
   ModelInfo info_;
   std::vector<std::vector<llama_token>> language_starts_;
   std::string longest_language_;  // the one whose start takes the most tokens
