@@ -22,7 +22,9 @@ struct Token {
 // Groups decoded tokens into words, with the tokens' times.
 // In languages with spaces a word starts at a token that begins with a space;
 // otherwise every token starts one. A UTF-8 character split over tokens stays
-// in one word, and the result is always well-formed UTF-8.
+// in one word, and the result is always well-formed UTF-8. In languages
+// without spaces a word has one space before it where Whisper put any (none
+// before the first word), as Qwen's words have.
 std::vector<Word> AssembleWords(std::span<const Token> tokens,
                                 std::string_view language);
 

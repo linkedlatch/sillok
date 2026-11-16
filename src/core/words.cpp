@@ -20,6 +20,9 @@ std::string JoinWords(std::span<const Word> words, std::string_view language) {
     if (!text.empty()) text += separator;
     text += word.text;
   }
+  // A word that keeps the space before it (languages without spaces) may
+  // come first, after a split.
+  if (text.starts_with(' ')) text.erase(0, 1);
   return text;
 }
 

@@ -14,7 +14,7 @@ namespace sillok {
 // Whether `language` (a catalog code) separates words with spaces.
 bool UsesSpaces(std::string_view language);
 
-// Running text of `words` in `language`.
+// Running text of `words` in `language`, which never starts with a space.
 std::string JoinWords(std::span<const Word> words, std::string_view language);
 
 // Segment of `words` in `language`, with text and times taken from the words.

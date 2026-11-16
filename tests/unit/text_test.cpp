@@ -67,5 +67,13 @@ TEST(WordsTest, JoinsWordsByLanguage) {
   EXPECT_EQ(JoinWords(words, "en"), "日本 語");
 }
 
+TEST(WordsTest, TextDoesNotStartWithAWordsSpace) {
+  // The second half of "機械学習の Machine Learningは", split after "Machine".
+  const std::vector<Word> words = {{.text = " Learning", .start = {}, .end = {}, .speaker = std::nullopt},
+                                   {.text = "は", .start = {}, .end = {}, .speaker = std::nullopt}};
+  EXPECT_EQ(JoinWords(words, "ja"), "Learningは");
+  EXPECT_EQ(MakeSegment(words, "ja").text, "Learningは");
+}
+
 }  // namespace
 }  // namespace sillok

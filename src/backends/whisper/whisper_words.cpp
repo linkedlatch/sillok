@@ -38,10 +38,25 @@ std::vector<Word> AssembleWords(std::span<const Token> tokens,
 
   std::vector<Word> result;
   result.reserve(words.size());
+  bool space_before = false;  // a space after the last word kept
   for (Word& word : words) {
-    const auto first = word.text.find_first_not_of(' ');
-    if (first == std::string::npos) continue;
-    word.text = SanitizeUtf8(std::string_view(word.text).substr(first));
+    const std::string_view text = word.text;
+    const auto first = text.find_first_not_of(' ');
+    if (first == std::string::npos) {
+      space_before = space_before || !text.empty();
+      continue;
+    }
+    if (uses_spaces) {
+      word.text = SanitizeUtf8(text.substr(first));
+    } else {
+      // As Qwen's words: one space before a word where Whisper put any, none
+      // at the start.
+      const auto last = text.find_last_not_of(' ');
+      std::string kept = (space_before || first > 0) && !result.empty() ? " " : "";
+      kept += text.substr(first, last + 1 - first);
+      space_before = last + 1 < text.size();
+      word.text = SanitizeUtf8(kept);
+    }
     result.push_back(std::move(word));
   }
   return result;
