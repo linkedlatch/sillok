@@ -34,20 +34,6 @@ constexpr Milliseconds kMaxAudio{180000};
 // Shorter audio is padded with silence to this length (MIN_ASR_INPUT_SECONDS).
 constexpr std::size_t kMinSamples = kSampleRate / 2;
 
-// Whether `tokens` end in a pattern of up to 20 tokens repeated 20 times:
-// the model is caught in a loop (FixRepetitions then keeps it once).
-bool EndsInLoop(std::span<const llama_token> tokens) {
-  constexpr std::size_t kRepeats = 20;
-  for (std::size_t k = 1; k <= 20; ++k) {
-    if (tokens.size() < k * kRepeats) break;
-    const std::size_t from = tokens.size() - k * kRepeats;
-    bool loop = true;
-    for (std::size_t i = from + k; i < tokens.size() && loop; ++i) loop = tokens[i] == tokens[i - k];
-    if (loop) return true;
-  }
-  return false;
-}
-
 std::size_t ArgMax(const float* row, std::size_t size) {
   return static_cast<std::size_t>(std::max_element(row, row + size) - row);
 }
@@ -166,7 +152,7 @@ class QwenTranscriber final : public Transcriber {
       tokens.push_back(next);
       decoded += asr_.Piece(next);
       if (told != SIZE_MAX && LanguageStartDone(tokens)) told = SIZE_MAX;
-      if (tokens.size() % 16 == 0 && EndsInLoop(tokens)) break;
+      if (tokens.size() == limit) break;  // no use reading what comes next
       const float* row = asr_.Next(next, stop);
       logits.assign(row, row + asr_.row_size());
       on_progress(kEncodeShare +
