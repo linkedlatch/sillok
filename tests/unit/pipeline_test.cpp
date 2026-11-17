@@ -153,9 +153,16 @@ TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
 
 TEST(PipelineTest, SilenceProducesNoTranscriptionModel) {
   FakeModels models(FakeOptions{});
-  const Transcript transcript = RunFakes(RenderScript({}, Milliseconds{10000}), models);
+  std::vector<double> transcribing;
+  const Transcript transcript =
+      RunFakes(RenderScript({}, Milliseconds{10000}), models, {}, [&](Stage stage, double fraction) {
+        if (stage == Stage::kTranscribe) transcribing.push_back(fraction);
+      });
   EXPECT_TRUE(transcript.segments.empty());
   EXPECT_EQ(models.transcribe_calls(), 0);
+  EXPECT_EQ(models.transcribers_opened(), 0);
+  // The stage still starts with 0, as every stage does.
+  EXPECT_EQ(transcribing, (std::vector<double>{0.0, 1.0}));
   EXPECT_EQ(transcript.models.count("transcription"), 0u);
 }
 
@@ -261,6 +268,8 @@ TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
                Cancelled);
   EXPECT_EQ(windows_after_cancel, 0);
   EXPECT_EQ(models.live().transcribers, 0);
+  // Stopped as the stage started, before its model loaded.
+  EXPECT_EQ(models.transcribers_opened(), 0);
 }
 
 TEST(PipelineTest, CancelFromAnotherThread) {

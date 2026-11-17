@@ -36,6 +36,7 @@ Speech DetectSpeech(const AudioBuffer& audio, const SegmenterOptions& options,
                     const StopToken& stop, Transcript& transcript) {
   progress(Stage::kAnalyze,
            0.0);  // before the model loads, which takes a while
+  ThrowIfStopped(stop);  // perhaps from the call above
   const auto detector = models.OpenVoiceDetector();
   Speech speech{.regions = {}, .probabilities = {}, .frame_samples = detector->FrameSamples()};
   // About 30 s per call, in whole frames so the detector state carries over.
@@ -103,6 +104,7 @@ Transcribed TranscribeSpeech(
     const StopToken& stop, Transcript& transcript) {
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
+  ThrowIfStopped(stop);
   const auto transcriber = models.OpenTranscriber();
   const Milliseconds longest = std::min(options.segmenter.max_chunk, transcriber->MaxAudio());
   transcriber->CheckGlossary(options.glossary, longest);
@@ -152,6 +154,7 @@ std::vector<Segment> AlignSpeech(const AudioBuffer& audio, const std::vector<Hea
                                  const SegmentsCallback& on_segments, const StopToken& stop,
                                  Transcript& transcript) {
   progress(Stage::kAlign, 0.0);  // before the model loads
+  ThrowIfStopped(stop);
   const auto aligner = models.OpenAligner();
   if (!aligner) throw std::logic_error("the transcriber left out word times and there is no aligner");
 
@@ -192,6 +195,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
                                  Transcript& transcript) {
   progress(Stage::kDiarize,
            0.0);  // before the model loads, which takes a while
+  ThrowIfStopped(stop);
   const auto diarizer = models.OpenDiarizer();
   for (SampleIndex begin = 0; begin < audio.size();
        begin += kDiarizationChunk) {
@@ -233,6 +237,8 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   if (!speech.regions.empty()) {
     transcribed = TranscribeSpeech(audio, speech, options, models, progress,
                                    on_segments, stop, transcript);
+  } else {
+    progress(Stage::kTranscribe, 0.0);  // every stage starts with 0
   }
   progress(Stage::kTranscribe, 1.0);
   std::vector<Segment> segments = std::move(transcribed.segments);

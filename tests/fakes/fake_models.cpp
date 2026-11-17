@@ -286,6 +286,7 @@ std::unique_ptr<VoiceDetector> FakeModels::OpenVoiceDetector() {
 }
 
 std::unique_ptr<Transcriber> FakeModels::OpenTranscriber() {
+  ++transcribers_opened_;
   return std::make_unique<FakeTranscriber>(*this);
 }
 
