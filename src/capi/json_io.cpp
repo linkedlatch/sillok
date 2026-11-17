@@ -1,5 +1,6 @@
 #include "capi/json_io.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
 #include <optional>
@@ -63,6 +64,16 @@ Milliseconds ReadMs(const Json& object, const char* key) {
                                 "\" must be a non-negative integer");
   }
   return Milliseconds{value};
+}
+
+// Array `key` of `object`, empty when absent, whose items are all objects.
+Json ReadObjects(const Json& object, const char* key) {
+  Json items = Get<Json>(object, key, Json::array());
+  if (!items.is_array() ||
+      !std::all_of(items.begin(), items.end(), [](const Json& item) { return item.is_object(); })) {
+    throw std::invalid_argument(std::string("\"") + key + "\" must be an array of objects");
+  }
+  return items;
 }
 
 std::optional<int> ReadSpeaker(const Json& object) {
@@ -155,7 +166,7 @@ Segment SegmentFromJson(const Json& item) {
   segment.text = Get<std::string>(item, "text", "");
   segment.language = Get<std::string>(item, "language", "");
   segment.speaker = ReadSpeaker(item);
-  for (const Json& word : Get<Json>(item, "words", Json::array())) {
+  for (const Json& word : ReadObjects(item, "words")) {
     segment.words.push_back({.text = Get<std::string>(word, "text", ""),
                              .start = ReadMs(word, "start_ms"),
                              .end = ReadMs(word, "end_ms"),
@@ -208,15 +219,19 @@ Transcript TranscriptFromJson(std::string_view text) {
     throw std::invalid_argument("unsupported transcript version");
   }
   Transcript transcript;
-  transcript.duration = Milliseconds{Get<long long>(json, "duration_ms", 0)};
-  for (const Json& speaker : Get<Json>(json, "speakers", Json::array())) {
+  transcript.duration = json.contains("duration_ms") ? ReadMs(json, "duration_ms") : Milliseconds{0};
+  for (const Json& speaker : ReadObjects(json, "speakers")) {
     const auto name = Get<std::string>(speaker, "name", "");
     if (!name.empty()) transcript.speaker_names[Get<int>(speaker, "id", -1)] = name;
   }
-  for (const Json& item : Get<Json>(json, "segments", Json::array())) {
+  for (const Json& item : ReadObjects(json, "segments")) {
     transcript.segments.push_back(SegmentFromJson(item));
   }
   const Json models = Get<Json>(json, "models", Json::object());
+  if (!models.is_object() ||
+      !std::all_of(models.begin(), models.end(), [](const Json& info) { return info.is_object(); })) {
+    throw std::invalid_argument("\"models\" must be an object of objects");
+  }
   for (const auto& [stage, info] : models.items()) {
     transcript.models[stage] = {
         .name = Get<std::string>(info, "name", ""),

@@ -6,7 +6,8 @@
  *   caller and released with sillok_free_string().
  * - Structured data (configuration, options, results) is exchanged as JSON
  *   in the schemas described next to each function. Unknown keys in input
- *   JSON are rejected.
+ *   JSON are rejected, except in a transcript document (sillok_export), where
+ *   they are ignored so that documents saved by older versions still read.
  * - Every function that can fail returns a sillok_status; on failure,
  *   sillok_last_error() describes the problem.
  * - Handles are not thread-safe unless noted. sillok_job_cancel() may be

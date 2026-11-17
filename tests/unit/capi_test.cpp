@@ -341,6 +341,21 @@ TEST_F(CapiTest, ExportsEditedDocuments) {
   EXPECT_EQ(sillok_export(R"({"version": 1, "segments": [{"start_ms": -5}]})", "txt",
                           nullptr, &out),
             SILLOK_INVALID_ARGUMENT);
+  // Parts of the wrong type are refused, not skipped.
+  for (const char* wrong :
+       {R"({"version": 1, "models": []})", R"({"version": 1, "models": 123})",
+        R"({"version": 1, "models": {"transcription": 1}})", R"({"version": 1, "speakers": 123})",
+        R"({"version": 1, "speakers": [1]})", R"({"version": 1, "segments": {}})",
+        R"({"version": 1, "duration_ms": -1})",
+        R"({"version": 1, "segments": [{"start_ms": 0, "end_ms": 1, "words": [1]}]})"}) {
+    EXPECT_EQ(sillok_export(wrong, "txt", nullptr, &out), SILLOK_INVALID_ARGUMENT) << wrong;
+  }
+  // Keys of older versions, such as a word's "confidence", are ignored.
+  ASSERT_EQ(sillok_export(R"({"version": 1, "segments": [{"start_ms": 0, "end_ms": 1,
+      "text": "a", "words": [{"text": "a", "start_ms": 0, "end_ms": 1, "confidence": 0.9}]}]})",
+                          "txt", nullptr, &out),
+            SILLOK_OK);
+  Take(out);
 }
 
 TEST_F(CapiTest, ChecksModelFiles) {
