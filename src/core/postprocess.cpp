@@ -28,6 +28,7 @@ char32_t LastCodePoint(std::string_view text) {
   --start;
   const auto lead = static_cast<unsigned char>(text[start]);
   const std::size_t length = text.size() - start;
+  if (length > 4) return 0;  // not UTF-8
   char32_t code = length == 1 ? lead : lead & (0x7F >> length);
   for (std::size_t i = start + 1; i < text.size(); ++i) {
     code = (code << 6) | (static_cast<unsigned char>(text[i]) & 0x3F);

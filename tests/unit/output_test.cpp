@@ -36,6 +36,12 @@ TEST(PostprocessTest, KnowsSentenceEndsOfOtherScripts) {
   EXPECT_EQ(out[3].text, "a, b\" c");
 }
 
+TEST(PostprocessTest, TakesTextThatIsNotUtf8) {
+  EXPECT_FALSE(EndsSentence(std::string(40, '\x80')));
+  EXPECT_FALSE(EndsSentence("." + std::string(40, '\x80')));
+  EXPECT_TRUE(EndsSentence("a."));
+}
+
 TEST(PostprocessTest, SplitsSegmentsIntoSentences) {
   // Short enough to read, yet three sentences: one each.
   const auto out = SplitSegments(
