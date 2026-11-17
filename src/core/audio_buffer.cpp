@@ -12,7 +12,8 @@ namespace {
 // grow and long ones grow from there.
 constexpr std::size_t kFirstReserve = std::size_t{kSampleRate} * 60;
 
-// The one place all audio passes: NaN becomes silence, infinities clip.
+// Louder samples clip. AudioInput turns NaN to silence before it mixes;
+// here it only keeps the conversion defined.
 std::int16_t ToInt16(float value) {
   if (std::isnan(value)) return 0;
   const float scaled = std::round(value * 32768.0f);

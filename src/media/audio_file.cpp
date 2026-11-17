@@ -37,7 +37,8 @@ struct PacketFree {
 struct FrameFree {
   void operator()(AVFrame* frame) const { av_frame_free(&frame); }
 };
-// An output file: closes it, and removes it unless Keep() was called.
+// An output file: closes it, and once opened, removes it unless Close()
+// succeeded.
 class OutputFile {
  public:
   OutputFile(AVFormatContext* context, std::filesystem::path path)
@@ -47,17 +48,30 @@ class OutputFile {
   ~OutputFile() {
     if (context_->pb != nullptr) avio_closep(&context_->pb);
     avformat_free_context(context_);
-    if (!kept_) {
+    if (opened_ && !kept_) {
       std::error_code ignored;
       std::filesystem::remove(path_, ignored);
     }
   }
   AVFormatContext* get() const { return context_; }
-  void Keep() { kept_ = true; }
+  // Opens the file for writing; an error code of FFmpeg's on failure.
+  int Open(const std::string& name) {
+    const int error = avio_open(&context_->pb, name.c_str(), AVIO_FLAG_WRITE);
+    opened_ = error >= 0;
+    return error;
+  }
+  // Writes what is buffered and keeps the file; an error code on failure,
+  // such as a full disk.
+  int Close() {
+    const int error = avio_closep(&context_->pb);
+    kept_ = error >= 0;
+    return error;
+  }
 
  private:
   AVFormatContext* context_;
   std::filesystem::path path_;
+  bool opened_ = false;
   bool kept_ = false;
 };
 
@@ -164,15 +178,27 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
   }
 
   std::vector<float> samples;
+  bool decoded = false;
+  bool damaged = false;
   // Frames the decoder has finished. Damaged frames are skipped, as players do.
   const auto receive = [&] {
     for (;;) {
       const int error = avcodec_receive_frame(codec.get(), frame.get());
       if (error == AVERROR(EAGAIN) || error == AVERROR_EOF) return;
-      if (error == AVERROR_INVALIDDATA) continue;
+      if (error == AVERROR_INVALIDDATA) {
+        damaged = true;
+        continue;
+      }
       if (error < 0) throw MediaError("cannot decode " + name + ": " + ErrorText(error));
+      const int rate = frame->sample_rate;
+      const int channels = frame->ch_layout.nb_channels;
+      if (!AudioInput::Accepts(rate, channels)) {
+        throw MediaError("unsupported audio in " + name + ": " + std::to_string(rate) +
+                         " Hz, " + std::to_string(channels) + " channels");
+      }
       Interleave(*frame, samples);
-      input.Push(samples, frame->sample_rate, frame->ch_layout.nb_channels);
+      input.Push(samples, rate, channels);
+      decoded = true;
       av_frame_unref(frame.get());
     }
   };
@@ -187,6 +213,7 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
     if (packet->stream_index == stream) {
       const int sent = avcodec_send_packet(codec.get(), packet.get());
       av_packet_unref(packet.get());
+      if (sent == AVERROR_INVALIDDATA) damaged = true;
       if (sent < 0 && sent != AVERROR_INVALIDDATA) {
         throw MediaError("cannot decode " + name + ": " + ErrorText(sent));
       }
@@ -205,6 +232,8 @@ void DecodeAudioFile(const std::filesystem::path& path, AudioInput& input,
   }
   avcodec_send_packet(codec.get(), nullptr);  // flush
   receive();
+  // An empty stream is an empty recording; one damaged throughout is not.
+  if (damaged && !decoded) throw MediaError("cannot decode " + name + ": all of it is damaged");
   if (progress) progress(1.0);
 }
 
@@ -241,8 +270,7 @@ void WriteAacFile(const AudioBuffer& audio, const std::filesystem::path& path,
   if (avcodec_parameters_from_context(stream->codecpar, codec.get()) < 0) {
     throw std::bad_alloc();
   }
-  if (const int error = avio_open(&output.get()->pb, name.c_str(), AVIO_FLAG_WRITE);
-      error < 0) {
+  if (const int error = output.Open(name); error < 0) {
     throw MediaError("cannot write " + name + ": " + ErrorText(error));
   }
   if (const int error = avformat_write_header(output.get(), nullptr); error < 0) {
@@ -305,7 +333,9 @@ void WriteAacFile(const AudioBuffer& audio, const std::filesystem::path& path,
   if (const int error = av_write_trailer(output.get()); error < 0) {
     throw MediaError("cannot write " + name + ": " + ErrorText(error));
   }
-  output.Keep();
+  if (const int error = output.Close(); error < 0) {
+    throw MediaError("cannot write " + name + ": " + ErrorText(error));
+  }
   if (progress) progress(1.0);
 }
 

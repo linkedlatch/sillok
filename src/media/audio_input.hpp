@@ -22,6 +22,11 @@ class AudioInput {
  public:
   enum class Loudness { kEvenedOut, kAsRecorded };
 
+  // Whether Push takes audio of this rate and channel count.
+  static bool Accepts(int sample_rate, int channels) {
+    return sample_rate >= 8000 && sample_rate <= 192000 && channels >= 1 && channels <= 64;
+  }
+
   explicit AudioInput(AudioBuffer& audio, Loudness loudness = Loudness::kEvenedOut);
   ~AudioInput();
   AudioInput(const AudioInput&) = delete;

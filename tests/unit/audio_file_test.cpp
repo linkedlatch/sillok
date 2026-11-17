@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <span>
 #include <vector>
 
@@ -75,6 +77,36 @@ TEST(AudioFileTest, CopyLinesUpWithTheRecording) {
   }
   // Shifted by the encoder's priming, the tone would differ fully.
   EXPECT_LT(difference / energy, 0.05);
+}
+
+// A file at a rate AudioInput does not take is the file's fault
+// (SILLOK_MEDIA_ERROR), not the caller's.
+TEST(AudioFileTest, RejectsAnUnsupportedRateAsAMediaError) {
+  const auto path = std::filesystem::temp_directory_path() / "sillok media test 4k.wav";
+  {
+    // 16-bit mono WAV at 4 kHz, a second of silence.
+    const std::uint32_t rate = 4000;
+    const std::uint32_t data = rate * 2;
+    std::ofstream out(path, std::ios::binary);
+    const auto put = [&](std::uint32_t value, int bytes) {
+      for (int i = 0; i < bytes; ++i) out.put(static_cast<char>((value >> (8 * i)) & 0xFF));
+    };
+    out.write("RIFF", 4);
+    put(36 + data, 4);
+    out.write("WAVEfmt ", 8);
+    put(16, 4);
+    put(1, 2);  // PCM
+    put(1, 2);  // channels
+    put(rate, 4);
+    put(rate * 2, 4);
+    put(2, 2);
+    put(16, 2);
+    out.write("data", 4);
+    put(data, 4);
+    for (std::uint32_t i = 0; i < data; ++i) out.put('\0');
+  }
+  EXPECT_THROW(Decode(path, AudioInput::Loudness::kAsRecorded), MediaError);
+  std::filesystem::remove(path);
 }
 
 }  // namespace
