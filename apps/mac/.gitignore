@@ -1,0 +1,5 @@
+/Packages/SillokKit/Frameworks/
+/Packages/SillokKit/.build/
+/Packages/SillokKit/.swiftpm/
+xcuserdata/
+DerivedData/

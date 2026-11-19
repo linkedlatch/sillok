@@ -1,0 +1,16 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Engine version %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "엔진 버전 %@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
