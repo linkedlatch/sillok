@@ -1,16 +1,206 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Engine version %@" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "엔진 버전 %@"
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ could not be extracted.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 파일의 압축을 풀지 못했습니다."
+          }
+        }
+      }
+    },
+    "%@ did not download completely.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 파일을 끝까지 받지 못했습니다."
+          }
+        }
+      }
+    },
+    "%@ is damaged.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 파일이 손상되었습니다."
+          }
+        }
+      }
+    },
+    "%@ of %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소"
+          }
+        }
+      }
+    },
+    "Checking %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 확인 중"
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내려받기"
+          }
+        }
+      }
+    },
+    "Download size: %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 크기: %@"
+          }
+        }
+      }
+    },
+    "Download the Models": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델 내려받기"
+          }
+        }
+      }
+    },
+    "Downloading %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 내려받는 중"
+          }
+        }
+      }
+    },
+    "Engine version %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "엔진 버전 %@"
+          }
+        }
+      }
+    },
+    "Extracting %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 압축 푸는 중"
+          }
+        }
+      }
+    },
+    "Models Are Ready": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델 준비 완료"
+          }
+        }
+      }
+    },
+    "Sillok transcribes on this Mac. It needs these models once and works offline afterwards.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sillok은 이 Mac에서 전사합니다. 아래 모델을 한 번만 받으면 이후에는 인터넷 없이 동작합니다."
+          }
+        }
+      }
+    },
+    "Speaker diarization": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 분리"
+          }
+        }
+      }
+    },
+    "Starting…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작하는 중…"
+          }
+        }
+      }
+    },
+    "The server refused %@ (HTTP %lld).": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 %1$@ 파일을 거부했습니다(HTTP %2$lld)."
+          }
+        }
+      }
+    },
+    "Transcription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 시도"
+          }
+        }
+      }
+    },
+    "Voice detection": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 감지"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
