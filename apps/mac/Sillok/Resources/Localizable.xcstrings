@@ -1,8 +1,21 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "": {
+      "shouldTranslate": false
+    },
     "%@ %@": {
       "shouldTranslate": false
+    },
+    "%@ (recommended)": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (권장)"
+          }
+        }
+      }
     },
     "%@ could not be extracted.": {
       "localizations": {
@@ -47,6 +60,16 @@
     "%@ · %@": {
       "shouldTranslate": false
     },
+    "%lld languages · %@ download · %@ of memory": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld개 언어 · 다운로드 %2$@ · 메모리 %3$@"
+          }
+        }
+      }
+    },
     "A model failed to load: %@": {
       "localizations": {
         "ko": {
@@ -57,12 +80,45 @@
         }
       }
     },
+    "Automatic": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동"
+          }
+        }
+      }
+    },
+    "CPU": {
+      "shouldTranslate": false
+    },
+    "CPU threads": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU 스레드"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "취소"
+          }
+        }
+      }
+    },
+    "Changes apply from the next transcription.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "바꾼 설정은 다음 전사부터 적용됩니다."
           }
         }
       }
@@ -83,6 +139,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "녹취를 고르거나, 전사할 오디오·비디오 파일을 여기에 끌어다 놓으세요."
+          }
+        }
+      }
+    },
+    "Choosing a model whose files are missing asks to download them.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일이 없는 모델을 고르면 내려받기 화면이 나타납니다."
+          }
+        }
+      }
+    },
+    "Compute on": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연산 장치"
           }
         }
       }
@@ -207,6 +283,9 @@
         }
       }
     },
+    "GPU": {
+      "shouldTranslate": false
+    },
     "Identify speakers": {
       "localizations": {
         "ko": {
@@ -240,6 +319,16 @@
         }
       }
     },
+    "Models": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델"
+          }
+        }
+      }
+    },
     "Names and jargon, one per line": {
       "localizations": {
         "ko": {
@@ -256,6 +345,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "새 전사"
+          }
+        }
+      }
+    },
+    "New Transcription…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 전사…"
           }
         }
       }
@@ -280,12 +379,32 @@
         }
       }
     },
+    "Performance": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "성능"
+          }
+        }
+      }
+    },
     "Play": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "재생"
+          }
+        }
+      }
+    },
+    "Play from %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@부터 재생"
           }
         }
       }
@@ -326,6 +445,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "제거"
+          }
+        }
+      }
+    },
+    "Run Whisper's encoder on the Neural Engine": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper 인코더를 Neural Engine에서 실행"
           }
         }
       }
@@ -483,6 +612,16 @@
         }
       }
     },
+    "The model can be changed when no recording is being transcribed.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 중인 녹취가 없을 때 모델을 바꿀 수 있습니다."
+          }
+        }
+      }
+    },
     "The recording and its transcript will be removed. This cannot be undone.": {
       "localizations": {
         "ko": {
@@ -539,6 +678,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "전사"
+          }
+        }
+      }
+    },
+    "Transcription model": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 모델"
           }
         }
       }

@@ -77,6 +77,7 @@ struct RecordingView: View {
                         .font(.callout.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .help("Play from here")
+                        .accessibilityLabel(Text("Play from \(Timestamp.text(segment.startMs))"))
                     if let speaker = segment.speaker {
                         Text(Speakers.name(speaker, in: transcript))
                             .font(.callout.weight(.semibold))

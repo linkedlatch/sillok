@@ -16,6 +16,7 @@ final class ModelManager {
 
     private(set) var state: State = .checking
     private(set) var models: [CatalogModel] = []
+    private(set) var transcriptionModels: [CatalogModel] = []
     private(set) var downloadSize: Int64 = 0
     let directory: URL
     private var installTask: Task<Void, Never>?
@@ -26,7 +27,11 @@ final class ModelManager {
 
     func refresh() {
         do {
-            models = try Catalog.engineModels()
+            transcriptionModels = try Catalog.models().filter { $0.role == .transcription }
+            if let id = EngineSettings.transcriptionModel, !transcriptionModels.contains(where: { $0.id == id }) {
+                UserDefaults.standard.removeObject(forKey: EngineSettings.transcriptionModelKey)
+            }
+            models = try Catalog.engineModels(transcriptionModel: EngineSettings.transcriptionModel)
             let pending = try ModelInstaller.pendingFiles(for: models, in: directory)
             downloadSize = pending.filter(\.needsDownload).map(\.file.size).reduce(0, +)
             state = pending.isEmpty ? .ready : .missing

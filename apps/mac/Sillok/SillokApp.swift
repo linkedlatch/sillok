@@ -6,6 +6,7 @@ struct SillokApp: App {
     @State private var library: Library
     @State private var queue: JobQueue
     @State private var player = Player()
+    @State private var navigation = Navigation()
 
     init() {
         let models = ModelManager()
@@ -22,7 +23,21 @@ struct SillokApp: App {
                 .environment(library)
                 .environment(queue)
                 .environment(player)
+                .environment(navigation)
                 .task { models.refresh() }
+        }
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("New Transcription…") { navigation.importing = true }
+                    .keyboardShortcut("n")
+                    .disabled(models.state != .ready)
+            }
+        }
+
+        Settings {
+            SettingsView()
+                .environment(models)
+                .environment(queue)
         }
     }
 }

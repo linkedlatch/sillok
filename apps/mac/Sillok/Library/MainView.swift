@@ -13,8 +13,8 @@ struct MainView: View {
     @Environment(Library.self) private var library
     @Environment(JobQueue.self) private var queue
     @Environment(Player.self) private var player
+    @Environment(Navigation.self) private var navigation
     @State private var selection: Selection?
-    @State private var importing = false
     @State private var pending: [URL] = []
     @State private var deleting: Recording?
 
@@ -46,10 +46,9 @@ struct MainView: View {
             detail
         }
         .toolbar {
-            Button("New Transcription", systemImage: "plus") { importing = true }
-                .keyboardShortcut("n")
+            Button("New Transcription", systemImage: "plus") { navigation.importing = true }
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie],
+        .fileImporter(isPresented: Bindable(navigation).importing, allowedContentTypes: [.audio, .movie],
                       allowsMultipleSelection: true) { result in
             if case .success(let urls) = result, !urls.isEmpty { pending = urls }
         }
@@ -98,7 +97,7 @@ struct MainView: View {
             } description: {
                 Text("Choose a recording, or drop audio and video files here to transcribe them.")
             } actions: {
-                Button("New Transcription") { importing = true }
+                Button("New Transcription") { navigation.importing = true }
             }
         }
     }

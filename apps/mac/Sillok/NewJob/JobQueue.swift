@@ -28,7 +28,7 @@ final class JobQueue {
     private(set) var completed: (item: UUID, recording: UUID)?
     private let models: ModelManager
     private let library: Library
-    private var engine: Engine?
+    private var engine: (config: EngineConfig, engine: Engine)?
     private var worker: Task<Void, Never>?
     private var running: (id: UUID, task: Task<TranscriptionResult, Error>)?
 
@@ -71,8 +71,9 @@ final class JobQueue {
         }
         update(item.id) { $0.state = .reading(0) }
         do {
-            let engine = try engine ?? Engine(config: EngineConfig(modelsDirectory: models.directory))
-            self.engine = engine
+            let config = EngineSettings.config(modelsDirectory: models.directory)
+            let engine = try self.engine.flatMap { $0.config == config ? $0.engine : nil } ?? Engine(config: config)
+            self.engine = (config, engine)
             let staging = try library.store.makeStaging()
             do {
                 let result = try await transcribe(item, engine: engine, into: staging)
