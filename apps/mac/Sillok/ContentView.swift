@@ -1,4 +1,3 @@
-import SillokEngine
 import SwiftUI
 
 struct ContentView: View {
@@ -7,20 +6,11 @@ struct ContentView: View {
     var body: some View {
         Group {
             if models.state == .ready {
-                ContentUnavailableView {
-                    Label("Models Are Ready", systemImage: "checkmark.circle")
-                } description: {
-                    Text("Engine version \(Engine.version)")
-                }
+                MainView()
             } else {
                 ModelSetupView()
             }
         }
-        .frame(minWidth: 640, minHeight: 440)
+        .frame(minWidth: 760, minHeight: 480)
     }
-}
-
-#Preview {
-    ContentView()
-        .environment(ModelManager())
 }

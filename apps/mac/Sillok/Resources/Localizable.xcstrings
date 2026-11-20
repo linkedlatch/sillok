@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ %@": {
+      "shouldTranslate": false
+    },
     "%@ could not be extracted.": {
       "localizations": {
         "ko": {
@@ -41,6 +44,19 @@
         }
       }
     },
+    "%@ · %@": {
+      "shouldTranslate": false
+    },
+    "A model failed to load: %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델을 불러오지 못했습니다: %@"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "ko": {
@@ -57,6 +73,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 확인 중"
+          }
+        }
+      }
+    },
+    "Choose a recording, or drop audio and video files here to transcribe them.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취를 고르거나, 전사할 오디오·비디오 파일을 여기에 끌어다 놓으세요."
+          }
+        }
+      }
+    },
+    "Detect automatically": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 감지"
           }
         }
       }
@@ -101,16 +137,6 @@
         }
       }
     },
-    "Engine version %@": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "엔진 버전 %@"
-          }
-        }
-      }
-    },
     "Extracting %@": {
       "localizations": {
         "ko": {
@@ -121,12 +147,135 @@
         }
       }
     },
-    "Models Are Ready": {
+    "Failed": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "모델 준비 완료"
+            "value": "실패"
+          }
+        }
+      }
+    },
+    "Finding speech": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 구간 찾기"
+          }
+        }
+      }
+    },
+    "Identify speakers": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 구분"
+          }
+        }
+      }
+    },
+    "Identifying speakers": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 구분"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언어"
+          }
+        }
+      }
+    },
+    "Names and jargon, one per line": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름이나 전문 용어를 한 줄에 하나씩"
+          }
+        }
+      }
+    },
+    "New Transcription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 전사"
+          }
+        }
+      }
+    },
+    "No Recording Selected": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 녹취 없음"
+          }
+        }
+      }
+    },
+    "Reading the file": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 읽기"
+          }
+        }
+      }
+    },
+    "Recordings": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
+          }
+        }
+      }
+    },
+    "Saving": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
+          }
+        }
+      }
+    },
+    "Sillok": {
+      "shouldTranslate": false
+    },
+    "Sillok cannot read the audio of this file.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일의 오디오를 읽을 수 없습니다."
           }
         }
       }
@@ -137,6 +286,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sillok은 이 Mac에서 전사합니다. 아래 모델을 한 번만 받으면 이후에는 인터넷 없이 동작합니다."
+          }
+        }
+      }
+    },
+    "Speaker %lld": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 %lld"
           }
         }
       }
@@ -161,12 +320,72 @@
         }
       }
     },
+    "Terms": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "용어"
+          }
+        }
+      }
+    },
+    "Terms the recording may contain help the model spell them.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취에 나올 용어를 알려주면 모델이 정확히 받아 적는 데 도움이 됩니다."
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Read": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 결과를 읽을 수 없음"
+          }
+        }
+      }
+    },
     "The server refused %@ (HTTP %lld).": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "서버가 %1$@ 파일을 거부했습니다(HTTP %2$lld)."
+          }
+        }
+      }
+    },
+    "Timing words": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단어 시각 맞추기"
+          }
+        }
+      }
+    },
+    "Transcribe": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사"
+          }
+        }
+      }
+    },
+    "Transcribing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 중"
           }
         }
       }
@@ -197,6 +416,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "음성 감지"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기 중"
           }
         }
       }
