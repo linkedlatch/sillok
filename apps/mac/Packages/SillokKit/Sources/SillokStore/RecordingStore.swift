@@ -69,6 +69,14 @@ public struct RecordingStore: Sendable {
         try String(contentsOf: folder(for: id).appending(path: Self.transcriptName), encoding: .utf8)
     }
 
+    public func saveTranscript(_ json: String, for id: UUID) throws {
+        try Data(json.utf8).write(to: folder(for: id).appending(path: Self.transcriptName), options: .atomic)
+    }
+
+    public func delete(_ id: UUID) throws {
+        try FileManager.default.removeItem(at: folder(for: id))
+    }
+
     public func removeLeftoverStaging() {
         let items = (try? FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false))) ?? []
         for item in items where item.hasPrefix(".staging-") {

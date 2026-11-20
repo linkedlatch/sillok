@@ -31,6 +31,14 @@ struct RecordingStoreTests {
         #expect(!FileManager.default.fileExists(atPath: staging.path()))
     }
 
+    @Test func savesTranscriptsAndDeletesRecordings() throws {
+        let recording = try save("meeting", at: .now)
+        try store.saveTranscript("{\"version\": 2}", for: recording.id)
+        #expect(try store.transcriptJSON(for: recording.id) == "{\"version\": 2}")
+        try store.delete(recording.id)
+        #expect(try store.list().isEmpty)
+    }
+
     @Test func listsNothingWithoutAFolder() throws {
         #expect(try store.list().isEmpty)
     }

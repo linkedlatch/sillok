@@ -87,6 +87,36 @@
         }
       }
     },
+    "Delete": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제"
+          }
+        }
+      }
+    },
+    "Delete “%@”?": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 녹취를 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제…"
+          }
+        }
+      }
+    },
     "Detect automatically": {
       "localizations": {
         "ko": {
@@ -133,6 +163,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 내려받는 중"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내보내기"
           }
         }
       }
@@ -187,6 +227,9 @@
         }
       }
     },
+    "JSON": {
+      "shouldTranslate": false
+    },
     "Language": {
       "localizations": {
         "ko": {
@@ -227,6 +270,36 @@
         }
       }
     },
+    "Pause": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생"
+          }
+        }
+      }
+    },
+    "Play from here": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서부터 재생"
+          }
+        }
+      }
+    },
     "Reading the file": {
       "localizations": {
         "ko": {
@@ -253,6 +326,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "제거"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
           }
         }
       }
@@ -300,12 +383,32 @@
         }
       }
     },
+    "Speaker Names": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 이름"
+          }
+        }
+      }
+    },
     "Speaker diarization": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "화자 분리"
+          }
+        }
+      }
+    },
+    "Speaker {n}": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 {n}"
           }
         }
       }
@@ -340,12 +443,52 @@
         }
       }
     },
+    "Text": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트"
+          }
+        }
+      }
+    },
+    "The Speaker Names Cannot Be Saved": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자 이름을 저장할 수 없음"
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Exported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 결과를 내보낼 수 없음"
+          }
+        }
+      }
+    },
     "The Transcript Cannot Be Read": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "전사 결과를 읽을 수 없음"
+          }
+        }
+      }
+    },
+    "The recording and its transcript will be removed. This cannot be undone.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹음과 전사 결과가 삭제되며, 되돌릴 수 없습니다."
           }
         }
       }

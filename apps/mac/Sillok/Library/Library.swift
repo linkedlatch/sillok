@@ -18,6 +18,11 @@ final class Library {
         recordings = (try? store.list()) ?? []
     }
 
+    func delete(_ id: UUID) {
+        try? store.delete(id)
+        reload()
+    }
+
     func recording(_ id: UUID) -> Recording? {
         recordings.first { $0.id == id }
     }

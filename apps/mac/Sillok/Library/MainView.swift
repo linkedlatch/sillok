@@ -12,9 +12,11 @@ struct MainView: View {
     @Environment(ModelManager.self) private var models
     @Environment(Library.self) private var library
     @Environment(JobQueue.self) private var queue
+    @Environment(Player.self) private var player
     @State private var selection: Selection?
     @State private var importing = false
     @State private var pending: [URL] = []
+    @State private var deleting: Recording?
 
     var body: some View {
         NavigationSplitView {
@@ -28,11 +30,18 @@ struct MainView: View {
                 }
                 Section("Recordings") {
                     ForEach(library.recordings) { recording in
-                        RecordingRow(recording: recording).tag(Selection.recording(recording.id))
+                        RecordingRow(recording: recording)
+                            .tag(Selection.recording(recording.id))
+                            .contextMenu {
+                                Button("Delete…", role: .destructive) { deleting = recording }
+                            }
                     }
                 }
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            .onDeleteCommand {
+                if case .recording(let id) = selection { deleting = library.recording(id) }
+            }
         } detail: {
             detail
         }
@@ -56,6 +65,15 @@ struct MainView: View {
                 queue.enqueue(pending, options: options)
                 if queue.items.indices.contains(first) { selection = .job(queue.items[first].id) }
             }
+        }
+        .confirmationDialog(
+            Text("Delete “\(deleting?.title ?? "")”?"),
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            presenting: deleting
+        ) { recording in
+            Button("Delete", role: .destructive) { delete(recording) }
+        } message: { _ in
+            Text("The recording and its transcript will be removed. This cannot be undone.")
         }
         .onChange(of: queue.completed?.item) {
             guard let completed = queue.completed, selection == .job(completed.item) else { return }
@@ -83,6 +101,12 @@ struct MainView: View {
                 Button("New Transcription") { importing = true }
             }
         }
+    }
+
+    private func delete(_ recording: Recording) {
+        player.unload(recording.id)
+        if selection == .recording(recording.id) { selection = nil }
+        library.delete(recording.id)
     }
 
     private var transcriptionModel: CatalogModel? {
