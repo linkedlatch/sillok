@@ -16,11 +16,25 @@ struct ModelSetupView: View {
 
             Form {
                 ForEach(manager.models) { model in
-                    LabeledContent(model.role.title) {
-                        Text(verbatim: "\(model.family) \(model.quantization)")
-                        Text(model.files.map(\.size).reduce(0, +).formatted(.byteCount(style: .file)))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                    if model.role == .transcription {
+                        Picker(selection: chosen) {
+                            ForEach(manager.transcriptionModels) { option in
+                                option.recommended
+                                    ? Text("\(option.title) (recommended)").tag(option.id)
+                                    : Text(verbatim: option.title).tag(option.id)
+                            }
+                        } label: {
+                            Text(model.role.title)
+                            Text(model.details)
+                        }
+                        .disabled(installing)
+                    } else {
+                        LabeledContent(model.role.title) {
+                            Text(verbatim: model.title)
+                            Text(model.files.map(\.size).reduce(0, +).formatted(.byteCount(style: .file)))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
                     }
                 }
             }
@@ -32,6 +46,17 @@ struct ModelSetupView: View {
         }
         .padding(24)
         .frame(maxWidth: 560)
+    }
+
+    private var chosen: Binding<String> {
+        Binding(
+            get: { manager.transcriptionModel?.id ?? "" },
+            set: { manager.choose(transcriptionModel: $0) }
+        )
+    }
+
+    private var installing: Bool {
+        if case .installing = manager.state { true } else { false }
     }
 
     @ViewBuilder

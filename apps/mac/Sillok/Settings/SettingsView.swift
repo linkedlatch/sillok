@@ -18,7 +18,6 @@ struct SettingsView: View {
 private struct ModelSettingsView: View {
     @Environment(ModelManager.self) private var models
     @Environment(JobQueue.self) private var queue
-    @AppStorage(EngineSettings.transcriptionModelKey) private var selection = ""
 
     var body: some View {
         Form {
@@ -27,7 +26,7 @@ private struct ModelSettingsView: View {
                     ForEach(models.transcriptionModels) { model in
                         VStack(alignment: .leading, spacing: 2) {
                             model.recommended ? Text("\(model.title) (recommended)") : Text(verbatim: model.title)
-                            Text(details(of: model))
+                            Text(model.details)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -52,22 +51,9 @@ private struct ModelSettingsView: View {
 
     private var chosen: Binding<String> {
         Binding(
-            get: {
-                selection.isEmpty
-                    ? models.transcriptionModels.first(where: \.recommended)?.id ?? "" : selection
-            },
-            set: { id in
-                selection = models.transcriptionModels.first { $0.id == id }?.recommended == true ? "" : id
-                models.refresh()
-            }
+            get: { models.transcriptionModel?.id ?? "" },
+            set: { models.choose(transcriptionModel: $0) }
         )
-    }
-
-    private func details(of model: CatalogModel) -> String {
-        let languages = model.languages?.count ?? 0
-        let size = model.files.map(\.size).reduce(0, +).formatted(.byteCount(style: .file))
-        let memory = (model.memory ?? 0).formatted(.byteCount(style: .memory))
-        return String(localized: "\(languages) languages · \(size) download · \(memory) of memory")
     }
 }
 
@@ -104,5 +90,12 @@ private struct PerformanceSettingsView: View {
 extension CatalogModel {
     var title: String {
         "\(family) \(quantization)"
+    }
+
+    var details: String {
+        let languages = languages?.count ?? 0
+        let size = files.map(\.size).reduce(0, +).formatted(.byteCount(style: .file))
+        let memory = (memory ?? 0).formatted(.byteCount(style: .memory))
+        return String(localized: "\(languages) languages · \(size) download · \(memory) of memory")
     }
 }

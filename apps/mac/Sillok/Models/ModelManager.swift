@@ -40,6 +40,20 @@ final class ModelManager {
         }
     }
 
+    var transcriptionModel: CatalogModel? {
+        models.first { $0.role == .transcription }
+    }
+
+    func choose(transcriptionModel id: String) {
+        guard installTask == nil else { return }
+        if transcriptionModels.first(where: { $0.id == id })?.recommended == true {
+            UserDefaults.standard.removeObject(forKey: EngineSettings.transcriptionModelKey)
+        } else {
+            UserDefaults.standard.set(id, forKey: EngineSettings.transcriptionModelKey)
+        }
+        refresh()
+    }
+
     func install() {
         guard installTask == nil else { return }
         state = .installing(nil)
