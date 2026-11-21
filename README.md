@@ -25,6 +25,7 @@ src/media/                FFmpeg: reading audio and video files, converting audi
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
 apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
+apps/mac/                 the native macOS app (SwiftUI)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              llama.cpp, whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
 scripts/                  test audio, evaluation, generated tables, CI
@@ -124,6 +125,12 @@ xattr -dr com.apple.quarantine Sillok.app
 ```
 
 A copy built on the Mac itself has no download mark and opens directly.
+
+## macOS app
+
+`apps/mac` is a native SwiftUI app for macOS on Apple silicon, over the C ABI
+through XCFrameworks that `apps/mac/scripts/build-core.sh` builds; see
+`apps/mac/README.md`.
 
 ## Library use
 
