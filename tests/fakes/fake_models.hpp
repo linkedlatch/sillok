@@ -73,6 +73,8 @@ class FakeModels : public ModelProvider {
 
   LiveModels& live() { return live_; }
   int transcribe_calls() const { return transcribe_calls_; }
+  int transcribers_opened() const { return transcribers_opened_; }
+  int aligners_opened() const { return aligners_opened_; }
   // The longest audio of each CheckGlossary call.
   const std::vector<Milliseconds>& glossary_checks() const { return glossary_checks_; }
 
@@ -80,6 +82,8 @@ class FakeModels : public ModelProvider {
   FakeOptions options_;
   LiveModels live_;
   int transcribe_calls_ = 0;
+  int transcribers_opened_ = 0;
+  int aligners_opened_ = 0;
   std::vector<Milliseconds> glossary_checks_;
 
   friend class FakeTranscriber;

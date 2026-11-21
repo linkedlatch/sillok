@@ -216,12 +216,12 @@ class Transcriber extends ChangeNotifier {
   final KeepAwake keepAwake;
 
   /// The library request for a file in [lane], given the copy for listening
-  /// back in its job folder.
-  final JobRequest Function(QueueItem item, Lane lane, String copyPath) request;
+  /// back in its job folder and, for transcribing, the checkpoint there.
+  final JobRequest Function(QueueItem item, Lane lane, String copyPath, String? checkpointPath) request;
 
   List<QueueItem> _queue = [];
   RunState? _run;
-  List<Segment> _previews = [];
+  List<PreviewSegment> _previews = [];
   JobRun? _job;
   String? _preparing;
   JobRun? _prepareJob;
@@ -233,7 +233,7 @@ class Transcriber extends ChangeNotifier {
 
   List<QueueItem> get queue => List.unmodifiable(_queue);
   RunState? get run => _run;
-  List<Segment> get previews => List.unmodifiable(_previews);
+  List<Segment> get previews => List.unmodifiable([for (final p in _previews) p.segment]);
 
   /// The key of the file being prepared, if any.
   String? get preparing => _preparing;
@@ -325,7 +325,7 @@ class Transcriber extends ChangeNotifier {
   void showRunning(QueueItem item, RunState run, List<Segment> previews) {
     _queue = [item, ..._queue.where((i) => i.key != item.key)];
     _run = run;
-    _previews = previews;
+    _previews = [for (final segment in previews) PreviewSegment(segment, chunk: 0)];
     notifyListeners();
   }
 
@@ -377,7 +377,7 @@ class Transcriber extends ChangeNotifier {
     }
     _preparing = item.key;
     notifyListeners();
-    final job = _prepareJob = JobRun.start(request(item, Lane.prepare, store.audioOf(id).path));
+    final job = _prepareJob = JobRun.start(request(item, Lane.prepare, store.audioOf(id).path, null));
     JobEvent? last;
     await for (final event in job.events) {
       last = event;
@@ -429,7 +429,7 @@ class Transcriber extends ChangeNotifier {
     final timings = <RunStep, int>{};
     var stepStarted = 0;
     _previews = [];
-    final jobRequest = request(item, Lane.transcribe, store.audioOf(id).path);
+    final jobRequest = request(item, Lane.transcribe, store.audioOf(id).path, store.checkpointOf(id).path);
     _run = RunState(
       key: item.key,
       name: item.name,
@@ -467,7 +467,7 @@ class Transcriber extends ChangeNotifier {
           );
           notifyListeners();
         case Previews(:final segmentsJson):
-          _previews = [..._previews, ...parseSegments(segmentsJson)];
+          _previews = addPreview(_previews, segmentsJson);
           notifyListeners();
         case JobDone() || JobFailed() || Prepared():
           break;

@@ -28,25 +28,16 @@ constexpr double kTokensPerSecond = 5.0;
 // Text tokens at most: far more than any speech gives, a stop for a model
 // caught in a loop.
 std::size_t MaxTokens(std::size_t samples) { return 64 + 16 * samples / kSampleRate; }
-// What the qwen-asr package hears at once with word times
-// (MAX_FORCE_ALIGN_INPUT_SECONDS), its aligner's limit (OpenQwenAligner).
-constexpr Milliseconds kMaxAudio{180000};
+// What it hears at once: the pipeline's chunks are 30 s at most, and its
+// context holds that with room to spare (docs/DESIGN.md D68). The qwen-asr
+// package takes up to 180 s, its aligner's limit, in a larger context.
+constexpr Milliseconds kMaxAudio{30000};
+// Positions the model holds: 30 s of audio is 390, the most text for it 544,
+// leaving over 1000 for the prompt and its glossary. Each position costs
+// 28 layers × 1024 × 2 × 2 B of KV cache, 112 KiB.
+constexpr int kContext = 2048;
 // Shorter audio is padded with silence to this length (MIN_ASR_INPUT_SECONDS).
 constexpr std::size_t kMinSamples = kSampleRate / 2;
-
-// Whether `tokens` end in a pattern of up to 20 tokens repeated 20 times:
-// the model is caught in a loop (FixRepetitions then keeps it once).
-bool EndsInLoop(std::span<const llama_token> tokens) {
-  constexpr std::size_t kRepeats = 20;
-  for (std::size_t k = 1; k <= 20; ++k) {
-    if (tokens.size() < k * kRepeats) break;
-    const std::size_t from = tokens.size() - k * kRepeats;
-    bool loop = true;
-    for (std::size_t i = from + k; i < tokens.size() && loop; ++i) loop = tokens[i] == tokens[i - k];
-    if (loop) return true;
-  }
-  return false;
-}
 
 std::size_t ArgMax(const float* row, std::size_t size) {
   return static_cast<std::size_t>(std::max_element(row, row + size) - row);
@@ -75,7 +66,7 @@ class QwenTranscriber final : public Transcriber {
               .mmproj = config.asr_mmproj,
               .device = config.device,
               .threads = config.threads,
-              .context = 8192,
+              .context = kContext,
               .embeddings = false}),
         info_{.name = config.name,
               .device = config.device.name,
@@ -166,7 +157,7 @@ class QwenTranscriber final : public Transcriber {
       tokens.push_back(next);
       decoded += asr_.Piece(next);
       if (told != SIZE_MAX && LanguageStartDone(tokens)) told = SIZE_MAX;
-      if (tokens.size() % 16 == 0 && EndsInLoop(tokens)) break;
+      if (tokens.size() == limit) break;  // no use reading what comes next
       const float* row = asr_.Next(next, stop);
       logits.assign(row, row + asr_.row_size());
       on_progress(kEncodeShare +

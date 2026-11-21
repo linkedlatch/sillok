@@ -111,12 +111,12 @@ class AppState extends ChangeNotifier {
       store: store,
       queueFile: File('${_support.path}${Platform.pathSeparator}queue.json'),
       keepAwake: KeepAwake.system(),
-      request: (item, lane, copyPath) => JobRequest(
+      request: (item, lane, copyPath, checkpointPath) => JobRequest(
         modelsDir: modelsDir.path,
         gpuIndex: item.settings.gpuIndex,
         npu: item.settings.npu,
         transcriptionModel: item.settings.transcriptionModel,
-        options: jobOptions(item.settings, lane),
+        options: {...jobOptions(item.settings, lane), 'checkpoint': ?checkpointPath},
         source: item.path,
         copyPath: copyPath,
         prepare: lane == Lane.prepare,

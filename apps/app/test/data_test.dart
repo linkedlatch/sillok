@@ -33,6 +33,33 @@ class _CountingKeepAwake implements KeepAwake {
 }
 
 void main() {
+  test('timed segments of a piece replace its draft, in its place', () {
+    String preview(List<(int, String, bool)> items) => jsonEncode([
+      for (final (chunk, text, draft) in items)
+        {
+          'start_ms': chunk * 30000,
+          'end_ms': chunk * 30000 + 1000,
+          'text': text,
+          'language': 'ko',
+          'words': <Object>[],
+          'chunk': chunk,
+          if (draft) 'draft': true,
+        },
+    ]);
+    var shown = <PreviewSegment>[];
+    shown = addPreview(shown, preview([(0, 'heard 0', true)]));
+    shown = addPreview(shown, preview([(1, 'heard 1', true)]));
+    shown = addPreview(shown, preview([(0, 'a.', false), (0, 'b.', false)]));
+    expect([for (final p in shown) p.segment.text], ['a.', 'b.', 'heard 1']);
+    expect([for (final p in shown) p.draft], [false, false, true]);
+    shown = addPreview(shown, preview([(1, 'c.', false)]));
+    expect([for (final p in shown) p.segment.text], ['a.', 'b.', 'c.']);
+    // Whisper's pieces come timed, a few segments at a time.
+    shown = addPreview(shown, preview([(2, 'd.', false)]));
+    shown = addPreview(shown, preview([(2, 'e.', false)]));
+    expect([for (final p in shown) p.segment.text], ['a.', 'b.', 'c.', 'd.', 'e.']);
+  });
+
   test('paragraphs end at a new speaker, a pause or a minute', () {
     final transcript = Transcript.parse(_document);
     expect(
@@ -222,7 +249,7 @@ void main() {
     final transcriber = Transcriber(
       store: store,
       queueFile: queueFile,
-      request: (item, lane, copyPath) => throw StateError('nothing should run'),
+      request: (item, lane, copyPath, checkpointPath) => throw StateError('nothing should run'),
       keepAwake: awake,
     );
     addTearDown(transcriber.dispose);

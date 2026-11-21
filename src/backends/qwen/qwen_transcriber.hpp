@@ -23,7 +23,8 @@ struct QwenConfig {
 
 // Qwen3-ASR through llama.cpp, as the qwen-asr package runs it. It hands
 // over the text it heard without word times, which Qwen3-ForcedAligner
-// gives (OpenQwenAligner). A request is at most 180 s, the aligner's limit.
+// gives (OpenQwenAligner). A request is at most 30 s, what its context holds
+// (the model itself takes 20 minutes).
 // Throws ModelError if the model cannot be loaded.
 std::unique_ptr<Transcriber> OpenQwen(const QwenConfig& config);
 

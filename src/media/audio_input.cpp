@@ -1,5 +1,6 @@
 #include "media/audio_input.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <new>
 #include <stdexcept>
@@ -28,17 +29,15 @@ AudioInput::~AudioInput() = default;
 void AudioInput::Push(std::span<const float> interleaved, int sample_rate,
                       int channels) {
   if (audio_.finished()) throw std::invalid_argument("audio already finished");
-  if (channels < 1 || channels > 64) {
-    throw std::invalid_argument("channel count must be in [1, 64]");
+  if (!Accepts(sample_rate, channels)) {
+    throw std::invalid_argument("unsupported audio: " + std::to_string(sample_rate) + " Hz, " +
+                                std::to_string(channels) +
+                                " channels (8000-192000 Hz, 1-64 channels)");
   }
   if (interleaved.size() % static_cast<std::size_t>(channels) != 0) {
     throw std::invalid_argument("sample count is not a multiple of channels");
   }
   if (!swr_ || sample_rate != sample_rate_) {
-    if (sample_rate < 8000 || sample_rate > 192000) {
-      throw std::invalid_argument("unsupported sample rate " +
-                                  std::to_string(sample_rate));
-    }
     // A decoder may change the rate partway (broadcast streams, some HE-AAC):
     // drain the old resampler so the output stays one continuous stream.
     if (swr_) Convert(nullptr, 0);
@@ -58,7 +57,11 @@ void AudioInput::Push(std::span<const float> interleaved, int sample_rate,
   for (std::size_t frame = 0; frame < mono_.size(); ++frame) {
     float sum = 0.0f;
     for (std::size_t c = 0; c < count; ++c) {
-      sum += interleaved[frame * count + c];
+      // Before mixing and resampling, which would spread a NaN over the
+      // samples around it: NaN is silence, infinities full scale.
+      const float sample = interleaved[frame * count + c];
+      if (std::isnan(sample)) continue;
+      sum += std::isinf(sample) ? std::copysign(1.0f, sample) : sample;
     }
     mono_[frame] = sum / static_cast<float>(channels);
   }

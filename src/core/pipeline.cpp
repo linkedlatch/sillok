@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <iterator>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -16,6 +18,7 @@
 #include "core/cancel.hpp"
 #include "core/diarizer.hpp"
 #include "core/postprocess.hpp"
+#include "core/sha256.hpp"
 #include "core/transcriber.hpp"
 #include "core/words.hpp"
 
@@ -36,6 +39,7 @@ Speech DetectSpeech(const AudioBuffer& audio, const SegmenterOptions& options,
                     const StopToken& stop, Transcript& transcript) {
   progress(Stage::kAnalyze,
            0.0);  // before the model loads, which takes a while
+  ThrowIfStopped(stop);  // perhaps from the call above
   const auto detector = models.OpenVoiceDetector();
   Speech speech{.regions = {}, .probabilities = {}, .frame_samples = detector->FrameSamples()};
   // About 30 s per call, in whole frames so the detector state carries over.
@@ -56,6 +60,61 @@ Speech DetectSpeech(const AudioBuffer& audio, const SegmenterOptions& options,
   return speech;
 }
 
+// Identifies what a checkpoint was made of: the recording and the options
+// that shape its chunks and their transcription. The models are the caller's
+// to tell apart (CheckpointSink). Bump the first line when the same input
+// gives other chunks or other results.
+std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& options) {
+  Sha256 hash;
+  const auto add = [&](std::string_view text) {
+    hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
+    hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
+  };
+  add("sillok checkpoint 5");
+  add(options.language);
+  for (const std::string& term : options.glossary) add(term);
+  add("");
+  const SegmenterOptions& segmenter = options.segmenter;
+  for (const float threshold : {segmenter.speech_threshold, segmenter.silence_threshold}) {
+    add(std::to_string(threshold));
+  }
+  for (const Milliseconds time : {segmenter.min_speech, segmenter.min_silence, segmenter.before,
+                                  segmenter.after, segmenter.max_chunk}) {
+    add(std::to_string(time.count()));
+  }
+  constexpr SampleIndex kBlock = SampleIndex{kSampleRate} * 60;
+  for (SampleIndex begin = 0; begin < audio.size(); begin += kBlock) {
+    const std::vector<float> part = audio.Read({begin, begin + kBlock});
+    hash.Update(std::span(reinterpret_cast<const unsigned char*>(part.data()),
+                          part.size() * sizeof(float)));
+  }
+  return hash.HexDigest();
+}
+
+// What a run goes on from and where it records how far it got.
+struct Resumption {
+  const Checkpoint* resume = nullptr;  // of this run's key; null to start anew
+  CheckpointSink* sink = nullptr;      // may be null
+  std::string key;
+
+  const ChunkResult* Saved(Stage stage, std::size_t chunk) const {
+    if (resume == nullptr) return nullptr;
+    const auto& saved = stage == Stage::kTranscribe ? resume->transcribed : resume->aligned;
+    const auto found = saved.find(chunk);
+    return found == saved.end() ? nullptr : &found->second;
+  }
+  void Add(Stage stage, std::size_t chunk, const ChunkResult& result) const {
+    if (sink != nullptr) sink->AddChunk(stage, chunk, result);
+  }
+  // The model that ran `stage` in the earlier run, for a stage that did not
+  // load its own.
+  void SavedModel(const std::string& stage, Transcript& transcript) const {
+    if (resume == nullptr) return;
+    const auto found = resume->models.find(stage);
+    if (found != resume->models.end()) transcript.models[stage] = found->second;
+  }
+};
+
 // A chunk of speech, joined, with its place in the recording.
 std::vector<float> ReadJoined(const AudioBuffer& audio, std::span<const SampleRange> chunk,
                               const JoinedSpeech& joined) {
@@ -68,26 +127,41 @@ std::vector<float> ReadJoined(const AudioBuffer& audio, std::span<const SampleRa
   return pcm;
 }
 
-// Adds `words` of a chunk, timed within it, as a segment timed within the
-// recording, and previews it.
-void AddSegment(std::vector<Word> words, std::string language, const JoinedSpeech& joined,
-                const SegmentsCallback& on_segments, std::vector<Segment>& segments) {
+// `words` of a chunk, timed within it, as a segment timed within the
+// recording; none when no word is left.
+std::optional<Segment> ToSegment(std::vector<Word> words, std::string language,
+                                 const JoinedSpeech& joined) {
   words = CheckWords(std::move(words), ToMilliseconds(joined.size()));
-  if (words.empty()) return;
+  if (words.empty()) return std::nullopt;
   for (Word& word : words) {
     word.speaker = std::nullopt;
     std::tie(word.start, word.end) = joined.ToRecording(word.start, word.end);
   }
-  segments.push_back(MakeSegment(std::move(words), std::move(language)));
-  if (on_segments) on_segments(std::span(&segments.back(), 1));
+  return MakeSegment(std::move(words), std::move(language));
 }
 
 // What a transcriber heard in a chunk without word times, for the aligner.
 struct Heard {
+  std::size_t index = 0;  // of the chunk
   std::vector<SampleRange> chunk;
   std::string text;
   std::string language;
 };
+
+// The draft preview of what was heard: one segment over the chunk.
+Segment Draft(const Heard& heard) {
+  return Segment{.start = ToMilliseconds(heard.chunk.front().begin),
+                 .end = ToMilliseconds(heard.chunk.back().end),
+                 .text = heard.text,
+                 .language = heard.language,
+                 .speaker = std::nullopt,
+                 .words = {}};
+}
+
+void Show(const SegmentsCallback& on_segments, std::size_t chunk, bool draft,
+          std::span<const Segment> segments) {
+  if (on_segments && !segments.empty()) on_segments({.chunk = chunk, .draft = draft, .segments = segments});
+}
 
 // The transcription stage: segments with word times, or, from a transcriber
 // that leaves them to an aligner, what it heard in each chunk.
@@ -100,12 +174,28 @@ Transcribed TranscribeSpeech(
     const AudioBuffer& audio, const Speech& speech,
     const PipelineOptions& options, ModelProvider& models,
     const ProgressCallback& progress, const SegmentsCallback& on_segments,
-    const StopToken& stop, Transcript& transcript) {
+    const StopToken& stop, const Resumption& run, Transcript& transcript) {
   progress(Stage::kTranscribe,
            0.0);  // before the model loads, which takes a while
-  const auto transcriber = models.OpenTranscriber();
-  const Milliseconds longest = std::min(options.segmenter.max_chunk, transcriber->MaxAudio());
-  transcriber->CheckGlossary(options.glossary, longest);
+  ThrowIfStopped(stop);
+  std::unique_ptr<Transcriber> transcriber;
+  Milliseconds longest{0};
+  const auto open = [&] {
+    transcriber = models.OpenTranscriber();
+    if (run.resume == nullptr) {
+      longest = std::min(options.segmenter.max_chunk, transcriber->MaxAudio());
+      if (run.sink != nullptr) run.sink->Start(run.key, longest);
+    }
+    transcriber->CheckGlossary(options.glossary, longest);
+    if (run.sink != nullptr) run.sink->AddModel("transcription", transcriber->Info());
+  };
+  // A run going on takes the earlier run's chunks, without loading the model
+  // when they are all done.
+  if (run.resume != nullptr) {
+    longest = run.resume->max_chunk;
+  } else {
+    open();
+  }
   const std::vector<std::vector<SampleRange>> chunks =
       ChunkSpeech(speech.regions, speech.probabilities, speech.frame_samples, longest);
   // Each chunk's language is told from its own speech: a recording may change
@@ -117,31 +207,55 @@ Transcribed TranscribeSpeech(
   SampleIndex done_samples = 0;
   for (const std::vector<SampleRange>& chunk : chunks) total_samples += JoinedSpeech(chunk).size();
 
-  for (const std::vector<SampleRange>& chunk : chunks) {
+  for (std::size_t index = 0; index < chunks.size(); ++index) {
     ThrowIfStopped(stop);
+    const std::vector<SampleRange>& chunk = chunks[index];
     const JoinedSpeech joined(chunk);
-    const std::vector<float> pcm = ReadJoined(audio, chunk, joined);
-    transcriber->Transcribe(
-        TranscribeRequest{.pcm = pcm, .language = language, .glossary = options.glossary},
-        [&](TranscribedWords transcribed) {
-          if (!transcribed.words.empty()) {
-            AddSegment(std::move(transcribed.words), std::move(transcribed.language), joined,
-                       on_segments, result.segments);
-          } else if (!transcribed.text.empty()) {
-            result.heard.push_back({.chunk = chunk,
-                                    .text = std::move(transcribed.text),
-                                    .language = std::move(transcribed.language)});
-          }
-        },
-        [&](double fraction) {
-          const double done = static_cast<double>(done_samples) +
-                              std::clamp(fraction, 0.0, 1.0) * static_cast<double>(joined.size());
-          progress(Stage::kTranscribe, done / static_cast<double>(total_samples));
-        },
-        stop);
+    ChunkResult done;
+    if (const ChunkResult* saved = run.Saved(Stage::kTranscribe, index)) {
+      done = *saved;
+      Show(on_segments, index, false, done.segments);
+    } else {
+      if (!transcriber) open();
+      const std::vector<float> pcm = ReadJoined(audio, chunk, joined);
+      transcriber->Transcribe(
+          TranscribeRequest{.pcm = pcm, .language = language, .glossary = options.glossary},
+          [&](TranscribedWords transcribed) {
+            if (!transcribed.words.empty()) {
+              if (auto segment = ToSegment(std::move(transcribed.words),
+                                           std::move(transcribed.language), joined)) {
+                done.segments.push_back(std::move(*segment));
+                Show(on_segments, index, false, std::span(&done.segments.back(), 1));
+              }
+            } else if (!transcribed.text.empty()) {
+              if (!done.text.empty()) throw std::logic_error("a transcriber gave one chunk's text twice");
+              done.text = std::move(transcribed.text);
+              done.language = std::move(transcribed.language);
+            }
+          },
+          [&](double fraction) {
+            const double part = static_cast<double>(done_samples) +
+                                std::clamp(fraction, 0.0, 1.0) * static_cast<double>(joined.size());
+            progress(Stage::kTranscribe, part / static_cast<double>(total_samples));
+          },
+          stop);
+      run.Add(Stage::kTranscribe, index, done);
+    }
+    if (!done.text.empty()) {
+      result.heard.push_back({.index = index, .chunk = chunk, .text = done.text, .language = done.language});
+      const Segment draft = Draft(result.heard.back());
+      Show(on_segments, index, true, std::span(&draft, 1));
+    }
+    result.segments.insert(result.segments.end(), std::make_move_iterator(done.segments.begin()),
+                           std::make_move_iterator(done.segments.end()));
     done_samples += joined.size();
+    progress(Stage::kTranscribe, static_cast<double>(done_samples) / static_cast<double>(total_samples));
   }
-  transcript.models["transcription"] = transcriber->Info();
+  if (transcriber) {
+    transcript.models["transcription"] = transcriber->Info();
+  } else {
+    run.SavedModel("transcription", transcript);
+  }
   return result;
 }
 
@@ -150,10 +264,15 @@ Transcribed TranscribeSpeech(
 std::vector<Segment> AlignSpeech(const AudioBuffer& audio, const std::vector<Heard>& heard,
                                  ModelProvider& models, const ProgressCallback& progress,
                                  const SegmentsCallback& on_segments, const StopToken& stop,
-                                 Transcript& transcript) {
+                                 const Resumption& run, Transcript& transcript) {
   progress(Stage::kAlign, 0.0);  // before the model loads
-  const auto aligner = models.OpenAligner();
-  if (!aligner) throw std::logic_error("the transcriber left out word times and there is no aligner");
+  ThrowIfStopped(stop);
+  std::unique_ptr<Aligner> aligner;
+  const auto open = [&] {
+    aligner = models.OpenAligner();
+    if (!aligner) throw std::logic_error("the transcriber left out word times and there is no aligner");
+    if (run.sink != nullptr) run.sink->AddModel("alignment", aligner->Info());
+  };
 
   std::vector<Segment> segments;
   SampleIndex total_samples = 0;
@@ -163,25 +282,46 @@ std::vector<Segment> AlignSpeech(const AudioBuffer& audio, const std::vector<Hea
   for (const Heard& item : heard) {
     ThrowIfStopped(stop);
     const JoinedSpeech joined(item.chunk);
-    const std::vector<float> pcm = ReadJoined(audio, item.chunk, joined);
-    std::vector<Word> words = aligner->Align(
-        AlignRequest{.pcm = pcm, .text = item.text, .language = item.language},
-        [&](double fraction) {
-          const double done = static_cast<double>(done_samples) +
-                              std::clamp(fraction, 0.0, 1.0) * static_cast<double>(joined.size());
-          progress(Stage::kAlign, done / static_cast<double>(total_samples));
-        },
-        stop);
-    std::vector<Word> sentence;
-    for (Word& word : words) {
-      const bool ends = EndsSentence(word.text);
-      sentence.push_back(std::move(word));
-      if (ends) AddSegment(std::exchange(sentence, {}), item.language, joined, on_segments, segments);
+    ChunkResult done;
+    if (const ChunkResult* saved = run.Saved(Stage::kAlign, item.index)) {
+      done = *saved;
+    } else {
+      if (!aligner) open();
+      const std::vector<float> pcm = ReadJoined(audio, item.chunk, joined);
+      std::vector<Word> words = aligner->Align(
+          AlignRequest{.pcm = pcm, .text = item.text, .language = item.language},
+          [&](double fraction) {
+            const double part = static_cast<double>(done_samples) +
+                                std::clamp(fraction, 0.0, 1.0) * static_cast<double>(joined.size());
+            progress(Stage::kAlign, part / static_cast<double>(total_samples));
+          },
+          stop);
+      std::vector<Word> sentence;
+      const auto add = [&] {
+        if (auto segment = ToSegment(std::exchange(sentence, {}), item.language, joined)) {
+          done.segments.push_back(std::move(*segment));
+        }
+      };
+      for (Word& word : words) {
+        const bool ends = EndsSentence(word.text);
+        sentence.push_back(std::move(word));
+        if (ends) add();
+      }
+      if (!sentence.empty()) add();
+      run.Add(Stage::kAlign, item.index, done);
     }
-    if (!sentence.empty()) AddSegment(std::move(sentence), item.language, joined, on_segments, segments);
+    // All of the chunk at once, to replace its draft.
+    Show(on_segments, item.index, false, done.segments);
+    segments.insert(segments.end(), std::make_move_iterator(done.segments.begin()),
+                    std::make_move_iterator(done.segments.end()));
     done_samples += joined.size();
+    progress(Stage::kAlign, static_cast<double>(done_samples) / static_cast<double>(total_samples));
   }
-  transcript.models["alignment"] = aligner->Info();
+  if (aligner) {
+    transcript.models["alignment"] = aligner->Info();
+  } else {
+    run.SavedModel("alignment", transcript);
+  }
   return segments;
 }
 
@@ -192,6 +332,7 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
                                  Transcript& transcript) {
   progress(Stage::kDiarize,
            0.0);  // before the model loads, which takes a while
+  ThrowIfStopped(stop);
   const auto diarizer = models.OpenDiarizer();
   for (SampleIndex begin = 0; begin < audio.size();
        begin += kDiarizationChunk) {
@@ -211,7 +352,8 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
 
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
-                       StopToken stop, const SegmentsCallback& on_segments) {
+                       StopToken stop, const SegmentsCallback& on_segments,
+                       const Checkpoint* resume, CheckpointSink* checkpoints) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
   if (options.language != "auto") {
     const std::vector<std::string> languages = models.Languages();
@@ -227,21 +369,31 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   const Speech speech = DetectSpeech(
       audio, options.segmenter, models, progress, stop, transcript);
 
+  Resumption run{.resume = nullptr, .sink = checkpoints, .key = {}};
+  if (resume != nullptr || checkpoints != nullptr) {
+    run.key = CheckpointKey(audio, options);
+    if (resume != nullptr && resume->key == run.key) run.resume = resume;
+  }
+
   // Each stage opens its model in its own function, so the model is freed
   // before the next stage starts.
   Transcribed transcribed;
   if (!speech.regions.empty()) {
     transcribed = TranscribeSpeech(audio, speech, options, models, progress,
-                                   on_segments, stop, transcript);
+                                   on_segments, stop, run, transcript);
+  } else {
+    progress(Stage::kTranscribe, 0.0);  // every stage starts with 0
   }
   progress(Stage::kTranscribe, 1.0);
   std::vector<Segment> segments = std::move(transcribed.segments);
   if (!transcribed.heard.empty()) {
-    segments = AlignSpeech(audio, transcribed.heard, models, progress, on_segments, stop,
+    segments = AlignSpeech(audio, transcribed.heard, models, progress, on_segments, stop, run,
                            transcript);
     progress(Stage::kAlign, 1.0);
   }
 
+  // Diarization runs on the whole recording each time: it is quick, and its
+  // speakers carry over from one part to the next.
   if (options.diarize && !segments.empty()) {
     const std::vector<SpeakerTurn> turns =
         Diarize(audio, models, progress, stop, transcript);

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <thread>
@@ -153,9 +154,16 @@ TEST(PipelineTest, TimesAreInTheRecordingAndOrdered) {
 
 TEST(PipelineTest, SilenceProducesNoTranscriptionModel) {
   FakeModels models(FakeOptions{});
-  const Transcript transcript = RunFakes(RenderScript({}, Milliseconds{10000}), models);
+  std::vector<double> transcribing;
+  const Transcript transcript =
+      RunFakes(RenderScript({}, Milliseconds{10000}), models, {}, [&](Stage stage, double fraction) {
+        if (stage == Stage::kTranscribe) transcribing.push_back(fraction);
+      });
   EXPECT_TRUE(transcript.segments.empty());
   EXPECT_EQ(models.transcribe_calls(), 0);
+  EXPECT_EQ(models.transcribers_opened(), 0);
+  // The stage still starts with 0, as every stage does.
+  EXPECT_EQ(transcribing, (std::vector<double>{0.0, 1.0}));
   EXPECT_EQ(transcript.models.count("transcription"), 0u);
 }
 
@@ -197,7 +205,9 @@ TEST(PipelineTest, AlignsTextWithoutTimesInAStageOfItsOwn) {
         stage = now;
         if (stages.empty() || stages.back() != now) stages.push_back(now);
       },
-      {}, [&](std::span<const Segment> segments) { previews.insert(previews.end(), segments.size(), stage); });
+      {}, [&](const Preview& preview) {
+        if (!preview.draft) previews.insert(previews.end(), preview.segments.size(), stage);
+      });
 
   EXPECT_EQ(AllWords(transcript), Expected(script));
   // The aligner's times, back in the recording.
@@ -206,7 +216,7 @@ TEST(PipelineTest, AlignsTextWithoutTimesInAStageOfItsOwn) {
   EXPECT_EQ(transcript.segments.back().speaker, 1);
   EXPECT_EQ(stages, (std::vector<Stage>{Stage::kAnalyze, Stage::kTranscribe, Stage::kAlign,
                                         Stage::kDiarize}));
-  // Previews come with times, so from the aligner.
+  // Previews with times come from the aligner.
   ASSERT_FALSE(previews.empty());
   for (const Stage at : previews) EXPECT_EQ(at, Stage::kAlign);
   EXPECT_FALSE(models.live().aligner_with_transcriber);
@@ -261,6 +271,8 @@ TEST(PipelineTest, CancelStopsDuringTranscriptionAndFreesModels) {
                Cancelled);
   EXPECT_EQ(windows_after_cancel, 0);
   EXPECT_EQ(models.live().transcribers, 0);
+  // Stopped as the stage started, before its model loaded.
+  EXPECT_EQ(models.transcribers_opened(), 0);
 }
 
 TEST(PipelineTest, CancelFromAnotherThread) {
@@ -373,6 +385,247 @@ TEST(PipelineTest, RefusesAGlossaryTheModelHasNoRoomFor) {
     EXPECT_STREQ(error.what(), "glossary is 18 tokens; this model takes at most 15");
   }
   EXPECT_EQ(models.transcribe_calls(), 2);  // refused before transcribing
+}
+
+// Previews by chunk, in the order they came.
+struct Shown {
+  std::size_t chunk = 0;
+  bool draft = false;
+  Stage stage = Stage::kAnalyze;
+  std::vector<Segment> segments;
+};
+
+TEST(PipelineTest, PreviewsWhatWasHeardBeforeTheAlignerTimesIt) {
+  const auto script = Speech(0, 150, Milliseconds{500});  // a minute: several chunks
+  FakeOptions fakes = OptionsFor(script);
+  fakes.separate_alignment = true;
+  FakeModels models(fakes);
+  Stage stage = Stage::kAnalyze;
+  std::vector<Shown> shown;
+  const Transcript transcript = RunPipeline(
+      RenderScript(script, Milliseconds{61000}), {}, models, [&](Stage now, double) { stage = now; },
+      {}, [&](const Preview& preview) {
+        shown.push_back({.chunk = preview.chunk,
+                         .draft = preview.draft,
+                         .stage = stage,
+                         .segments = {preview.segments.begin(), preview.segments.end()}});
+      });
+
+  std::vector<std::size_t> drafts;
+  std::vector<std::size_t> timed;
+  std::string drafted_text;
+  std::vector<std::string> timed_words;
+  for (const Shown& preview : shown) {
+    if (preview.draft) {
+      // One segment over the chunk, with its text and no words, while transcribing.
+      EXPECT_EQ(preview.stage, Stage::kTranscribe);
+      ASSERT_EQ(preview.segments.size(), 1u);
+      EXPECT_TRUE(preview.segments[0].words.empty());
+      EXPECT_LT(preview.segments[0].start, preview.segments[0].end);
+      drafts.push_back(preview.chunk);
+      drafted_text += (drafted_text.empty() ? "" : " ") + preview.segments[0].text;
+    } else {
+      // Each chunk's timed segments at once, from the aligner.
+      EXPECT_EQ(preview.stage, Stage::kAlign);
+      timed.push_back(preview.chunk);
+      for (const Segment& segment : preview.segments) {
+        for (const Word& word : segment.words) timed_words.push_back(word.text);
+      }
+    }
+  }
+  EXPECT_GT(drafts.size(), 1u);
+  EXPECT_EQ(timed, drafts);
+  for (std::size_t i = 1; i < drafts.size(); ++i) EXPECT_GT(drafts[i], drafts[i - 1]);
+  EXPECT_EQ(timed_words, Expected(script));
+  std::string all;
+  for (const std::string& word : Expected(script)) all += (all.empty() ? "" : " ") + word;
+  EXPECT_EQ(drafted_text, all);
+  EXPECT_EQ(AllWords(transcript), Expected(script));
+}
+
+TEST(PipelineTest, PreviewsTimedWordsByChunkWhileTranscribing) {
+  const auto script = Speech(0, 150, Milliseconds{500});
+  FakeModels models(OptionsFor(script));
+  std::vector<std::size_t> chunks;
+  RunPipeline(RenderScript(script, Milliseconds{61000}), {}, models, [](Stage, double) {}, {},
+              [&](const Preview& preview) {
+                EXPECT_FALSE(preview.draft);
+                chunks.push_back(preview.chunk);
+              });
+  ASSERT_FALSE(chunks.empty());
+  EXPECT_EQ(chunks.front(), 0u);
+  EXPECT_GT(chunks.back(), 0u);
+  for (std::size_t i = 1; i < chunks.size(); ++i) EXPECT_GE(chunks[i], chunks[i - 1]);
+}
+
+// Keeps a run's checkpoint in memory.
+class MemorySink : public CheckpointSink {
+ public:
+  void Start(const std::string& key, Milliseconds max_chunk) override {
+    saved = {};
+    saved.key = key;
+    saved.max_chunk = max_chunk;
+    ++starts;
+  }
+  void AddChunk(Stage stage, std::size_t chunk, const ChunkResult& result) override {
+    (stage == Stage::kAlign ? saved.aligned : saved.transcribed)[chunk] = result;
+  }
+  void AddModel(const std::string& stage, const ModelInfo& info) override {
+    saved.models[stage] = info;
+  }
+
+  Checkpoint saved;
+  int starts = 0;
+};
+
+// What a transcript says, for comparing runs.
+struct Said {
+  std::vector<std::string> words;
+  std::vector<long long> starts;
+  std::vector<std::optional<int>> speakers;
+  bool operator==(const Said&) const = default;
+};
+
+Said SaidIn(const Transcript& transcript) {
+  Said said;
+  for (const Segment& segment : transcript.segments) {
+    said.speakers.push_back(segment.speaker);
+    for (const Word& word : segment.words) {
+      said.words.push_back(word.text);
+      said.starts.push_back(word.start.count());
+    }
+  }
+  return said;
+}
+
+std::vector<ScriptWord> TwoSpeakers() {
+  auto script = Speech(0, 75, Milliseconds{500});
+  auto second = Speech(75, 75, Milliseconds{31000});
+  for (ScriptWord& word : second) word.speaker = 1;
+  script.insert(script.end(), second.begin(), second.end());
+  return script;
+}
+
+TEST(PipelineTest, GoesOnFromACheckpointAsOneRunWould) {
+  const auto script = TwoSpeakers();
+  const AudioBuffer audio = RenderScript(script, Milliseconds{62000});
+  PipelineOptions options;
+  options.diarize = true;
+  FakeModels whole(OptionsFor(script));
+  const Transcript expected = RunPipeline(audio, options, whole, [](Stage, double) {}, {});
+  const int chunks = whole.transcribe_calls();
+  ASSERT_GT(chunks, 1);
+
+  // Stopped while transcribing the second chunk: the first is kept.
+  FakeOptions stopping = OptionsFor(script);
+  StopSource source;
+  int calls = 0;
+  stopping.on_transcribe = [&](const TranscribeRequest&) {
+    if (++calls == 2) source.RequestStop();
+  };
+  FakeModels first(stopping);
+  MemorySink sink;
+  EXPECT_THROW(RunPipeline(audio, options, first, [](Stage, double) {}, source.Token(), {},
+                           nullptr, &sink),
+               Cancelled);
+  EXPECT_EQ(sink.starts, 1);
+  ASSERT_EQ(sink.saved.transcribed.size(), 1u);
+  EXPECT_EQ(sink.saved.max_chunk, Milliseconds{30000});
+  EXPECT_EQ(sink.saved.models.at("transcription").name, "fake-transcriber");
+
+  FakeModels second(OptionsFor(script));
+  std::vector<std::size_t> previewed;
+  const Checkpoint resume = sink.saved;
+  const Transcript continued = RunPipeline(
+      audio, options, second, [](Stage, double) {}, {},
+      [&](const Preview& preview) { previewed.push_back(preview.chunk); }, &resume, &sink);
+  EXPECT_EQ(SaidIn(continued), SaidIn(expected));
+  EXPECT_EQ(second.transcribe_calls(), chunks - 1);
+  EXPECT_EQ(sink.starts, 1);  // went on in the same checkpoint
+  EXPECT_EQ(sink.saved.transcribed.size(), static_cast<std::size_t>(chunks));
+  // The kept chunk is previewed first.
+  ASSERT_FALSE(previewed.empty());
+  EXPECT_EQ(previewed.front(), 0u);
+  EXPECT_EQ(continued.models.at("transcription").name, "fake-transcriber");
+  EXPECT_EQ(continued.models.count("diarization"), 1u);
+}
+
+TEST(PipelineTest, LoadsNeitherModelWhenTheCheckpointHasEveryChunk) {
+  const auto script = TwoSpeakers();
+  const AudioBuffer audio = RenderScript(script, Milliseconds{62000});
+  FakeOptions fakes = OptionsFor(script);
+  fakes.separate_alignment = true;
+  PipelineOptions options;
+  options.diarize = true;
+  FakeModels first(fakes);
+  MemorySink sink;
+  const Transcript expected =
+      RunPipeline(audio, options, first, [](Stage, double) {}, {}, {}, nullptr, &sink);
+  EXPECT_FALSE(sink.saved.aligned.empty());
+
+  // As after a run that failed in diarization.
+  FakeModels second(fakes);
+  std::vector<bool> drafts;
+  const Checkpoint resume = sink.saved;
+  const Transcript continued = RunPipeline(
+      audio, options, second, [](Stage, double) {}, {},
+      [&](const Preview& preview) { drafts.push_back(preview.draft); }, &resume, &sink);
+  EXPECT_EQ(SaidIn(continued), SaidIn(expected));
+  EXPECT_EQ(second.transcribers_opened(), 0);
+  EXPECT_EQ(second.aligners_opened(), 0);
+  EXPECT_EQ(continued.models.at("transcription").name, "fake-transcriber");
+  EXPECT_EQ(continued.models.at("alignment").name, "fake-aligner");
+  // Drafts first, then their timed segments.
+  ASSERT_FALSE(drafts.empty());
+  EXPECT_TRUE(drafts.front());
+  EXPECT_FALSE(drafts.back());
+}
+
+TEST(PipelineTest, GoesOnAligningFromACheckpoint) {
+  const auto script = TwoSpeakers();
+  const AudioBuffer audio = RenderScript(script, Milliseconds{62000});
+  FakeOptions fakes = OptionsFor(script);
+  fakes.separate_alignment = true;
+  FakeModels whole(fakes);
+  const Transcript expected = RunPipeline(audio, {}, whole, [](Stage, double) {}, {});
+
+  // Stopped once the first chunk is aligned.
+  FakeModels first(fakes);
+  MemorySink sink;
+  StopSource source;
+  EXPECT_THROW(RunPipeline(audio, {}, first,
+                           [&](Stage stage, double fraction) {
+                             if (stage == Stage::kAlign && fraction > 0) source.RequestStop();
+                           },
+                           source.Token(), {}, nullptr, &sink),
+               Cancelled);
+  EXPECT_EQ(sink.saved.aligned.size(), 1u);
+  EXPECT_GT(sink.saved.transcribed.size(), 1u);
+
+  FakeModels second(fakes);
+  const Checkpoint resume = sink.saved;
+  const Transcript continued =
+      RunPipeline(audio, {}, second, [](Stage, double) {}, {}, {}, &resume, &sink);
+  EXPECT_EQ(SaidIn(continued), SaidIn(expected));
+  EXPECT_EQ(second.transcribers_opened(), 0);
+  EXPECT_EQ(second.aligners_opened(), 1);
+}
+
+TEST(PipelineTest, StartsAnewFromACheckpointOfOtherOptions) {
+  const auto script = TwoSpeakers();
+  const AudioBuffer audio = RenderScript(script, Milliseconds{62000});
+  FakeModels first(OptionsFor(script));
+  MemorySink sink;
+  RunPipeline(audio, {}, first, [](Stage, double) {}, {}, {}, nullptr, &sink);
+  const Checkpoint resume = sink.saved;
+
+  PipelineOptions english;
+  english.language = "en";
+  FakeModels second(OptionsFor(script));
+  RunPipeline(audio, english, second, [](Stage, double) {}, {}, {}, &resume, &sink);
+  EXPECT_EQ(second.transcribe_calls(), first.transcribe_calls());
+  EXPECT_EQ(sink.starts, 2);
+  EXPECT_NE(sink.saved.key, resume.key);
 }
 
 }  // namespace

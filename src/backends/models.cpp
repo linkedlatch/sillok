@@ -138,14 +138,14 @@ CatalogModel Qwen(const char* quantization, QwenFile asr, QwenFile aligner) {
                    .languages = QwenLanguages()};
   entry.aligner = true;
   // Memory: the larger stage, as the speech model is freed before the
-  // aligner loads; each takes its two files, its KV cache (28 layers, 8192
-  // positions, 1024 wide, f16: 896 MiB), llama.cpp's compute buffers on the
-  // GPU (the speech model 345, the aligner 622 MiB; the CPU's are smaller)
+  // aligner loads; each takes its two files, its KV cache (28 layers, 2048
+  // positions, 1024 wide, f16: 224 MiB), llama.cpp's compute buffers on the
+  // GPU (the speech model 333, the aligner 620 MiB; the CPU's are smaller)
   // and its audio encoder's 159 MiB, which mtmd takes 8 s of audio at a time
-  // whatever the chunk (docs/DESIGN.md D65).
+  // whatever the chunk (docs/DESIGN.md D65, D68).
   constexpr std::uint64_t kMiB = 1024 * 1024;
-  const std::uint64_t speech = entry.files[0].size + entry.files[1].size + (896 + 345 + 159) * kMiB;
-  const std::uint64_t aligning = entry.files[2].size + entry.files[3].size + (896 + 622 + 159) * kMiB;
+  const std::uint64_t speech = entry.files[0].size + entry.files[1].size + (224 + 333 + 159) * kMiB;
+  const std::uint64_t aligning = entry.files[2].size + entry.files[3].size + (224 + 620 + 159) * kMiB;
   entry.memory = std::max(speech, aligning);
   return entry;
 }

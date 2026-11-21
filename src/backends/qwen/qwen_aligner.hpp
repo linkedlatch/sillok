@@ -24,11 +24,11 @@ class QwenAligner {
   QwenAligner(const std::filesystem::path& model, const std::filesystem::path& mmproj,
               const ComputeDevice& device, int threads);
 
-  // Where the units of a transcript of `pcm` (16 kHz, at most 180 s) start
+  // Where the units of a transcript of `pcm` (16 kHz, at most 30 s) start
   // and end, in milliseconds, two per unit, as the model places them (before
   // FixTimestamps). `on_progress` receives the fraction done. Throws
   // ModelError when the audio and the units do not fit the model at once
-  // (8192 positions: 180 s of audio leaves room for about 1900 units).
+  // (2048 positions: 30 s of audio leaves room for about 550 units).
   std::vector<int> Align(std::span<const float> pcm, std::span<const AlignUnit> units,
                          const std::function<void(double)>& on_progress, const StopToken& stop);
 
@@ -50,7 +50,8 @@ struct QwenAlignerConfig {
 };
 
 // Word times for Qwen3-ASR's text from Qwen3-ForcedAligner, as the qwen-asr
-// package places them: requests of at most 180 s, shorter ones padded with
+// package places them: requests of at most 30 s (the package takes 180 s in a
+// larger context), shorter ones padded with
 // silence to 0.5 s. Throws ModelError if the model cannot be loaded.
 std::unique_ptr<Aligner> OpenQwenAligner(const QwenAlignerConfig& config);
 

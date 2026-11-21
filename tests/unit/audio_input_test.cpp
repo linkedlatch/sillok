@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <span>
 #include <stdexcept>
@@ -167,6 +168,35 @@ TEST(LoudnessTest, LeavesSilenceSilentAndKeepsShortInput) {
   EXPECT_EQ(*std::max_element(out.begin(), out.end()), 0.0f);
   EXPECT_EQ(EvenOut(std::vector<float>(10, 0.1f)).size(), 10u);
   EXPECT_TRUE(EvenOut({}).empty());
+}
+
+TEST(LoudnessTest, NaNAndInfinitiesDoNotSilenceTheAudioAroundThem) {
+  // Stereo at 48 kHz: a NaN in one channel at 2 s, and +inf against -inf at
+  // 2.5 s, which would add up to NaN. The resampler spreads a NaN over its
+  // taps, 33 samples at 16 kHz.
+  const auto tone = Sine(48000, 300.0, 5.0);
+  std::vector<float> pcm(tone.size() * 2);
+  for (std::size_t i = 0; i < tone.size(); ++i) pcm[i * 2] = pcm[i * 2 + 1] = tone[i];
+  const float inf = std::numeric_limits<float>::infinity();
+  pcm[48000 * 2 * 2] = std::nanf("");
+  pcm[48000 * 5] = inf;
+  pcm[48000 * 5 + 1] = -inf;
+
+  AudioBuffer audio;
+  AudioInput input(audio);
+  input.Push(pcm, 48000, 2);
+  input.Finish();
+  const auto out = audio.Read({0, audio.size()});
+  ASSERT_NEAR(static_cast<double>(out.size()), 5.0 * 16000.0, 2.0);
+  for (const std::size_t at : {std::size_t{32000}, std::size_t{40000}}) {
+    std::size_t run = 0;
+    std::size_t longest = 0;
+    for (std::size_t i = at - 200; i < at + 200; ++i) {
+      run = out[i] == 0.0f ? run + 1 : 0;
+      longest = std::max(longest, run);
+    }
+    EXPECT_LT(longest, 3u) << at;
+  }
 }
 
 TEST(LoudnessTest, BlockSizeDoesNotChangeOutput) {

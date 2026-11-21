@@ -169,6 +169,8 @@ TEST_F(CapiTest, PreviewsSegmentsWhileTranscribing) {
     ++self->calls;
     for (const Json& segment : Json::parse(json)) {
       EXPECT_FALSE(segment.contains("speaker"));
+      EXPECT_TRUE(segment["chunk"].is_number_unsigned());
+      EXPECT_FALSE(segment.contains("draft"));  // Whisper's words come timed
       self->texts.push_back(segment["text"]);
     }
   }, &previews), SILLOK_OK);
@@ -180,6 +182,64 @@ TEST_F(CapiTest, PreviewsSegmentsWhileTranscribing) {
   EXPECT_GT(previews.calls, 1);
   EXPECT_EQ(previews.texts, final_texts);
   EXPECT_EQ(sillok_job_on_segments(job, nullptr, nullptr), SILLOK_INVALID_ARGUMENT);  // after the run
+}
+
+TEST_F(CapiTest, GoesOnFromACheckpointFile) {
+  const std::vector<float> pcm = ScriptPcm(150);  // a minute: several pieces
+  const std::filesystem::path file = models_dir_ / PathFromUtf8("중간 저장.jsonl");
+  const Json options = {{"language", "en"}, {"checkpoint", PathToUtf8(file)}};
+
+  // Cancelled as the second piece shows: the first stays.
+  sillok_job* first = Job(Engine(), options.dump().c_str());
+  Push(first, pcm);
+  ASSERT_EQ(sillok_job_on_segments(first, [](void* user, const char* json) {
+    if (Json::parse(json).front()["chunk"].get<int>() > 0) {
+      sillok_job_cancel(static_cast<sillok_job*>(user));
+    }
+  }, first), SILLOK_OK);
+  char* out = nullptr;
+  ASSERT_EQ(sillok_job_run(first, nullptr, nullptr, &out), SILLOK_CANCELLED);
+  ASSERT_TRUE(std::filesystem::exists(file));
+
+  sillok_job* again = Job(Engine(), options.dump().c_str());
+  Push(again, pcm);
+  struct Previews {
+    std::vector<long long> chunks;
+  } previews;
+  ASSERT_EQ(sillok_job_on_segments(again, [](void* user, const char* json) {
+    for (const Json& segment : Json::parse(json)) {
+      EXPECT_FALSE(segment.contains("draft"));
+      static_cast<Previews*>(user)->chunks.push_back(segment["chunk"].get<long long>());
+    }
+  }, &previews), SILLOK_OK);
+  ASSERT_EQ(sillok_job_run(again, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  const Json continued = Json::parse(Take(out));
+  EXPECT_FALSE(std::filesystem::exists(file));  // done with
+  ASSERT_FALSE(previews.chunks.empty());
+  EXPECT_EQ(previews.chunks.front(), 0);
+
+  sillok_job* whole = Job(Engine(), R"({"language": "en"})");
+  Push(whole, pcm);
+  ASSERT_EQ(sillok_job_run(whole, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  EXPECT_EQ(continued["segments"], Json::parse(Take(out))["segments"]);
+}
+
+TEST_F(CapiTest, StartsAnewFromACheckpointOfAnotherRecording) {
+  const std::filesystem::path file = models_dir_ / "checkpoint.jsonl";
+  const Json options = {{"language", "en"}, {"checkpoint", PathToUtf8(file)}};
+  {
+    std::ofstream damaged(file, std::ios::binary);
+    damaged << "{\"format\": 5, \"library\": \"another\"}\n{\"stage\"";
+  }
+  sillok_job* job = Job(Engine(), options.dump().c_str());
+  Push(job, ScriptPcm(10));
+  char* out = nullptr;
+  ASSERT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+  const Json transcript = Json::parse(Take(out));
+  std::size_t words = 0;
+  for (const Json& segment : transcript["segments"]) words += segment["words"].size();
+  EXPECT_EQ(words, 10u);  // all of it, transcribed anew
+  EXPECT_FALSE(std::filesystem::exists(file));
 }
 
 TEST_F(CapiTest, DiarizesAndListsSpeakers) {
@@ -341,6 +401,21 @@ TEST_F(CapiTest, ExportsEditedDocuments) {
   EXPECT_EQ(sillok_export(R"({"version": 1, "segments": [{"start_ms": -5}]})", "txt",
                           nullptr, &out),
             SILLOK_INVALID_ARGUMENT);
+  // Parts of the wrong type are refused, not skipped.
+  for (const char* wrong :
+       {R"({"version": 1, "models": []})", R"({"version": 1, "models": 123})",
+        R"({"version": 1, "models": {"transcription": 1}})", R"({"version": 1, "speakers": 123})",
+        R"({"version": 1, "speakers": [1]})", R"({"version": 1, "segments": {}})",
+        R"({"version": 1, "duration_ms": -1})",
+        R"({"version": 1, "segments": [{"start_ms": 0, "end_ms": 1, "words": [1]}]})"}) {
+    EXPECT_EQ(sillok_export(wrong, "txt", nullptr, &out), SILLOK_INVALID_ARGUMENT) << wrong;
+  }
+  // Keys of older versions, such as a word's "confidence", are ignored.
+  ASSERT_EQ(sillok_export(R"({"version": 1, "segments": [{"start_ms": 0, "end_ms": 1,
+      "text": "a", "words": [{"text": "a", "start_ms": 0, "end_ms": 1, "confidence": 0.9}]}]})",
+                          "txt", nullptr, &out),
+            SILLOK_OK);
+  Take(out);
 }
 
 TEST_F(CapiTest, ChecksModelFiles) {

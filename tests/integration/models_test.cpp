@@ -203,8 +203,8 @@ TEST(CatalogTest, KnowsTheMemoryEachTranscriberTakes) {
   };
   EXPECT_NEAR(memory("whisper-large-v3-turbo-q5_0"), 0.86, 0.01);
   EXPECT_NEAR(memory("whisper-large-v3-f16"), 3.89, 0.01);
-  EXPECT_NEAR(memory("qwen3-asr-1.7b-q8_0"), 3.98, 0.02);
-  EXPECT_NEAR(memory("qwen3-asr-1.7b-bf16"), 5.76, 0.02);
+  EXPECT_NEAR(memory("qwen3-asr-1.7b-q8_0"), 3.31, 0.02);
+  EXPECT_NEAR(memory("qwen3-asr-1.7b-bf16"), 5.09, 0.02);
   // All the files at once, or with an aligner, which runs alone, the larger
   // half.
   for (const CatalogModel& model : ModelCatalog()) {
@@ -302,13 +302,13 @@ TEST_F(QwenTest, TakesAGlossaryThatLeavesRoomForTheAudioAndText) {
   std::vector<std::string> terms = kEnglishTerms;  // 488 tokens with the Korean ones
   terms.insert(terms.end(), kKoreanTerms.begin(), kKoreanTerms.end());
   auto qwen = Open();
-  EXPECT_EQ(GlossaryRefusal(*qwen, terms, Milliseconds{180000}), "");
-  // Fewer positions are left next to longer audio.
-  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 7), Milliseconds{30000}), "");
-  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 7), Milliseconds{180000}),
-            "glossary is 3416 tokens; this model takes at most 2890 with 180 s of audio");
-  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 30), Milliseconds{30000}),
-            "glossary is 14640 tokens; this model takes at most 7240 with 30 s of audio");
+  EXPECT_EQ(GlossaryRefusal(*qwen, terms, Milliseconds{30000}), "");
+  // Fewer positions are left next to longer audio, up to the 30 s it takes.
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 3), Milliseconds{10000}), "");
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 3), Milliseconds{30000}),
+            "glossary is 1464 tokens; this model takes at most 1096 with 30 s of audio");
+  EXPECT_EQ(GlossaryRefusal(*qwen, Repeated(terms, 3), Milliseconds{180000}),
+            "glossary is 1464 tokens; this model takes at most 1096 with 30 s of audio");
 
   // "He was subsequently relocated to Addenbrooke's Hospital in Cambridge."
   std::vector<float> pcm = ReadWav(kAudio / "sets" / "fleurs_en.wav", 372.0);
@@ -403,9 +403,9 @@ TEST_F(QwenTest, AlignerPlacesWordsWhereTheAnnotationHasThem) {
 
 TEST_F(QwenTest, AlignerSaysWhenTheWordsDoNotFit) {
   // 3 s of audio is 39 positions, mtmd's markers 2 and each unit "a" with its
-  // slots 3: 2717 units fill the 8192 positions.
+  // slots 3: 669 units fill the 2048 positions.
   const std::vector<float> pcm(3 * kSampleRate, 0.0f);
-  std::vector<qwen::AlignUnit> units(2717, {.text = "a", .begin = 0, .end = 0});
+  std::vector<qwen::AlignUnit> units(669, {.text = "a", .begin = 0, .end = 0});
   auto aligner = OpenAligner();
   EXPECT_EQ(aligner.Align(pcm, units, {}, {}).size(), units.size() * 2);
   units.push_back(units.back());
