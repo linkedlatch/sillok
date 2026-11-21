@@ -86,6 +86,10 @@ final class JobQueue {
         items.contains(where: \.isAdding)
     }
 
+    var isWorking: Bool {
+        adder != nil || worker != nil
+    }
+
     func uses(_ model: String) -> Bool {
         items.contains { $0.modelID == model }
     }

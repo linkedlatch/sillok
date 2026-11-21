@@ -16,6 +16,7 @@ struct RecordingView: View {
     @State private var query = ""
     @State private var showingInfo = false
     @FocusState private var searching: Bool
+    @State private var following = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -87,41 +88,74 @@ struct RecordingView: View {
             search.isEmpty || $0.element.text.localizedStandardContains(search)
         }
         return ScrollViewReader { proxy in
-            List(shown, id: \.offset) { index, segment in
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Button(Timestamp.text(segment.startMs)) { player.play(fromMilliseconds: segment.startMs) }
-                        .buttonStyle(.plain)
-                        .font(.callout.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .help("Play from here")
-                        .accessibilityLabel(Text("Play from \(Timestamp.text(segment.startMs))"))
-                    if let speaker = segment.speaker {
-                        Text(Speakers.name(speaker, in: transcript))
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.tint)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(shown, id: \.offset) { index, segment in
+                        row(segment, in: transcript, search: search)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(index == current ? Color.accentColor.opacity(0.12) : Color.clear)
+                            .contextMenu {
+                                Button("Copy") { Self.copy(segment.text) }
+                                Button("Play from Here") { play(from: segment.startMs) }
+                            }
+                            .id(index)
+                        Divider()
+                            .padding(.leading, 16)
                     }
-                    Text(Self.highlighting(search, in: segment.text))
-                        .textSelection(.enabled)
                 }
-                .padding(.vertical, 2)
-                .contextMenu {
-                    Button("Copy") { Self.copy(segment.text) }
-                    Button("Play from Here") { player.play(fromMilliseconds: segment.startMs) }
-                }
-                .listRowBackground(index == current ? Color.accentColor.opacity(0.12) : Color.clear)
-                .id(index)
             }
-            .listStyle(.plain)
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { following = false }
+            }
             .overlay {
-                if shown.isEmpty, !search.isEmpty {
+                if transcript.segments.isEmpty {
+                    ContentUnavailableView("No Speech Found", systemImage: "waveform.slash",
+                                           description: Text("Sillok heard no speech in this recording."))
+                } else if shown.isEmpty, !search.isEmpty {
                     ContentUnavailableView.search(text: search)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if player.isPlaying, !following, search.isEmpty, let current {
+                    Button("Now Playing", systemImage: "waveform") {
+                        following = true
+                        withAnimation { proxy.scrollTo(current, anchor: .center) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .padding(.bottom, 12)
+                }
+            }
             .onChange(of: current) { _, index in
-                guard player.isPlaying, let index else { return }
+                guard player.isPlaying, following, let index else { return }
                 withAnimation { proxy.scrollTo(index, anchor: .center) }
             }
         }
+    }
+
+    private func row(_ segment: Transcript.Segment, in transcript: Transcript, search: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Button(Timestamp.text(segment.startMs)) { play(from: segment.startMs) }
+                .buttonStyle(.plain)
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .help("Play from here")
+                .accessibilityLabel(Text("Play from \(Timestamp.text(segment.startMs))"))
+            if let speaker = segment.speaker {
+                Text(Speakers.name(speaker, in: transcript))
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.tint)
+            }
+            Text(Self.highlighting(search, in: segment.text))
+                .textSelection(.enabled)
+        }
+    }
+
+    private func play(from milliseconds: Int) {
+        following = true
+        player.play(fromMilliseconds: milliseconds)
     }
 
     private func currentSegment(in transcript: Transcript) -> Int? {

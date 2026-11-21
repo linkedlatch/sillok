@@ -13,17 +13,27 @@ final class ModelManager {
         case failed(String)
     }
 
+    enum Check: Equatable {
+        case running
+        case intact
+        case repaired(Int)
+        case failed(String)
+    }
+
     struct Download: Equatable {
-        let model: String
+        let key: String
         var progress: InstallProgress?
     }
 
     private(set) var state: State = .checking
     private(set) var models: [CatalogModel] = []
     private(set) var transcriptionModels: [CatalogModel] = []
+    private(set) var installed: Set<String> = []
     private(set) var downloadSizes: [String: Int64] = [:]
+    private(set) var installedEncoders: Set<String> = []
     private(set) var download: Download?
-    private(set) var failure: (model: String, message: String)?
+    private(set) var failure: (key: String, message: String)?
+    private(set) var check: Check?
     let directory: URL
     private var installTask: Task<Void, Never>?
 
@@ -52,7 +62,15 @@ final class ModelManager {
     }
 
     func isInstalled(_ model: CatalogModel) -> Bool {
-        downloadSizes[model.id] == nil
+        installed.contains(model.id)
+    }
+
+    func encoder(of model: CatalogModel) -> CatalogFile? {
+        model.files.first(where: \.zip)
+    }
+
+    func isInstalled(_ encoder: CatalogFile) -> Bool {
+        installedEncoders.contains(encoder.file)
     }
 
     func refresh() {
@@ -61,15 +79,23 @@ final class ModelManager {
             if let id = EngineSettings.transcriptionModel, !transcriptionModels.contains(where: { $0.id == id }) {
                 UserDefaults.standard.removeObject(forKey: EngineSettings.transcriptionModelKey)
             }
+            var installed: Set<String> = []
             var sizes: [String: Int64] = [:]
+            var encoders: Set<String> = []
             for model in transcriptionModels {
-                let pending = try ModelInstaller.pendingFiles(
-                    for: Catalog.engineModels(transcriptionModel: model.id), in: directory)
-                if !pending.isEmpty {
-                    sizes[model.id] = pending.filter(\.needsDownload).map(\.file.size).reduce(0, +)
+                let pending = try pendingFiles(for: model.id)
+                if pending.allSatisfy(\.file.zip) {
+                    installed.insert(model.id)
+                } else {
+                    sizes[model.id] = Self.wanted(pending).filter(\.needsDownload).map(\.file.size).reduce(0, +)
+                }
+                for file in model.files where file.zip && !pending.contains(where: { $0.file == file }) {
+                    encoders.insert(file.file)
                 }
             }
+            self.installed = installed
             downloadSizes = sizes
+            installedEncoders = encoders
             models = try Catalog.engineModels(transcriptionModel: EngineSettings.transcriptionModel)
             state = transcriptionModel.map(isInstalled) == true ? .ready : .missing
         } catch {
@@ -99,9 +125,70 @@ final class ModelManager {
         refresh()
     }
 
+    func remove(_ encoder: CatalogFile) {
+        guard download == nil else { return }
+        do {
+            try ModelInstaller.remove([encoder], from: directory)
+        } catch {
+            failure = (encoder.file, Self.describe(error))
+        }
+        refresh()
+    }
+
     func install(_ id: String) {
+        start(key: id) { [self] in
+            Self.wanted(try pendingFiles(for: id))
+        } done: { [self] in
+            choose(transcriptionModel: id)
+        }
+    }
+
+    func install(_ encoder: CatalogFile) {
+        guard let model = transcriptionModels.first(where: { $0.files.contains(encoder) }) else { return }
+        start(key: encoder.file) { [self] in
+            try pendingFiles(for: model.id).filter { $0.file == encoder }
+        } done: { [self] in
+            refresh()
+        }
+    }
+
+    func cancel() {
+        installTask?.cancel()
+    }
+
+    func checkForDamage() {
+        guard download == nil, check != .running else { return }
+        check = .running
+        let directory = directory
+        Task {
+            do {
+                let damaged = try await Task.detached {
+                    try Catalog.check(directory: directory, verifyHash: true)
+                        .filter { $0.status == .wrongHash || $0.status == .wrongSize }
+                }.value
+                let files = Set(damaged.map(\.file))
+                for file in files {
+                    try FileManager.default.removeItem(at: directory.appending(path: file))
+                }
+                check = files.isEmpty ? .intact : .repaired(files.count)
+            } catch {
+                check = .failed(Self.describe(error))
+            }
+            refresh()
+        }
+    }
+
+    private func pendingFiles(for id: String) throws -> [PendingFile] {
+        try ModelInstaller.pendingFiles(for: Catalog.engineModels(transcriptionModel: id), in: directory)
+    }
+
+    private static func wanted(_ pending: [PendingFile]) -> [PendingFile] {
+        EngineSettings.npu ? pending : pending.filter { !$0.file.zip }
+    }
+
+    private func start(key: String, files: @escaping () throws -> [PendingFile], done: @escaping () -> Void) {
         guard installTask == nil else { return }
-        download = Download(model: id)
+        download = Download(key: key)
         failure = nil
         installTask = Task {
             defer {
@@ -109,23 +196,17 @@ final class ModelManager {
                 download = nil
             }
             do {
-                let models = try Catalog.engineModels(transcriptionModel: id)
-                let pending = try ModelInstaller.pendingFiles(for: models, in: directory)
-                try await ModelInstaller.install(pending, into: directory) { progress in
+                try await ModelInstaller.install(files(), into: directory) { progress in
                     Task { @MainActor in self.update(progress) }
                 }
-                choose(transcriptionModel: id)
+                done()
             } catch {
                 if !Task.isCancelled {
-                    failure = (id, Self.describe(error))
+                    failure = (key, Self.describe(error))
                 }
                 refresh()
             }
         }
-    }
-
-    func cancel() {
-        installTask?.cancel()
     }
 
     private func update(_ progress: InstallProgress) {

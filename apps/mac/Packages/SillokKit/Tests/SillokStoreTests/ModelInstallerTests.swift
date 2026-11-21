@@ -103,4 +103,20 @@ struct ModelInstallerTests {
         left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
         #expect(left.isEmpty)
     }
+
+    @Test func removesOnlyTheEncoder() throws {
+        let model = try #require(try Catalog.models().first { $0.id == "whisper-large-v3-turbo-q5_0" })
+        let encoder = try #require(model.files.first { $0.zip })
+        let models = root.appending(path: "models")
+        try FileManager.default.createDirectory(
+            at: models.appending(path: (encoder.file as NSString).deletingPathExtension), withIntermediateDirectories: true)
+        try Data().write(to: models.appending(path: encoder.file + ".partial"))
+        for file in model.files where !file.zip {
+            try Data().write(to: models.appending(path: file.file))
+        }
+
+        try ModelInstaller.remove([encoder], from: models)
+        let left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
+        #expect(left == Set(model.files.filter { !$0.zip }.map(\.file)))
+    }
 }

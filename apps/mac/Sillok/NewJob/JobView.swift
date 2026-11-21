@@ -5,6 +5,8 @@ struct JobView: View {
     let item: JobQueue.Item
     @Environment(JobQueue.self) private var queue
     @Environment(ModelManager.self) private var models
+    @State private var following = true
+    @State private var atBottom = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -35,19 +37,48 @@ struct JobView: View {
             if !item.segments.isEmpty {
                 Divider()
                 ScrollViewReader { proxy in
-                    List(Array(item.segments.enumerated()), id: \.offset) { index, segment in
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(Timestamp.text(segment.startMs))
-                                .font(.callout.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                            Text(segment.text)
-                                .textSelection(.enabled)
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(item.segments.enumerated()), id: \.offset) { index, segment in
+                                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                    Text(Timestamp.text(segment.startMs))
+                                        .font(.callout.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                    Text(segment.text)
+                                        .textSelection(.enabled)
+                                }
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id(index)
+                                Divider()
+                            }
                         }
-                        .id(index)
                     }
-                    .listStyle(.plain)
+                    .onScrollGeometryChange(for: Bool.self) { geometry in
+                        geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 24
+                    } action: { _, bottom in
+                        atBottom = bottom
+                    }
+                    .onScrollPhaseChange { old, new in
+                        if new == .interacting {
+                            following = false
+                        } else if new == .idle, old == .interacting || old == .decelerating {
+                            following = atBottom
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        if !following {
+                            Button("Latest", systemImage: "arrow.down") {
+                                following = true
+                                proxy.scrollTo(item.segments.count - 1, anchor: .bottom)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
+                            .padding(.bottom, 12)
+                        }
+                    }
                     .onChange(of: item.segments.count) { _, count in
-                        proxy.scrollTo(count - 1, anchor: .bottom)
+                        if following { proxy.scrollTo(count - 1, anchor: .bottom) }
                     }
                 }
             } else {
@@ -87,7 +118,7 @@ enum Step: Hashable {
         case .adding: "Adding the file"
         case .reading: "Reading the file"
         case .stage(.analyze): "Finding speech"
-        case .stage(.transcribe): "Transcribing"
+        case .stage(.transcribe): "Transcribing speech"
         case .stage(.align): "Timing words"
         case .stage(.diarize): "Identifying speakers"
         }

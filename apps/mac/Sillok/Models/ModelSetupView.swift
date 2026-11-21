@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ModelSetupView: View {
     @Environment(ModelManager.self) private var manager
+    @AppStorage(EngineSettings.npuKey) private var npu = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -24,6 +25,13 @@ struct ModelSetupView: View {
                             Text(model.details)
                         }
                         .disabled(manager.download != nil)
+                        if let encoder = manager.encoder(of: model) {
+                            Toggle(isOn: $npu) {
+                                Text("Use the Neural Engine")
+                                Text("Whisper's encoder runs faster there, from another \(encoder.size.formatted(.byteCount(style: .file))) download.")
+                            }
+                            .disabled(manager.download != nil)
+                        }
                     } else {
                         LabeledContent(model.role.title) {
                             Text(verbatim: model.title)
@@ -35,6 +43,7 @@ struct ModelSetupView: View {
                 }
             }
             .formStyle(.grouped)
+            .onChange(of: npu) { manager.refresh() }
             .scrollDisabled(true)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -73,7 +82,7 @@ struct ModelSetupView: View {
                     Button("Cancel") { manager.cancel() }
                 }
             } else if let id = manager.transcriptionModel?.id {
-                if let failure = manager.failure, failure.model == id {
+                if let failure = manager.failure, failure.key == id {
                     problem(failure.message) { manager.install(id) }
                 } else {
                     HStack {

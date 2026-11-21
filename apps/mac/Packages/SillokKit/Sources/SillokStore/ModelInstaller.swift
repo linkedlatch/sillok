@@ -99,7 +99,11 @@ public enum ModelInstaller {
 
     public static func remove(_ model: CatalogModel, keepingFilesOf others: [CatalogModel], from directory: URL) throws {
         let kept = Set(others.flatMap(\.files).map(\.file))
-        for file in model.files where !kept.contains(file.file) {
+        try remove(model.files.filter { !kept.contains($0.file) }, from: directory)
+    }
+
+    public static func remove(_ files: [CatalogFile], from directory: URL) throws {
+        for file in files {
             var names = [file.file, file.file + ".partial"]
             if file.zip {
                 names.append((file.file as NSString).deletingPathExtension)

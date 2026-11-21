@@ -86,6 +86,10 @@ struct MainView: View {
             Button("Rename") { library.rename(recording.id, to: title) }
             Button("Cancel", role: .cancel) {}
         }
+        .onChange(of: queue.items.map(\.id)) {
+            guard case .job(let id) = selection, queue.item(id) == nil, queue.completed != id else { return }
+            selection = nil
+        }
         .onChange(of: queue.completed) {
             guard let id = queue.completed, selection == .job(id) else { return }
             selection = .recording(id)
@@ -99,10 +103,12 @@ struct MainView: View {
         case .job(let id):
             if let item = queue.item(id) {
                 JobView(item: item)
+                    .id(id)
             }
         case .recording(let id):
             if let recording = library.recording(id) {
                 RecordingView(recording: recording)
+                    .id(id)
             }
         case nil:
             ContentUnavailableView {

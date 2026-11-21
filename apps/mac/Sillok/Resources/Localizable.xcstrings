@@ -163,6 +163,26 @@
         }
       }
     },
+    "Check": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검사"
+          }
+        }
+      }
+    },
+    "Check for damage": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "손상 검사"
+          }
+        }
+      }
+    },
     "Checking %@": {
       "localizations": {
         "ko": {
@@ -229,6 +249,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 모델을 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete the Neural Engine encoder?": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neural Engine 인코더를 삭제할까요?"
           }
         }
       }
@@ -449,6 +479,16 @@
         }
       }
     },
+    "Latest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신"
+          }
+        }
+      }
+    },
     "Length": {
       "localizations": {
         "ko": {
@@ -489,6 +529,16 @@
         }
       }
     },
+    "Neural Engine encoder": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neural Engine 인코더"
+          }
+        }
+      }
+    },
     "New Transcription": {
       "localizations": {
         "ko": {
@@ -515,6 +565,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "선택한 녹취 없음"
+          }
+        }
+      }
+    },
+    "No Speech Found": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 없음"
+          }
+        }
+      }
+    },
+    "Now Playing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중인 문장"
           }
         }
       }
@@ -589,12 +659,32 @@
         }
       }
     },
+    "Reading each downloaded file through…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내려받은 파일을 모두 읽는 중…"
+          }
+        }
+      }
+    },
     "Reading the file": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "파일 읽기"
+          }
+        }
+      }
+    },
+    "Reads each downloaded file and compares it with the original. Large files take a while.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내려받은 파일을 하나씩 읽어 원본과 비교합니다. 큰 파일은 시간이 걸립니다."
           }
         }
       }
@@ -615,6 +705,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "제거"
+          }
+        }
+      }
+    },
+    "Removed %lld damaged files. Download them again.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "손상된 파일 %lld개를 지웠습니다. 다시 내려받으세요."
           }
         }
       }
@@ -649,16 +749,6 @@
         }
       }
     },
-    "Run Whisper's encoder on the Neural Engine": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Whisper 인코더를 Neural Engine에서 실행"
-          }
-        }
-      }
-    },
     "Save": {
       "localizations": {
         "ko": {
@@ -688,6 +778,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 파일의 오디오를 읽을 수 없습니다."
+          }
+        }
+      }
+    },
+    "Sillok heard no speech in this recording.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 녹음에서 음성을 찾지 못했습니다."
           }
         }
       }
@@ -842,6 +942,16 @@
         }
       }
     },
+    "The downloaded models are intact.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내려받은 모델에 이상이 없습니다."
+          }
+        }
+      }
+    },
     "The recording and its transcript will be removed. This cannot be undone.": {
       "localizations": {
         "ko": {
@@ -922,6 +1032,16 @@
         }
       }
     },
+    "Transcribing speech": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사"
+          }
+        }
+      }
+    },
     "Transcription": {
       "localizations": {
         "ko": {
@@ -952,6 +1072,16 @@
         }
       }
     },
+    "Use the Neural Engine": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neural Engine 사용"
+          }
+        }
+      }
+    },
     "Voice detection": {
       "localizations": {
         "ko": {
@@ -968,6 +1098,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "대기 중"
+          }
+        }
+      }
+    },
+    "Whisper runs its encoder on the Neural Engine, which needs an extra download for each Whisper model family. Downloads include it while this is on.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper의 인코더를 Neural Engine에서 실행합니다. Whisper 모델 계열마다 추가로 내려받아야 하며, 켜 두면 모델을 받을 때 함께 받습니다."
+          }
+        }
+      }
+    },
+    "Whisper then runs its encoder on the GPU or CPU. You can download it again here.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제하면 Whisper의 인코더는 GPU나 CPU에서 실행됩니다. 여기서 다시 내려받을 수 있습니다."
+          }
+        }
+      }
+    },
+    "Whisper's encoder runs faster there, from another %@ download.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper의 인코더가 더 빠르게 실행됩니다. %@를 추가로 내려받습니다."
           }
         }
       }
