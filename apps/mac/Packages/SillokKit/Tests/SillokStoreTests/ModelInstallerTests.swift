@@ -82,4 +82,25 @@ struct ModelInstallerTests {
         let leftovers = try FileManager.default.contentsOfDirectory(atPath: models.path())
         #expect(leftovers == ["encoder.mlmodelc"])
     }
+
+    @Test func removesAModelButKeepsFilesAnotherModelUses() throws {
+        let catalog = try Catalog.models()
+        let q5 = try #require(catalog.first { $0.id == "whisper-large-v3-turbo-q5_0" })
+        let q8 = try #require(catalog.first { $0.id == "whisper-large-v3-turbo-q8_0" })
+        let encoder = try #require(q5.files.first { $0.zip })
+        let bundle = (encoder.file as NSString).deletingPathExtension
+        let models = root.appending(path: "models")
+        try FileManager.default.createDirectory(at: models.appending(path: bundle), withIntermediateDirectories: true)
+        for file in (q5.files + q8.files).filter({ !$0.zip }) {
+            try Data().write(to: models.appending(path: file.file))
+        }
+
+        try ModelInstaller.remove(q5, keepingFilesOf: [q8], from: models)
+        var left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
+        #expect(left == Set(q8.files.filter { !$0.zip }.map(\.file) + [bundle]))
+
+        try ModelInstaller.remove(q8, keepingFilesOf: [], from: models)
+        left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
+        #expect(left.isEmpty)
+    }
 }

@@ -86,6 +86,19 @@ final class ModelManager {
         refresh()
     }
 
+    func remove(_ id: String) {
+        guard download == nil, id != transcriptionModel?.id,
+            let model = transcriptionModels.first(where: { $0.id == id })
+        else { return }
+        let others = transcriptionModels.filter { $0.id != id && isInstalled($0) }
+        do {
+            try ModelInstaller.remove(model, keepingFilesOf: others, from: directory)
+        } catch {
+            failure = (id, Self.describe(error))
+        }
+        refresh()
+    }
+
     func install(_ id: String) {
         guard installTask == nil else { return }
         download = Download(model: id)

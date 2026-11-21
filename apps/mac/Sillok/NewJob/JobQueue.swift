@@ -37,6 +37,10 @@ final class JobQueue {
         self.library = library
     }
 
+    var isTranscribing: Bool {
+        worker != nil
+    }
+
     func item(_ id: UUID) -> Item? {
         items.first { $0.id == id }
     }

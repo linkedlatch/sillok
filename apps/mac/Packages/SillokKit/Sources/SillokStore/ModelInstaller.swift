@@ -97,6 +97,22 @@ public enum ModelInstaller {
         }
     }
 
+    public static func remove(_ model: CatalogModel, keepingFilesOf others: [CatalogModel], from directory: URL) throws {
+        let kept = Set(others.flatMap(\.files).map(\.file))
+        for file in model.files where !kept.contains(file.file) {
+            var names = [file.file, file.file + ".partial"]
+            if file.zip {
+                names.append((file.file as NSString).deletingPathExtension)
+            }
+            for name in names {
+                let url = directory.appending(path: name)
+                if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+                    try FileManager.default.removeItem(at: url)
+                }
+            }
+        }
+    }
+
     static func download(
         _ file: CatalogFile,
         to partial: URL,

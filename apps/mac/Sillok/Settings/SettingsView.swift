@@ -17,6 +17,8 @@ struct SettingsView: View {
 
 private struct ModelSettingsView: View {
     @Environment(ModelManager.self) private var models
+    @Environment(JobQueue.self) private var queue
+    @State private var deleting: CatalogModel?
 
     var body: some View {
         Form {
@@ -49,6 +51,15 @@ private struct ModelSettingsView: View {
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+        .confirmationDialog(
+            Text("Delete \(deleting?.title ?? "")?"),
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            presenting: deleting
+        ) { model in
+            Button("Delete", role: .destructive) { models.remove(model.id) }
+        } message: { _ in
+            Text("You can download it again here.")
+        }
     }
 
     @ViewBuilder
@@ -68,7 +79,14 @@ private struct ModelSettingsView: View {
             Label("In Use", systemImage: "checkmark")
                 .foregroundStyle(.secondary)
         } else {
-            Button("Use") { models.choose(transcriptionModel: model.id) }
+            HStack {
+                Button("Use") { models.choose(transcriptionModel: model.id) }
+                Button("Delete", systemImage: "trash") { deleting = model }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("Delete")
+                    .disabled(models.download != nil || queue.isTranscribing)
+            }
         }
     }
 }

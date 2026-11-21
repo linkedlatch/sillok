@@ -37,6 +37,7 @@ struct SillokApp: App {
         Settings {
             SettingsView()
                 .environment(models)
+                .environment(queue)
         }
     }
 }
