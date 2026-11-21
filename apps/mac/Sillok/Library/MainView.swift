@@ -9,7 +9,6 @@ struct MainView: View {
         case recording(UUID)
     }
 
-    @Environment(ModelManager.self) private var models
     @Environment(Library.self) private var library
     @Environment(JobQueue.self) private var queue
     @Environment(Player.self) private var player
@@ -59,9 +58,9 @@ struct MainView: View {
             return true
         }
         .sheet(isPresented: Binding(get: { !pending.isEmpty }, set: { if !$0 { pending = [] } })) {
-            NewJobView(sources: pending, languages: transcriptionModel?.languages ?? []) { options in
+            NewJobView(sources: pending) { options, model in
                 let first = queue.items.count
-                queue.enqueue(pending, options: options)
+                queue.enqueue(pending, options: options, model: model)
                 if queue.items.indices.contains(first) { selection = .job(queue.items[first].id) }
             }
         }
@@ -85,7 +84,7 @@ struct MainView: View {
         switch selection {
         case .job(let id):
             if let item = queue.item(id) {
-                JobView(item: item, aligns: transcriptionModel?.aligner == true)
+                JobView(item: item)
             }
         case .recording(let id):
             if let recording = library.recording(id) {
@@ -106,10 +105,6 @@ struct MainView: View {
         player.unload(recording.id)
         if selection == .recording(recording.id) { selection = nil }
         library.delete(recording.id)
-    }
-
-    private var transcriptionModel: CatalogModel? {
-        models.models.first { $0.role == .transcription }
     }
 }
 

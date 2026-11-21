@@ -11,7 +11,7 @@ enum EngineSettings {
         return id.isEmpty ? nil : id
     }
 
-    static func config(modelsDirectory: URL) -> EngineConfig {
+    static func config(modelsDirectory: URL, transcriptionModel: String) -> EngineConfig {
         let defaults = UserDefaults.standard
         return EngineConfig(
             modelsDirectory: modelsDirectory,

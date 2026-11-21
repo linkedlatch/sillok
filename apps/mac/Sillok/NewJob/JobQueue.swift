@@ -10,6 +10,7 @@ final class JobQueue {
         let id = UUID()
         let source: URL
         let options: JobOptions
+        let model: CatalogModel
         var state: State = .waiting
         var previews = Previews()
 
@@ -47,8 +48,8 @@ final class JobQueue {
         items.first { $0.id == id }
     }
 
-    func enqueue(_ sources: [URL], options: JobOptions) {
-        items += sources.map { Item(source: $0, options: options) }
+    func enqueue(_ sources: [URL], options: JobOptions, model: CatalogModel) {
+        items += sources.map { Item(source: $0, options: options, model: model) }
         guard worker == nil else { return }
         worker = Task {
             while let next = items.first(where: { $0.state == .waiting }) {
@@ -77,7 +78,7 @@ final class JobQueue {
         }
         update(item.id) { $0.state = .reading(0) }
         do {
-            let config = EngineSettings.config(modelsDirectory: models.directory)
+            let config = EngineSettings.config(modelsDirectory: models.directory, transcriptionModel: item.model.id)
             let engine = try self.engine.flatMap { $0.config == config ? $0.engine : nil } ?? Engine(config: config)
             self.engine = (config, engine)
             let staging = try library.store.makeStaging()

@@ -339,6 +339,16 @@
         }
       }
     },
+    "Model": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델"
+          }
+        }
+      }
+    },
     "Models": {
       "localizations": {
         "ko": {

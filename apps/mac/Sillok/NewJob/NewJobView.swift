@@ -3,10 +3,11 @@ import SwiftUI
 
 struct NewJobView: View {
     let sources: [URL]
-    let languages: [String]
-    let start: (JobOptions) -> Void
+    let start: (JobOptions, CatalogModel) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(ModelManager.self) private var models
+    @State private var modelID = ""
     @AppStorage("language") private var language = "auto"
     @AppStorage("diarize") private var diarize = true
     @State private var glossary = ""
@@ -22,6 +23,9 @@ struct NewJobView: View {
                     }
                 }
                 Section {
+                    Picker("Model", selection: $modelID) {
+                        TranscriptionModelOptions(families: installedFamilies)
+                    }
                     Picker("Language", selection: $language) {
                         Text("Detect automatically").tag("auto")
                         Divider()
@@ -46,17 +50,33 @@ struct NewJobView: View {
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Transcribe") {
-                    start(JobOptions(language: language, diarize: diarize, glossary: terms))
+                    if let model { start(JobOptions(language: language, diarize: diarize, glossary: terms), model) }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
+                .disabled(model == nil)
             }
             .padding([.horizontal, .bottom], 20)
         }
         .frame(width: 460)
         .onAppear {
+            modelID = models.transcriptionModel?.id ?? ""
+        }
+        .onChange(of: modelID) {
             if language != "auto", !languages.contains(language) { language = "auto" }
         }
+    }
+
+    private var model: CatalogModel? {
+        models.transcriptionModels.first { $0.id == modelID }
+    }
+
+    private var languages: [String] {
+        model?.languages ?? []
+    }
+
+    private var installedFamilies: [[CatalogModel]] {
+        models.transcriptionFamilies.map { $0.filter(models.isInstalled) }.filter { !$0.isEmpty }
     }
 
     private var terms: [String] {

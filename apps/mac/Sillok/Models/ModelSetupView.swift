@@ -18,15 +18,7 @@ struct ModelSetupView: View {
                 ForEach(manager.models) { model in
                     if model.role == .transcription {
                         Picker(selection: chosen) {
-                            ForEach(manager.transcriptionFamilies, id: \.[0].family) { family in
-                                Section(family[0].family) {
-                                    ForEach(family) { option in
-                                        option.recommended
-                                            ? Text("\(option.title) (recommended)").tag(option.id)
-                                            : Text(verbatim: option.title).tag(option.id)
-                                    }
-                                }
-                            }
+                            TranscriptionModelOptions(families: manager.transcriptionFamilies)
                         } label: {
                             Text(model.role.title)
                             Text(model.details)
@@ -103,6 +95,22 @@ struct ModelSetupView: View {
             Spacer()
             Button("Try Again", action: retry)
                 .keyboardShortcut(.defaultAction)
+        }
+    }
+}
+
+struct TranscriptionModelOptions: View {
+    let families: [[CatalogModel]]
+
+    var body: some View {
+        ForEach(families, id: \.[0].family) { family in
+            Section(family[0].family) {
+                ForEach(family) { option in
+                    option.recommended
+                        ? Text("\(option.title) (recommended)").tag(option.id)
+                        : Text(verbatim: option.title).tag(option.id)
+                }
+            }
         }
     }
 }

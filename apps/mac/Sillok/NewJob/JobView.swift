@@ -3,7 +3,6 @@ import SwiftUI
 
 struct JobView: View {
     let item: JobQueue.Item
-    let aligns: Bool
     @Environment(JobQueue.self) private var queue
 
     var body: some View {
@@ -56,7 +55,7 @@ struct JobView: View {
 
     private var steps: [Step] {
         var steps: [Step] = [.reading, .stage(.analyze), .stage(.transcribe)]
-        if aligns { steps.append(.stage(.align)) }
+        if item.model.aligner == true { steps.append(.stage(.align)) }
         if item.options.diarize { steps.append(.stage(.diarize)) }
         steps.append(.saving)
         return steps
