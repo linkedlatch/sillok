@@ -55,5 +55,6 @@ Models/                  the catalog's files; .partial files resume downloads
 Recordings/<id>/         audio.m4a (16 kHz mono), transcript.json, meta.json
 ```
 
-Settings (the transcription model, CPU or GPU, the Neural Engine and the
-number of threads) apply from the next transcription.
+Settings (the transcription model, CPU or GPU, and the Neural Engine) apply
+from the next transcription. A transcription model chosen in Settings
+downloads there while the current one stays in use.

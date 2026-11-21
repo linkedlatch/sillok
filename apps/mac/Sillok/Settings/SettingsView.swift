@@ -17,50 +17,65 @@ struct SettingsView: View {
 
 private struct ModelSettingsView: View {
     @Environment(ModelManager.self) private var models
-    @Environment(JobQueue.self) private var queue
 
     var body: some View {
         Form {
-            Section {
-                Picker("Transcription model", selection: chosen) {
-                    ForEach(models.transcriptionModels) { model in
-                        VStack(alignment: .leading, spacing: 2) {
-                            model.recommended ? Text("\(model.title) (recommended)") : Text(verbatim: model.title)
-                            Text(model.details)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+            ForEach(models.transcriptionFamilies, id: \.[0].family) { family in
+                Section {
+                    ForEach(family) { model in
+                        LabeledContent {
+                            control(for: model)
+                        } label: {
+                            model.recommended
+                                ? Text("\(model.quantization) (recommended)") : Text(verbatim: model.quantization)
+                            if let failure = models.failure, failure.model == model.id {
+                                Text(failure.message)
+                                    .foregroundStyle(.red)
+                            } else {
+                                Text(model.footprint)
+                            }
                         }
-                        .tag(model.id)
+                    }
+                } header: {
+                    Text("\(family[0].family) · \(family[0].languages?.count ?? 0) languages")
+                } footer: {
+                    if family[0].family == models.transcriptionFamilies.last?[0].family {
+                        Text("Changes apply from the next transcription.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .pickerStyle(.radioGroup)
-                .disabled(!queue.items.isEmpty)
-            } footer: {
-                Text(
-                    queue.items.isEmpty
-                        ? "Choosing a model whose files are missing asks to download them."
-                        : "The model can be changed when no recording is being transcribed."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var chosen: Binding<String> {
-        Binding(
-            get: { models.transcriptionModel?.id ?? "" },
-            set: { models.choose(transcriptionModel: $0) }
-        )
+    @ViewBuilder
+    private func control(for model: CatalogModel) -> some View {
+        if let download = models.download, download.model == model.id {
+            HStack {
+                ProgressView(value: download.progress?.fraction ?? 0)
+                    .frame(width: 100)
+                Button("Cancel") { models.cancel() }
+            }
+        } else if !models.isInstalled(model) {
+            Button("Download \((models.downloadSizes[model.id] ?? 0).formatted(.byteCount(style: .file)))") {
+                models.install(model.id)
+            }
+            .disabled(models.download != nil)
+        } else if model.id == models.transcriptionModel?.id {
+            Label("In Use", systemImage: "checkmark")
+                .foregroundStyle(.secondary)
+        } else {
+            Button("Use") { models.choose(transcriptionModel: model.id) }
+        }
     }
 }
 
 private struct PerformanceSettingsView: View {
     @AppStorage(EngineSettings.deviceKey) private var device = EngineConfig.Device.gpu.rawValue
     @AppStorage(EngineSettings.npuKey) private var npu = true
-    @AppStorage(EngineSettings.threadsKey) private var threads = 0
 
     var body: some View {
         Form {
@@ -70,12 +85,6 @@ private struct PerformanceSettingsView: View {
                     Text("CPU").tag(EngineConfig.Device.cpu.rawValue)
                 }
                 Toggle("Run Whisper's encoder on the Neural Engine", isOn: $npu)
-                Picker("CPU threads", selection: $threads) {
-                    Text("Automatic").tag(0)
-                    ForEach(1...ProcessInfo.processInfo.activeProcessorCount, id: \.self) { count in
-                        Text(verbatim: "\(count)").tag(count)
-                    }
-                }
             } footer: {
                 Text("Changes apply from the next transcription.")
                     .font(.caption)
@@ -92,10 +101,13 @@ extension CatalogModel {
         "\(family) \(quantization)"
     }
 
-    var details: String {
-        let languages = languages?.count ?? 0
+    var footprint: String {
         let size = files.map(\.size).reduce(0, +).formatted(.byteCount(style: .file))
         let memory = (memory ?? 0).formatted(.byteCount(style: .memory))
-        return String(localized: "\(languages) languages · \(size) download · \(memory) of memory")
+        return String(localized: "\(size) download · \(memory) of memory")
+    }
+
+    var details: String {
+        String(localized: "\(languages?.count ?? 0) languages · \(footprint)")
     }
 }

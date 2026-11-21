@@ -5,7 +5,6 @@ enum EngineSettings {
     static let transcriptionModelKey = "transcriptionModel"
     static let deviceKey = "device"
     static let npuKey = "npu"
-    static let threadsKey = "threads"
 
     static var transcriptionModel: String? {
         let id = UserDefaults.standard.string(forKey: transcriptionModelKey) ?? ""
@@ -18,7 +17,6 @@ enum EngineSettings {
             modelsDirectory: modelsDirectory,
             device: EngineConfig.Device(rawValue: defaults.string(forKey: deviceKey) ?? "") ?? .gpu,
             npu: defaults.object(forKey: npuKey) as? Bool ?? true,
-            threads: defaults.integer(forKey: threadsKey),
             transcriptionModel: transcriptionModel
         )
     }

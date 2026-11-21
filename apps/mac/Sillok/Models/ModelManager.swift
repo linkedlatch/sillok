@@ -9,20 +9,50 @@ final class ModelManager {
     enum State: Equatable {
         case checking
         case missing
-        case installing(InstallProgress?)
         case ready
         case failed(String)
+    }
+
+    struct Download: Equatable {
+        let model: String
+        var progress: InstallProgress?
     }
 
     private(set) var state: State = .checking
     private(set) var models: [CatalogModel] = []
     private(set) var transcriptionModels: [CatalogModel] = []
-    private(set) var downloadSize: Int64 = 0
+    private(set) var downloadSizes: [String: Int64] = [:]
+    private(set) var download: Download?
+    private(set) var failure: (model: String, message: String)?
     let directory: URL
     private var installTask: Task<Void, Never>?
 
     init(directory: URL = .applicationSupportDirectory.appending(path: "Models")) {
         self.directory = directory
+    }
+
+    var transcriptionModel: CatalogModel? {
+        models.first { $0.role == .transcription }
+    }
+
+    var transcriptionFamilies: [[CatalogModel]] {
+        var families: [[CatalogModel]] = []
+        for model in transcriptionModels {
+            if let index = families.firstIndex(where: { $0[0].family == model.family }) {
+                families[index].append(model)
+            } else {
+                families.append([model])
+            }
+        }
+        return families
+    }
+
+    var downloadSize: Int64 {
+        transcriptionModel.flatMap { downloadSizes[$0.id] } ?? 0
+    }
+
+    func isInstalled(_ model: CatalogModel) -> Bool {
+        downloadSizes[model.id] == nil
     }
 
     func refresh() {
@@ -31,21 +61,23 @@ final class ModelManager {
             if let id = EngineSettings.transcriptionModel, !transcriptionModels.contains(where: { $0.id == id }) {
                 UserDefaults.standard.removeObject(forKey: EngineSettings.transcriptionModelKey)
             }
+            var sizes: [String: Int64] = [:]
+            for model in transcriptionModels {
+                let pending = try ModelInstaller.pendingFiles(
+                    for: Catalog.engineModels(transcriptionModel: model.id), in: directory)
+                if !pending.isEmpty {
+                    sizes[model.id] = pending.filter(\.needsDownload).map(\.file.size).reduce(0, +)
+                }
+            }
+            downloadSizes = sizes
             models = try Catalog.engineModels(transcriptionModel: EngineSettings.transcriptionModel)
-            let pending = try ModelInstaller.pendingFiles(for: models, in: directory)
-            downloadSize = pending.filter(\.needsDownload).map(\.file.size).reduce(0, +)
-            state = pending.isEmpty ? .ready : .missing
+            state = transcriptionModel.map(isInstalled) == true ? .ready : .missing
         } catch {
             state = .failed(Self.describe(error))
         }
     }
 
-    var transcriptionModel: CatalogModel? {
-        models.first { $0.role == .transcription }
-    }
-
     func choose(transcriptionModel id: String) {
-        guard installTask == nil else { return }
         if transcriptionModels.first(where: { $0.id == id })?.recommended == true {
             UserDefaults.standard.removeObject(forKey: EngineSettings.transcriptionModelKey)
         } else {
@@ -54,23 +86,27 @@ final class ModelManager {
         refresh()
     }
 
-    func install() {
+    func install(_ id: String) {
         guard installTask == nil else { return }
-        state = .installing(nil)
+        download = Download(model: id)
+        failure = nil
         installTask = Task {
-            defer { installTask = nil }
+            defer {
+                installTask = nil
+                download = nil
+            }
             do {
+                let models = try Catalog.engineModels(transcriptionModel: id)
                 let pending = try ModelInstaller.pendingFiles(for: models, in: directory)
                 try await ModelInstaller.install(pending, into: directory) { progress in
                     Task { @MainActor in self.update(progress) }
                 }
-                refresh()
+                choose(transcriptionModel: id)
             } catch {
-                if Task.isCancelled {
-                    refresh()
-                } else {
-                    state = .failed(Self.describe(error))
+                if !Task.isCancelled {
+                    failure = (id, Self.describe(error))
                 }
+                refresh()
             }
         }
     }
@@ -80,8 +116,8 @@ final class ModelManager {
     }
 
     private func update(_ progress: InstallProgress) {
-        guard case .installing = state else { return }
-        state = .installing(progress)
+        guard download != nil else { return }
+        download?.progress = progress
     }
 
     static func describe(_ error: Error) -> String {

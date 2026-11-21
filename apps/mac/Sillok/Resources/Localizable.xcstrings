@@ -37,6 +37,16 @@
         }
       }
     },
+    "%@ download · %@ of memory": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 %1$@ · 메모리 %2$@"
+          }
+        }
+      }
+    },
     "%@ is damaged.": {
       "localizations": {
         "ko": {
@@ -60,12 +70,22 @@
     "%@ · %@": {
       "shouldTranslate": false
     },
-    "%lld languages · %@ download · %@ of memory": {
+    "%@ · %lld languages": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld개 언어 · 다운로드 %2$@ · 메모리 %3$@"
+            "value": "%1$@ · %2$lld개 언어"
+          }
+        }
+      }
+    },
+    "%lld languages · %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld개 언어 · %2$@"
           }
         }
       }
@@ -80,28 +100,8 @@
         }
       }
     },
-    "Automatic": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "자동"
-          }
-        }
-      }
-    },
     "CPU": {
       "shouldTranslate": false
-    },
-    "CPU threads": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CPU 스레드"
-          }
-        }
-      }
     },
     "Cancel": {
       "localizations": {
@@ -139,16 +139,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "녹취를 고르거나, 전사할 오디오·비디오 파일을 여기에 끌어다 놓으세요."
-          }
-        }
-      }
-    },
-    "Choosing a model whose files are missing asks to download them.": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "파일이 없는 모델을 고르면 내려받기 화면이 나타납니다."
           }
         }
       }
@@ -209,6 +199,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "내려받기"
+          }
+        }
+      }
+    },
+    "Download %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 내려받기"
           }
         }
       }
@@ -302,6 +302,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "화자 구분"
+          }
+        }
+      }
+    },
+    "In Use": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 중"
           }
         }
       }
@@ -612,16 +622,6 @@
         }
       }
     },
-    "The model can be changed when no recording is being transcribed.": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전사 중인 녹취가 없을 때 모델을 바꿀 수 있습니다."
-          }
-        }
-      }
-    },
     "The recording and its transcript will be removed. This cannot be undone.": {
       "localizations": {
         "ko": {
@@ -682,22 +682,22 @@
         }
       }
     },
-    "Transcription model": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전사 모델"
-          }
-        }
-      }
-    },
     "Try Again": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "다시 시도"
+          }
+        }
+      }
+    },
+    "Use": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용"
           }
         }
       }
