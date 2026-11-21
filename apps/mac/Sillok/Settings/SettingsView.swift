@@ -85,7 +85,7 @@ private struct ModelSettingsView: View {
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .help("Delete")
-                    .disabled(models.download != nil || queue.isTranscribing)
+                    .disabled(models.download != nil || queue.uses(model.id))
             }
         }
     }

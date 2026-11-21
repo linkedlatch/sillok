@@ -52,10 +52,18 @@ The app runs in the App Sandbox, under the bundle id
 
 ```
 Models/                  the catalog's files; .partial files resume downloads
-Recordings/<id>/         audio.m4a (16 kHz mono), transcript.json, meta.json
+Recordings/<id>/         audio.m4a (16 kHz mono), meta.json, transcript.json
 ```
 
-Settings (the transcription model, CPU or GPU, and the Neural Engine) apply
-from the next transcription. A transcription model chosen in Settings
+Adding a file first makes its copy, audio.m4a, with the loudness evened
+out, and writes meta.json; the original is not needed afterwards, and the
+copy is what gets transcribed. A folder without transcript.json is waiting:
+transcription carries on at the next launch from checkpoint.jsonl, and a
+failure stays in meta.json until it is tried again. Quitting while files are
+still being added asks first.
+
+The transcription model in Settings is the default for new files, each of
+which can use another; CPU or GPU and the Neural Engine apply from the next
+transcription. A transcription model chosen in Settings
 downloads there while the current one stays in use, and a model not in use
 can be deleted there; files another downloaded model also needs are kept.

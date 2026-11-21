@@ -7,113 +7,207 @@ import SillokStore
 @Observable
 final class JobQueue {
     struct Item: Identifiable {
-        let id = UUID()
-        let source: URL
+        let id: UUID
+        let title: String
+        let sourceName: String
         let options: JobOptions
-        let model: CatalogModel
-        var state: State = .waiting
+        let modelID: String
+        var source: URL?
+        var state: State
         var previews = Previews()
 
         var segments: [Transcript.Segment] { previews.segments }
 
-        var title: String { source.deletingPathExtension().lastPathComponent }
+        var isAdding: Bool {
+            if case .adding = state { true } else { false }
+        }
     }
 
     enum State: Equatable {
+        case adding(Double)
         case waiting
         case reading(Double)
         case running(Stage, Double)
-        case saving(Double)
         case failed(String)
     }
 
     private(set) var items: [Item] = []
-    private(set) var completed: (item: UUID, recording: UUID)?
+    private(set) var completed: UUID?
     private let models: ModelManager
     private let library: Library
-    private var engine: (config: EngineConfig, engine: Engine)?
+    private var copier: (config: EngineConfig, engine: Engine)?
+    private var transcriber: (config: EngineConfig, engine: Engine)?
+    private var adder: Task<Void, Never>?
     private var worker: Task<Void, Never>?
-    private var running: (id: UUID, task: Task<TranscriptionResult, Error>)?
+    private var cancellers: [UUID: () -> Void] = [:]
+    private var started = false
 
     init(models: ModelManager, library: Library) {
         self.models = models
         self.library = library
     }
 
-    var isTranscribing: Bool {
-        worker != nil
+    var isAdding: Bool {
+        items.contains(where: \.isAdding)
+    }
+
+    func uses(_ model: String) -> Bool {
+        items.contains { $0.modelID == model }
     }
 
     func item(_ id: UUID) -> Item? {
         items.first { $0.id == id }
     }
 
+    func start() {
+        guard !started else { return }
+        started = true
+        let pending = (try? library.store.pending()) ?? []
+        items = pending.map { recording in
+            Item(id: recording.id, title: recording.title, sourceName: recording.sourceName,
+                 options: recording.options, modelID: recording.transcriptionModel ?? "",
+                 state: recording.error.map(State.failed) ?? .waiting)
+        } + items
+        transcribeWaiting()
+    }
+
     func enqueue(_ sources: [URL], options: JobOptions, model: CatalogModel) {
-        items += sources.map { Item(source: $0, options: options, model: model) }
+        items += sources.map { source in
+            Item(id: UUID(), title: source.deletingPathExtension().lastPathComponent,
+                 sourceName: source.lastPathComponent, options: options, modelID: model.id,
+                 source: source, state: .adding(0))
+        }
+        addPending()
+    }
+
+    func retry(_ id: UUID) {
+        guard let item = item(id), case .failed = item.state else { return }
+        if item.source != nil {
+            update(id) { $0.state = .adding(0) }
+            addPending()
+        } else {
+            try? library.store.update(id) { $0.error = nil }
+            update(id) { $0.state = .waiting }
+            transcribeWaiting()
+        }
+    }
+
+    func cancel(_ id: UUID) {
+        guard let item = item(id) else { return }
+        items.removeAll { $0.id == id }
+        if let cancel = cancellers[id] {
+            cancel()
+        } else if item.source == nil {
+            try? library.store.delete(id)
+        }
+    }
+
+    private func addPending() {
+        guard adder == nil else { return }
+        adder = Task {
+            while let next = items.first(where: \.isAdding) {
+                await add(next)
+            }
+            adder = nil
+        }
+    }
+
+    private func transcribeWaiting() {
         guard worker == nil else { return }
         worker = Task {
             while let next = items.first(where: { $0.state == .waiting }) {
-                await process(next)
+                await transcribe(next)
             }
             worker = nil
         }
     }
 
-    func cancel(_ id: UUID) {
-        if running?.id == id {
-            running?.task.cancel()
-        } else {
-            remove(id)
-        }
-    }
-
-    func remove(_ id: UUID) {
-        items.removeAll { $0.id == id }
-    }
-
-    private func process(_ item: Item) async {
-        let accessing = item.source.startAccessingSecurityScopedResource()
+    private func add(_ item: Item) async {
+        guard let source = item.source else { return }
+        let accessing = source.startAccessingSecurityScopedResource()
         defer {
-            if accessing { item.source.stopAccessingSecurityScopedResource() }
+            if accessing { source.stopAccessingSecurityScopedResource() }
         }
-        update(item.id) { $0.state = .reading(0) }
+        let store = library.store
         do {
-            let config = EngineSettings.config(modelsDirectory: models.directory, transcriptionModel: item.model.id)
-            let engine = try self.engine.flatMap { $0.config == config ? $0.engine : nil } ?? Engine(config: config)
-            self.engine = (config, engine)
-            let staging = try library.store.makeStaging()
+            let config = EngineSettings.config(
+                modelsDirectory: models.directory, transcriptionModel: models.transcriptionModel?.id ?? item.modelID)
+            let engine = try cached(&copier, config)
+            let staging = try store.makeStaging()
             do {
-                let result = try await transcribe(item, engine: engine, into: staging)
-                let recording = Recording(title: item.title, sourceName: item.source.lastPathComponent,
-                                          durationMs: result.transcript.durationMs, options: item.options)
-                try library.store.commit(staging: staging, recording: recording, transcriptJSON: result.json)
-                library.reload()
-                remove(item.id)
-                completed = (item.id, recording.id)
+                try await perform(item.id) { events in
+                    try await Transcription.copy(
+                        engine: engine, input: source, output: staging.appending(path: RecordingStore.audioName),
+                        events: events)
+                }
+                let recording = Recording(id: item.id, title: item.title, sourceName: item.sourceName,
+                                          options: item.options, transcriptionModel: item.modelID)
+                try store.add(staging: staging, recording: recording)
             } catch {
-                library.store.discard(staging: staging)
+                store.discard(staging: staging)
                 throw error
             }
+            guard self.item(item.id) != nil else {
+                try? store.delete(item.id)
+                return
+            }
+            update(item.id) {
+                $0.source = nil
+                $0.state = .waiting
+            }
+            transcribeWaiting()
         } catch is CancellationError {
-            remove(item.id)
         } catch {
             update(item.id) { $0.state = .failed(Self.describe(error)) }
         }
     }
 
-    private func transcribe(_ item: Item, engine: Engine, into staging: URL) async throws -> TranscriptionResult {
+    private func transcribe(_ item: Item) async {
+        update(item.id) { $0.state = .reading(0) }
+        let store = library.store
+        do {
+            let config = EngineSettings.config(modelsDirectory: models.directory, transcriptionModel: item.modelID)
+            let engine = try cached(&transcriber, config)
+            let result = try await perform(item.id) { events in
+                try await Transcription.run(
+                    engine: engine, copy: store.audio(for: item.id), options: item.options,
+                    checkpoint: store.checkpoint(for: item.id), events: events)
+            }
+            try store.finish(item.id, transcriptJSON: result.json, durationMs: result.transcript.durationMs)
+            library.reload()
+            items.removeAll { $0.id == item.id }
+            completed = item.id
+        } catch is CancellationError {
+            if self.item(item.id) == nil {
+                try? store.delete(item.id)
+            }
+        } catch {
+            let message = Self.describe(error)
+            try? store.update(item.id) { $0.error = message }
+            update(item.id) { $0.state = .failed(message) }
+        }
+    }
+
+    private func cached(_ slot: inout (config: EngineConfig, engine: Engine)?, _ config: EngineConfig) throws -> Engine {
+        if let slot, slot.config == config { return slot.engine }
+        let engine = try Engine(config: config)
+        slot = (config, engine)
+        return engine
+    }
+
+    private func perform<T: Sendable>(
+        _ id: UUID,
+        _ body: @escaping @Sendable (@escaping @Sendable (TranscriptionEvent) -> Void) async throws -> T
+    ) async throws -> T {
         let (events, continuation) = AsyncStream.makeStream(of: TranscriptionEvent.self)
         let task = Task.detached {
             defer { continuation.finish() }
-            return try await Transcription.run(
-                engine: engine, input: item.source, options: item.options,
-                audioOutput: staging.appending(path: RecordingStore.audioName)
-            ) { continuation.yield($0) }
+            return try await body { continuation.yield($0) }
         }
-        running = (item.id, task)
-        defer { running = nil }
+        cancellers[id] = { task.cancel() }
+        defer { cancellers[id] = nil }
         for await event in events {
-            apply(event, to: item.id)
+            apply(event, to: id)
         }
         return try await task.value
     }
@@ -121,9 +215,10 @@ final class JobQueue {
     private func apply(_ event: TranscriptionEvent, to id: UUID) {
         update(id) { item in
             switch event {
+            case .reading(let fraction) where item.isAdding: item.state = .adding(fraction / 2)
+            case .saving(let fraction): item.state = .adding(0.5 + fraction / 2)
             case .reading(let fraction): item.state = .reading(fraction)
             case .stage(let stage, let fraction): item.state = .running(stage, fraction)
-            case .saving(let fraction): item.state = .saving(fraction)
             case .preview(let preview): item.previews.add(preview)
             }
         }

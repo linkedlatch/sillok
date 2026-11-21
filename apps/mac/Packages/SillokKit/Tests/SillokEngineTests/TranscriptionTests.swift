@@ -50,7 +50,8 @@ struct RealModels {
 
     let engine: Engine
     let audio: URL
-    let output = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).m4a")
+    let copy = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).m4a")
+    let checkpoint = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).jsonl")
 
     init() throws {
         let models = URL(filePath: Self.environment["SILLOK_TEST_MODELS"]!)
@@ -60,32 +61,34 @@ struct RealModels {
 }
 
 @Test(.enabled(if: RealModels.available))
-func transcribesARecording() async throws {
+func transcribesACopyOfARecording() async throws {
     let real = try RealModels()
-    defer { try? FileManager.default.removeItem(at: real.output) }
+    defer { try? FileManager.default.removeItem(at: real.copy) }
+    try await Transcription.copy(engine: real.engine, input: real.audio, output: real.copy) { _ in }
+    #expect(FileManager.default.fileExists(atPath: real.copy.path()))
+
     let events = Mutex<[TranscriptionEvent]>([])
     let result = try await Transcription.run(
-        engine: real.engine, input: real.audio, options: JobOptions(diarize: true), audioOutput: real.output
+        engine: real.engine, copy: real.copy, options: JobOptions(diarize: true), checkpoint: real.checkpoint
     ) { event in events.withLock { $0.append(event) } }
 
     #expect(!result.transcript.segments.isEmpty)
     #expect(result.transcript.segments.allSatisfy { $0.speaker != nil })
-    #expect(FileManager.default.fileExists(atPath: real.output.path()))
+    #expect(!FileManager.default.fileExists(atPath: real.checkpoint.path()))
     let stages = events.withLock { $0.compactMap { if case .stage(let stage, _) = $0 { stage } else { nil } } }
-    #expect(Set(stages) == [.analyze, .transcribe, .diarize])
+    #expect(Set(stages).isSuperset(of: [.analyze, .transcribe, .diarize]))
     let previews = events.withLock { $0.contains { if case .preview = $0 { true } else { false } } }
     #expect(previews)
     print("TRANSCRIPT", result.transcript.segments.map { "[\($0.speaker ?? -1)] \($0.text)" })
 }
 
 @Test(.enabled(if: RealModels.available))
-func cancellingStopsTheJob() async throws {
+func cancellingStopsTheCopy() async throws {
     let real = try RealModels()
     let task = Task {
-        try await Transcription.run(engine: real.engine, input: real.audio, options: JobOptions(),
-                                    audioOutput: real.output) { _ in }
+        try await Transcription.copy(engine: real.engine, input: real.audio, output: real.copy) { _ in }
     }
     task.cancel()
     await #expect(throws: CancellationError.self) { try await task.value }
-    #expect(!FileManager.default.fileExists(atPath: real.output.path()))
+    #expect(!FileManager.default.fileExists(atPath: real.copy.path()))
 }

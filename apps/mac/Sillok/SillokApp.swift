@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct SillokApp: App {
+    @NSApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var models: ModelManager
     @State private var library: Library
     @State private var queue: JobQueue
@@ -24,7 +25,10 @@ struct SillokApp: App {
                 .environment(queue)
                 .environment(player)
                 .environment(navigation)
-                .task { models.refresh() }
+                .task {
+                    delegate.queue = queue
+                    models.refresh()
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
@@ -39,5 +43,19 @@ struct SillokApp: App {
                 .environment(models)
                 .environment(queue)
         }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var queue: JobQueue?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard queue?.isAdding == true else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Files are still being added.")
+        alert.informativeText = String(localized: "Files not added yet are left out if you quit now. You can add them again later.")
+        alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
     }
 }

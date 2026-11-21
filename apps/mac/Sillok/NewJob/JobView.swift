@@ -4,20 +4,24 @@ import SwiftUI
 struct JobView: View {
     let item: JobQueue.Item
     @Environment(JobQueue.self) private var queue
+    @Environment(ModelManager.self) private var models
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.title2.bold())
-                Text(item.source.lastPathComponent)
+                Text(item.sourceName)
                     .foregroundStyle(.secondary)
             }
 
             if case .failed(let message) = item.state {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                Button("Remove") { queue.remove(item.id) }
+                HStack {
+                    Button("Try Again") { queue.retry(item.id) }
+                    Button("Remove") { queue.cancel(item.id) }
+                }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(steps, id: \.self) { step in
@@ -54,19 +58,21 @@ struct JobView: View {
     }
 
     private var steps: [Step] {
-        var steps: [Step] = [.reading, .stage(.analyze), .stage(.transcribe)]
-        if item.model.aligner == true { steps.append(.stage(.align)) }
+        var steps: [Step] = [.adding, .reading, .stage(.analyze), .stage(.transcribe)]
+        if models.transcriptionModels.first(where: { $0.id == item.modelID })?.aligner == true {
+            steps.append(.stage(.align))
+        }
         if item.options.diarize { steps.append(.stage(.diarize)) }
-        steps.append(.saving)
         return steps
     }
 
     private var current: (step: Step, fraction: Double)? {
         switch item.state {
-        case .waiting, .failed: nil
+        case .failed: nil
+        case .adding(let fraction): (.adding, fraction)
+        case .waiting: (.adding, 1)
         case .reading(let fraction): (.reading, fraction)
         case .running(let stage, let fraction): (.stage(stage), fraction)
-        case .saving(let fraction): (.saving, fraction)
         }
     }
 
@@ -81,18 +87,18 @@ struct JobView: View {
 }
 
 enum Step: Hashable {
+    case adding
     case reading
     case stage(Stage)
-    case saving
 
     var title: LocalizedStringKey {
         switch self {
+        case .adding: "Adding the file"
         case .reading: "Reading the file"
         case .stage(.analyze): "Finding speech"
         case .stage(.transcribe): "Transcribing"
         case .stage(.align): "Timing words"
         case .stage(.diarize): "Identifying speakers"
-        case .saving: "Saving"
         }
     }
 }

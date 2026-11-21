@@ -19,7 +19,7 @@ struct RecordingView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(recording.title)
                     .font(.title2.bold())
-                Text("\(recording.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(Timestamp.text(recording.durationMs))")
+                Text("\(recording.date.formatted(date: .abbreviated, time: .shortened)) · \(Timestamp.text(recording.durationMs ?? 0))")
                     .foregroundStyle(.secondary)
             }
             .padding(24)
@@ -62,7 +62,7 @@ struct RecordingView: View {
         .task(id: recording.id) {
             load()
             player.load(library.store.audio(for: recording.id), recording: recording.id,
-                        duration: Double(recording.durationMs) / 1000)
+                        duration: Double(recording.durationMs ?? 0) / 1000)
         }
         .onDisappear { player.pause() }
     }

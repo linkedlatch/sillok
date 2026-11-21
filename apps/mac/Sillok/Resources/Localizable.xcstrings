@@ -100,6 +100,16 @@
         }
       }
     },
+    "Adding the file": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 추가"
+          }
+        }
+      }
+    },
     "CPU": {
       "shouldTranslate": false
     },
@@ -283,6 +293,26 @@
         }
       }
     },
+    "Files are still being added.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 파일을 추가하는 중입니다."
+          }
+        }
+      }
+    },
+    "Files not added yet are left out if you quit now. You can add them again later.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 종료하면 추가가 끝나지 않은 파일은 빠집니다. 나중에 다시 추가할 수 있습니다."
+          }
+        }
+      }
+    },
     "Finding speech": {
       "localizations": {
         "ko": {
@@ -449,6 +479,16 @@
         }
       }
     },
+    "Quit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "종료"
+          }
+        }
+      }
+    },
     "Reading the file": {
       "localizations": {
         "ko": {
@@ -490,16 +530,6 @@
       }
     },
     "Save": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "저장"
-          }
-        }
-      }
-    },
-    "Saving": {
       "localizations": {
         "ko": {
           "stringUnit": {

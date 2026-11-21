@@ -33,37 +33,45 @@ public struct TranscriptionResult: Sendable {
 }
 
 public enum Transcription {
-    public static func run(
+    public static func copy(
         engine: Engine,
         input: URL,
+        output: URL,
+        events: @escaping @Sendable (TranscriptionEvent) -> Void
+    ) async throws {
+        let job = try Job(engine: engine, request: Job.Request())
+        try await job.perform { try job.copy(input: input, output: output, events: events) }
+    }
+
+    public static func run(
+        engine: Engine,
+        copy: URL,
         options: JobOptions,
-        audioOutput: URL,
+        checkpoint: URL,
         events: @escaping @Sendable (TranscriptionEvent) -> Void
     ) async throws -> TranscriptionResult {
-        let job = try Job(engine: engine, options: options)
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                let thread = Thread {
-                    continuation.resume(with: Result {
-                        try job.transcribe(input: input, audioOutput: audioOutput, events: events)
-                    })
-                }
-                thread.stackSize = 8 << 20
-                thread.qualityOfService = .userInitiated
-                thread.start()
-            }
-        } onCancel: {
-            job.cancel()
-        }
+        let request = Job.Request(
+            language: options.language, diarize: options.diarize, glossary: options.glossary,
+            evenLoudness: false, checkpoint: checkpoint.path(percentEncoded: false))
+        let job = try Job(engine: engine, request: request)
+        return try await job.perform { try job.transcribe(input: copy, events: events) }
     }
 }
 
 final class Job: @unchecked Sendable {
+    struct Request: Encodable {
+        var language = "auto"
+        var diarize = false
+        var glossary: [String] = []
+        var evenLoudness = true
+        var checkpoint: String?
+    }
+
     private let handle: OpaquePointer
 
-    init(engine: Engine, options: JobOptions) throws {
+    init(engine: Engine, request: Request) throws {
         var job: OpaquePointer?
-        try check(sillok_job_create(engine.handle, try encodeJSON(options), &job))
+        try check(sillok_job_create(engine.handle, try encodeJSON(request), &job))
         guard let job else { throw SillokError(code: .internalError, message: "no job") }
         handle = job
     }
@@ -76,20 +84,41 @@ final class Job: @unchecked Sendable {
         sillok_job_cancel(handle)
     }
 
-    func transcribe(
-        input: URL,
-        audioOutput: URL,
-        events: @escaping @Sendable (TranscriptionEvent) -> Void
-    ) throws -> TranscriptionResult {
+    func perform<T: Sendable>(_ body: @escaping @Sendable () throws -> T) async throws -> T {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let thread = Thread {
+                    continuation.resume(with: Result { try body() })
+                }
+                thread.stackSize = 8 << 20
+                thread.qualityOfService = .userInitiated
+                thread.start()
+            }
+        } onCancel: {
+            cancel()
+        }
+    }
+
+    func copy(input: URL, output: URL, events: @escaping @Sendable (TranscriptionEvent) -> Void) throws {
         let callbacks = Callbacks(events: events)
         let context = Unmanaged.passUnretained(callbacks).toOpaque()
         defer { withExtendedLifetime(callbacks) {} }
 
+        try read(input, context: context)
+        try check(sillok_job_end_audio(handle))
         try mapCancellation {
-            try check(sillok_job_push_file(handle, input.path(percentEncoded: false), { context, fraction in
-                Callbacks.from(context).emit(.reading(fraction))
+            try check(sillok_job_save_audio(handle, output.path(percentEncoded: false), { context, fraction in
+                Callbacks.from(context).emit(.saving(fraction))
             }, context))
         }
+    }
+
+    func transcribe(input: URL, events: @escaping @Sendable (TranscriptionEvent) -> Void) throws -> TranscriptionResult {
+        let callbacks = Callbacks(events: events)
+        let context = Unmanaged.passUnretained(callbacks).toOpaque()
+        defer { withExtendedLifetime(callbacks) {} }
+
+        try read(input, context: context)
         try check(sillok_job_on_segments(handle, { context, json in
             guard let json, let preview = try? Preview(json: String(cString: json)) else { return }
             Callbacks.from(context).emit(.preview(preview))
@@ -103,14 +132,15 @@ final class Job: @unchecked Sendable {
                 }, context, out)
             }
         }
-        let transcript = try Transcript(json: json)
+        return TranscriptionResult(json: json, transcript: try Transcript(json: json))
+    }
 
+    private func read(_ input: URL, context: UnsafeMutableRawPointer) throws {
         try mapCancellation {
-            try check(sillok_job_save_audio(handle, audioOutput.path(percentEncoded: false), { context, fraction in
-                Callbacks.from(context).emit(.saving(fraction))
+            try check(sillok_job_push_file(handle, input.path(percentEncoded: false), { context, fraction in
+                Callbacks.from(context).emit(.reading(fraction))
             }, context))
         }
-        return TranscriptionResult(json: json, transcript: transcript)
     }
 
     private func mapCancellation<T>(_ body: () throws -> T) throws -> T {

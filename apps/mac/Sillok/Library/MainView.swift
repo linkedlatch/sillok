@@ -73,10 +73,11 @@ struct MainView: View {
         } message: { _ in
             Text("The recording and its transcript will be removed. This cannot be undone.")
         }
-        .onChange(of: queue.completed?.item) {
-            guard let completed = queue.completed, selection == .job(completed.item) else { return }
-            selection = .recording(completed.recording)
+        .onChange(of: queue.completed) {
+            guard let id = queue.completed, selection == .job(id) else { return }
+            selection = .recording(id)
         }
+        .task { queue.start() }
     }
 
     @ViewBuilder
@@ -127,13 +128,15 @@ private struct JobRow: View {
 
     private var status: Text {
         switch item.state {
+        case .adding(let fraction) where fraction > 0:
+            Text("\(Text(Step.adding.title)) \(fraction.formatted(.percent.precision(.fractionLength(0))))")
+        case .adding: Text(Step.adding.title)
         case .waiting: Text("Waiting")
         case .reading: Text(Step.reading.title)
         case .running(let stage, let fraction) where fraction > 0:
             Text("\(Text(Step.stage(stage).title)) \(fraction.formatted(.percent.precision(.fractionLength(0))))")
         case .running(let stage, _):
             Text(Step.stage(stage).title)
-        case .saving: Text(Step.saving.title)
         case .failed: Text("Failed")
         }
     }
@@ -145,7 +148,7 @@ private struct RecordingRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(recording.title).lineLimit(1)
-            Text("\(recording.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(Timestamp.text(recording.durationMs))")
+            Text("\(recording.date.formatted(date: .abbreviated, time: .shortened)) · \(Timestamp.text(recording.durationMs ?? 0))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
