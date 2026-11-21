@@ -11,7 +11,9 @@ final class JobQueue {
         let source: URL
         let options: JobOptions
         var state: State = .waiting
-        var segments: [Transcript.Segment] = []
+        var previews = Previews()
+
+        var segments: [Transcript.Segment] { previews.segments }
 
         var title: String { source.deletingPathExtension().lastPathComponent }
     }
@@ -121,7 +123,7 @@ final class JobQueue {
             case .reading(let fraction): item.state = .reading(fraction)
             case .stage(let stage, let fraction): item.state = .running(stage, fraction)
             case .saving(let fraction): item.state = .saving(fraction)
-            case .segments(let segments): item.segments += segments
+            case .preview(let preview): item.previews.add(preview)
             }
         }
     }

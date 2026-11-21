@@ -25,6 +25,25 @@ import Testing
     #expect(transcript.models["transcription"]?.fellBackToCpu == false)
 }
 
+@Test func timedSegmentsReplaceTheDraftOfTheirChunk() throws {
+    func preview(_ chunk: Int, draft: Bool, _ texts: String...) throws -> Preview {
+        let items = texts.map {
+            #"{"start_ms": 0, "end_ms": 900, "text": "\#($0)", "language": "ko", "words": [], "chunk": \#(chunk)"#
+                + (draft ? #", "draft": true}"# : "}")
+        }
+        return try #require(try Preview(json: "[\(items.joined(separator: ","))]"))
+    }
+    var previews = Previews()
+    previews.add(try preview(0, draft: true, "하나 둘"))
+    previews.add(try preview(1, draft: true, "셋"))
+    #expect(previews.segments.map(\.text) == ["하나 둘", "셋"])
+    previews.add(try preview(0, draft: false, "하나", "둘"))
+    #expect(previews.segments.map(\.text) == ["하나", "둘", "셋"])
+    previews.add(try preview(1, draft: false, "셋."))
+    #expect(previews.segments.map(\.text) == ["하나", "둘", "셋."])
+    #expect(previews.pieces.allSatisfy { !$0.draft })
+}
+
 struct RealModels {
     static let environment = ProcessInfo.processInfo.environment
     static let available = environment["SILLOK_TEST_MODELS"] != nil && environment["SILLOK_TEST_AUDIO"] != nil
@@ -54,7 +73,7 @@ func transcribesARecording() async throws {
     #expect(FileManager.default.fileExists(atPath: real.output.path()))
     let stages = events.withLock { $0.compactMap { if case .stage(let stage, _) = $0 { stage } else { nil } } }
     #expect(Set(stages) == [.analyze, .transcribe, .diarize])
-    let previews = events.withLock { $0.contains { if case .segments = $0 { true } else { false } } }
+    let previews = events.withLock { $0.contains { if case .preview = $0 { true } else { false } } }
     #expect(previews)
     print("TRANSCRIPT", result.transcript.segments.map { "[\($0.speaker ?? -1)] \($0.text)" })
 }

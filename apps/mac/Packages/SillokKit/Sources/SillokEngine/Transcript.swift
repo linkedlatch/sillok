@@ -44,7 +44,49 @@ public struct Transcript: Codable, Sendable, Equatable {
         return decoder
     }()
 
-    static func segments(json: String) throws -> [Segment] {
-        try decoder.decode([Segment].self, from: Data(json.utf8))
+}
+
+public struct Preview: Sendable, Equatable {
+    public let chunk: Int
+    public let draft: Bool
+    public let segments: [Transcript.Segment]
+
+    init?(json: String) throws {
+        let items = try Transcript.decoder.decode([Item].self, from: Data(json.utf8))
+        guard let first = items.first else { return nil }
+        chunk = first.chunk
+        draft = first.draft
+        segments = items.map(\.segment)
+    }
+
+    private struct Item: Decodable {
+        enum CodingKeys: CodingKey { case chunk, draft }
+
+        let segment: Transcript.Segment
+        let chunk: Int
+        let draft: Bool
+
+        init(from decoder: Decoder) throws {
+            segment = try Transcript.Segment(from: decoder)
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            chunk = try container.decode(Int.self, forKey: .chunk)
+            draft = try container.decodeIfPresent(Bool.self, forKey: .draft) ?? false
+        }
+    }
+}
+
+public struct Previews: Sendable, Equatable {
+    public private(set) var pieces: [Preview] = []
+
+    public init() {}
+
+    public var segments: [Transcript.Segment] { pieces.flatMap(\.segments) }
+
+    public mutating func add(_ preview: Preview) {
+        if !preview.draft {
+            pieces.removeAll { $0.chunk == preview.chunk && $0.draft }
+        }
+        let index = pieces.firstIndex { $0.chunk > preview.chunk } ?? pieces.endIndex
+        pieces.insert(preview, at: index)
     }
 }

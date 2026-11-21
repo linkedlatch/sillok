@@ -23,7 +23,7 @@ public enum Stage: Int, Sendable, CaseIterable {
 public enum TranscriptionEvent: Sendable, Equatable {
     case reading(Double)
     case stage(Stage, Double)
-    case segments([Transcript.Segment])
+    case preview(Preview)
     case saving(Double)
 }
 
@@ -91,8 +91,8 @@ final class Job: @unchecked Sendable {
             }, context))
         }
         try check(sillok_job_on_segments(handle, { context, json in
-            guard let json, let segments = try? Transcript.segments(json: String(cString: json)) else { return }
-            Callbacks.from(context).emit(.segments(segments))
+            guard let json, let preview = try? Preview(json: String(cString: json)) else { return }
+            Callbacks.from(context).emit(.preview(preview))
         }, context))
 
         let json = try mapCancellation {
@@ -145,7 +145,7 @@ private final class Callbacks {
             guard fraction - lastFraction >= 0.01 || fraction >= 1 || fraction < lastFraction else { return }
             lastStage = nil
             lastFraction = fraction
-        case .segments:
+        case .preview:
             break
         }
         events(event)
