@@ -137,7 +137,8 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 /* --- Jobs ---------------------------------------------------------------- */
 
 /* One recording. `options_json`: {"language": "auto" | "<code>",
- * "diarize": false, "glossary": ["term", ...], "even_loudness": true}
+ * "diarize": false, "glossary": ["term", ...], "even_loudness": true,
+ * "checkpoint": "<path>"}
  * "language": "auto" tells the language of each piece the model hears at
  * once (speech joined up to 30 s, or less for a model that takes less),
  * among the model's "languages", so a recording may switch language between
@@ -155,7 +156,16 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * 35 Korean terms; Qwen3-ASR about 7000 with pieces of 30 s.
  * "even_loudness": false leaves the pushed audio's loudness as it is, for a
  * recording whose loudness was evened out already: a job's copy for
- * listening back (sillok_job_save_audio) transcribes as the original did. */
+ * listening back (sillok_job_save_audio) transcribes as the original did.
+ * With "checkpoint", the job records in that file what it transcribed (and
+ * aligned), one piece the model hears at a time. A job of the same recording,
+ * options and transcription model with the same file goes on after the
+ * pieces it finds there, first passing them to the segment callback, and
+ * gives the transcript one run would have given; otherwise it starts the
+ * file anew. Detecting speech and diarization run again in full, as they are
+ * quick. The file is removed when the job succeeds and kept when it fails or
+ * is cancelled: a new job with the same file then goes on, as after a crash.
+ * A file that cannot be written is dropped and the job carries on. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);
@@ -217,11 +227,17 @@ SILLOK_API sillok_status sillok_job_save_audio(sillok_job* job, const char* path
                                                sillok_file_progress_fn progress,
                                                void* user_data);
 
-/* Segments of the transcript as the transcription stage finishes them (the
- * align stage, for a model with an aligner), for the app to show while the
- * job runs: `segments_json` is an array of segments as in the transcript
- * document (below), without "speaker". They are previews; the transcript
- * sillok_job_run() returns then adds speakers and splits long segments.
+/* Segments of the transcript as the transcription stage finishes them, for
+ * the app to show while the job runs: `segments_json` is an array of
+ * segments as in the transcript document (below), without "speaker", each
+ * with "chunk", the index of the piece of speech the model heard (see
+ * "language" above) it comes from. A model with an aligner first gives what
+ * it heard in a piece as a draft: one segment with "draft": true spanning the
+ * piece, its text and no words. The align stage then passes all of the
+ * piece's timed segments in one call, to replace the draft of the same
+ * "chunk". Within a stage, pieces arrive in order. They are previews; the
+ * transcript sillok_job_run() returns then adds speakers and splits long
+ * segments.
  * Called on the thread running sillok_job_run(); the string lives for the
  * call. */
 typedef void (*sillok_segments_fn)(void* user_data, const char* segments_json);

@@ -1,6 +1,7 @@
 #ifndef SILLOK_CAPI_JSON_IO_HPP_
 #define SILLOK_CAPI_JSON_IO_HPP_
 
+#include <filesystem>
 #include <span>
 #include <string>
 #include <string_view>
@@ -25,6 +26,7 @@ struct JobOptions {
   // Whether pushed audio has its loudness evened out; not for audio that
   // already has, such as a job's copy for listening back.
   bool even_loudness = true;
+  std::filesystem::path checkpoint;  // empty for none
 };
 
 JobOptions ParseJobOptions(std::string_view json);
@@ -34,6 +36,10 @@ ExportOptions ParseExportOptions(std::string_view json);
 std::string TranscriptToJson(const Transcript& transcript);
 // Segments as in a transcript document, as an array.
 std::string SegmentsToJson(std::span<const Segment> segments);
+std::vector<Segment> SegmentsFromJson(std::string_view json);
+// A preview's segments as the segment callback gets them: the array of
+// SegmentsToJson, each with its "chunk", and "draft": true for a draft.
+std::string PreviewToJson(const Preview& preview);
 Transcript TranscriptFromJson(std::string_view json);
 
 std::string CatalogToJson(const std::vector<CatalogModel>& catalog);

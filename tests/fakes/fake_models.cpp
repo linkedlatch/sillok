@@ -292,6 +292,7 @@ std::unique_ptr<Transcriber> FakeModels::OpenTranscriber() {
 
 std::unique_ptr<Aligner> FakeModels::OpenAligner() {
   if (!options_.separate_alignment) return nullptr;
+  ++aligners_opened_;
   return std::make_unique<FakeAligner>(live_);
 }
 

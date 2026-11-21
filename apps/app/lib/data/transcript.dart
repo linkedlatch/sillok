@@ -21,9 +21,44 @@ class Segment {
 }
 
 /// Segments in a preview from the library (a JSON array).
-List<Segment> parseSegments(String json) => [
-  for (final segment in jsonDecode(json) as List) Segment.fromJson(segment as Map<String, dynamic>),
+List<Segment> parseSegments(String json) => [for (final p in parsePreview(json)) p.segment];
+
+/// A segment of a preview from the library, with the piece of speech the
+/// model heard it in.
+class PreviewSegment {
+  const PreviewSegment(this.segment, {required this.chunk, this.draft = false});
+
+  final Segment segment;
+  final int chunk;
+
+  /// The text heard in the piece before the aligner times it (one segment
+  /// over the piece); the piece's timed segments replace it.
+  final bool draft;
+}
+
+List<PreviewSegment> parsePreview(String json) => [
+  for (final item in (jsonDecode(json) as List).cast<Map<String, dynamic>>())
+    PreviewSegment(
+      Segment.fromJson(item),
+      chunk: (item['chunk'] as num?)?.toInt() ?? 0,
+      draft: item['draft'] as bool? ?? false,
+    ),
 ];
+
+/// [shown] with the preview [json] added: timed segments of a piece replace
+/// its draft, in the piece's place.
+List<PreviewSegment> addPreview(List<PreviewSegment> shown, String json) {
+  final incoming = parsePreview(json);
+  final timed = {for (final p in incoming) if (!p.draft) p.chunk};
+  final all = [for (final p in shown) if (!(p.draft && timed.contains(p.chunk))) p, ...incoming];
+  // By piece, keeping the order within one (List.sort is not stable).
+  final order = [for (var i = 0; i < all.length; i++) i];
+  order.sort((a, b) {
+    final byChunk = all[a].chunk.compareTo(all[b].chunk);
+    return byChunk != 0 ? byChunk : a.compareTo(b);
+  });
+  return [for (final i in order) all[i]];
+}
 
 /// What ran a stage: the model and the device, as the library reports.
 class StageInfo {

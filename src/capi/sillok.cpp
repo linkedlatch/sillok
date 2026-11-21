@@ -24,6 +24,7 @@
 #endif
 
 #include "backends/models.hpp"
+#include "capi/checkpoint.hpp"
 #include "capi/json_io.hpp"
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
@@ -81,6 +82,7 @@ void RequireArgument(bool ok, const char* message) {
 
 struct EngineState {
   std::unique_ptr<ModelProvider> models;
+  std::string transcription_model;  // as configured; empty for the recommended one
   std::atomic<bool> busy = false;
 };
 
@@ -98,11 +100,13 @@ struct sillok_job {
              sillok::JobOptions job_options)
       : engine(std::move(engine_state)),
         options(std::move(job_options.pipeline)),
+        checkpoint(std::move(job_options.checkpoint)),
         input(audio, job_options.even_loudness ? sillok::AudioInput::Loudness::kEvenedOut
                                                : sillok::AudioInput::Loudness::kAsRecorded) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
+  std::filesystem::path checkpoint;  // empty for none
   sillok::AudioBuffer audio;
   sillok::AudioInput input;  // converts pushed audio into `audio`
   sillok::StopSource stop;
@@ -338,6 +342,7 @@ sillok_status sillok_engine_create(const char* config_json,
     const sillok::EngineConfig config = sillok::ParseEngineConfig(config_json);
     auto state = std::make_shared<sillok::EngineState>();
     state->models = sillok::OpenModels(config);
+    state->transcription_model = config.transcription_model;
     sillok::RegisterExitHandlerOnce(sillok::ExitSafeModels::engine_created);
     *out_engine = new sillok_engine{std::move(state)};
     return SILLOK_OK;
@@ -452,17 +457,25 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
 
     job->input.Finish();
     sillok::ExitSafeModels models(*job->engine->models);
+    std::optional<sillok::CheckpointFile> checkpoint;
+    std::optional<sillok::Checkpoint> resume;
+    if (!job->checkpoint.empty()) {
+      checkpoint.emplace(job->checkpoint, sillok_version(), job->engine->transcription_model);
+      resume = checkpoint->Load();
+    }
     const sillok::Transcript transcript = sillok::RunPipeline(
         job->audio, job->options, models,
         [&](sillok::Stage stage, double fraction) {
           if (progress) progress(user_data, static_cast<sillok_stage>(stage), fraction);
         },
         job->stop.Token(),
-        [&](std::span<const sillok::Segment> segments) {
+        [&](const sillok::Preview& preview) {
           if (job->on_segments == nullptr) return;
-          const std::string json = sillok::SegmentsToJson(segments);
+          const std::string json = sillok::PreviewToJson(preview);
           job->on_segments(job->segments_user_data, json.c_str());
-        });
+        },
+        resume ? &*resume : nullptr, checkpoint ? &*checkpoint : nullptr);
+    if (checkpoint) checkpoint->Remove();
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;
   });

@@ -120,12 +120,13 @@ JobOptions ParseJobOptions(std::string_view text) {
   PipelineOptions& options = job.pipeline;
   const Json json = Parse(text, "job options");
   RejectUnknownKeys(json, "job options",
-                    {"language", "diarize", "glossary", "even_loudness"});
+                    {"language", "diarize", "glossary", "even_loudness", "checkpoint"});
   // Checked against the engine's model by sillok_job_create.
   options.language = Get<std::string>(json, "language", "auto");
   options.diarize = Get<bool>(json, "diarize", false);
   options.glossary = Get<std::vector<std::string>>(json, "glossary", {});
   job.even_loudness = Get<bool>(json, "even_loudness", true);
+  job.checkpoint = PathFromUtf8(Get<std::string>(json, "checkpoint", ""));
   return job;
 }
 
@@ -180,6 +181,28 @@ Segment SegmentFromJson(const Json& item) {
 std::string SegmentsToJson(std::span<const Segment> segments) {
   Json items = Json::array();
   for (const Segment& segment : segments) items.push_back(SegmentToJson(segment));
+  return Dump(items);
+}
+
+std::vector<Segment> SegmentsFromJson(std::string_view text) {
+  const Json json = Parse(text, "segments");
+  if (!json.is_array() ||
+      !std::all_of(json.begin(), json.end(), [](const Json& item) { return item.is_object(); })) {
+    throw std::invalid_argument("segments must be an array of objects");
+  }
+  std::vector<Segment> segments;
+  for (const Json& item : json) segments.push_back(SegmentFromJson(item));
+  return segments;
+}
+
+std::string PreviewToJson(const Preview& preview) {
+  Json items = Json::array();
+  for (const Segment& segment : preview.segments) {
+    Json item = SegmentToJson(segment);
+    item["chunk"] = preview.chunk;
+    if (preview.draft) item["draft"] = true;
+    items.push_back(std::move(item));
+  }
   return Dump(items);
 }
 

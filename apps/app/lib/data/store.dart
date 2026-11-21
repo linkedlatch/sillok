@@ -2,7 +2,9 @@
 // folder per job, <jobs>/<yyyyMMdd-HHmmss[-n]>/, with transcript.json, the
 // copy for listening back (audio.m4a) and meta.json, written last. A folder
 // without meta.json is unfinished; while its file waits or failed, it holds
-// the copy.
+// the copy, and checkpoint.jsonl once its transcription started: the library
+// records there how far it got, so a retry goes on from there, and removes it
+// when done.
 import 'dart:convert';
 import 'dart:io';
 
@@ -77,6 +79,10 @@ class JobStore {
   File _file(String id, String name) => File('${dirOf(id).path}${Platform.pathSeparator}$name');
 
   File audioOf(String id) => _file(id, 'audio.m4a');
+
+  /// Where the library records how far a transcription got (job option
+  /// "checkpoint").
+  File checkpointOf(String id) => _file(id, 'checkpoint.jsonl');
 
   /// A new, empty folder named after [time].
   Future<String> create(DateTime time) async {
