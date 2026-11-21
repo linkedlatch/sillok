@@ -10,15 +10,16 @@ struct RecordingStoreTests {
     func add(_ title: String, at date: Date) throws -> Recording {
         let staging = try store.makeStaging()
         try Data("audio".utf8).write(to: staging.appending(path: RecordingStore.audioName))
-        let recording = Recording(title: title, createdAt: date, sourceName: "\(title).m4a",
+        var recording = Recording(title: title, createdAt: date, sourceName: "\(title).m4a",
                                   options: JobOptions(language: "ko", diarize: true), transcriptionModel: "whisper")
+        recording.timingsMs = ["copy": 300]
         try store.add(staging: staging, recording: recording)
         return recording
     }
 
     func save(_ title: String, at date: Date) throws -> Recording {
         let recording = try add(title, at: date)
-        try store.finish(recording.id, transcriptJSON: "{\"version\": 1}", durationMs: 1000)
+        try store.finish(recording.id, transcriptJSON: "{\"version\": 1}", durationMs: 1000, timingsMs: [:])
         return try #require(try store.list().first { $0.id == recording.id })
     }
 
@@ -41,13 +42,15 @@ struct RecordingStoreTests {
         let recording = try add("meeting", at: Date(timeIntervalSince1970: 1_000))
         try store.update(recording.id) { $0.error = "The model failed." }
         #expect(try store.pending().first?.error == "The model failed.")
-        try store.finish(recording.id, transcriptJSON: "{\"version\": 1}", durationMs: 1000)
+        try store.finish(recording.id, transcriptJSON: "{\"version\": 1}", durationMs: 1000,
+                         timingsMs: ["read": 100, "transcribe": 2000])
         #expect(try store.pending().isEmpty)
         let finished = try #require(try store.list().first)
         #expect(finished.error == nil)
         #expect(finished.durationMs == 1000)
         #expect(finished.transcribedAt != nil)
         #expect(finished.transcriptionModel == "whisper")
+        #expect(finished.timingsMs == ["copy": 300, "read": 100, "transcribe": 2000])
     }
 
     @Test func readsRecordingsSavedBeforeJobInformation() throws {

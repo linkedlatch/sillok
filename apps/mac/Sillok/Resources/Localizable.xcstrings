@@ -80,6 +80,16 @@
         }
       }
     },
+    "%@× real time": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실시간의 %@배"
+          }
+        }
+      }
+    },
     "%lld languages · %@": {
       "localizations": {
         "ko": {
@@ -96,6 +106,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "모델을 불러오지 못했습니다: %@"
+          }
+        }
+      }
+    },
+    "About %@ left": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약 %@ 남음"
+          }
+        }
+      }
+    },
+    "Added": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
           }
         }
       }
@@ -163,6 +193,26 @@
         }
       }
     },
+    "Copy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
+        }
+      }
+    },
+    "Copy Text": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 복사"
+          }
+        }
+      }
+    },
     "Delete": {
       "localizations": {
         "ko": {
@@ -209,6 +259,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "자동 감지"
+          }
+        }
+      }
+    },
+    "Device": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "장치"
           }
         }
       }
@@ -356,6 +416,16 @@
         }
       }
     },
+    "Info": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정보"
+          }
+        }
+      }
+    },
     "JSON": {
       "shouldTranslate": false
     },
@@ -365,6 +435,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "언어"
+          }
+        }
+      }
+    },
+    "Length": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길이"
           }
         }
       }
@@ -469,6 +549,16 @@
         }
       }
     },
+    "Play from Here": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기부터 재생"
+          }
+        }
+      }
+    },
     "Play from here": {
       "localizations": {
         "ko": {
@@ -519,6 +609,36 @@
         }
       }
     },
+    "Rename": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 변경"
+          }
+        }
+      }
+    },
+    "Rename Recording": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹음 이름 변경"
+          }
+        }
+      }
+    },
+    "Rename…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 변경…"
+          }
+        }
+      }
+    },
     "Run Whisper's encoder on the Neural Engine": {
       "localizations": {
         "ko": {
@@ -535,6 +655,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "저장"
+          }
+        }
+      }
+    },
+    "Search Transcript": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 결과 검색"
           }
         }
       }
@@ -602,6 +732,16 @@
         }
       }
     },
+    "Speed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "속도"
+          }
+        }
+      }
+    },
     "Starting…": {
       "localizations": {
         "ko": {
@@ -642,12 +782,32 @@
         }
       }
     },
+    "The GPU failed, so this ran on the CPU.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU에서 실패해 CPU로 실행했습니다."
+          }
+        }
+      }
+    },
     "The Speaker Names Cannot Be Saved": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "화자 이름을 저장할 수 없음"
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Copied": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 결과를 복사할 수 없습니다"
           }
         }
       }
@@ -702,7 +862,37 @@
         }
       }
     },
+    "Title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제목"
+          }
+        }
+      }
+    },
+    "Total": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합계"
+          }
+        }
+      }
+    },
     "Transcribe": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사"
+          }
+        }
+      }
+    },
+    "Transcribed": {
       "localizations": {
         "ko": {
           "stringUnit": {

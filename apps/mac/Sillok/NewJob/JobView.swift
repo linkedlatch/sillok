@@ -25,7 +25,8 @@ struct JobView: View {
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(steps, id: \.self) { step in
-                        StepRow(step: step, progress: progress(of: step))
+                        StepRow(step: step, progress: progress(of: step),
+                                remaining: step == item.step ? item.remaining : nil)
                     }
                 }
                 Button("Cancel") { queue.cancel(item.id) }
@@ -66,18 +67,8 @@ struct JobView: View {
         return steps
     }
 
-    private var current: (step: Step, fraction: Double)? {
-        switch item.state {
-        case .failed: nil
-        case .adding(let fraction): (.adding, fraction)
-        case .waiting: (.adding, 1)
-        case .reading(let fraction): (.reading, fraction)
-        case .running(let stage, let fraction): (.stage(stage), fraction)
-        }
-    }
-
     private func progress(of step: Step) -> Double? {
-        guard let current, let now = steps.firstIndex(of: current.step), let index = steps.firstIndex(of: step) else {
+        guard let current = item.progress, let now = steps.firstIndex(of: current.step), let index = steps.firstIndex(of: step) else {
             return nil
         }
         if index < now { return 1 }
@@ -101,11 +92,23 @@ enum Step: Hashable {
         case .stage(.diarize): "Identifying speakers"
         }
     }
+
+    var key: String {
+        switch self {
+        case .adding: "copy"
+        case .reading: "read"
+        case .stage(.analyze): "analyze"
+        case .stage(.transcribe): "transcribe"
+        case .stage(.align): "align"
+        case .stage(.diarize): "diarize"
+        }
+    }
 }
 
 private struct StepRow: View {
     let step: Step
     let progress: Double?
+    let remaining: Duration?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -127,6 +130,11 @@ private struct StepRow: View {
                 Text(progress.formatted(.percent.precision(.fractionLength(0))))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
+                if let remaining {
+                    Text("About \(remaining.formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 1))) left")
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

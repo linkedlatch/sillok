@@ -16,6 +16,8 @@ struct MainView: View {
     @State private var selection: Selection?
     @State private var pending: [URL] = []
     @State private var deleting: Recording?
+    @State private var renaming: Recording?
+    @State private var title = ""
 
     var body: some View {
         NavigationSplitView {
@@ -32,6 +34,10 @@ struct MainView: View {
                         RecordingRow(recording: recording)
                             .tag(Selection.recording(recording.id))
                             .contextMenu {
+                                Button("Rename…") {
+                                    title = recording.title
+                                    renaming = recording
+                                }
                                 Button("Delete…", role: .destructive) { deleting = recording }
                             }
                     }
@@ -72,6 +78,13 @@ struct MainView: View {
             Button("Delete", role: .destructive) { delete(recording) }
         } message: { _ in
             Text("The recording and its transcript will be removed. This cannot be undone.")
+        }
+        .alert("Rename Recording",
+               isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
+               presenting: renaming) { recording in
+            TextField("Title", text: $title)
+            Button("Rename") { library.rename(recording.id, to: title) }
+            Button("Cancel", role: .cancel) {}
         }
         .onChange(of: queue.completed) {
             guard let id = queue.completed, selection == .job(id) else { return }

@@ -10,6 +10,7 @@ public struct Recording: Codable, Sendable, Identifiable, Hashable {
     public let transcriptionModel: String?
     public var durationMs: Int?
     public var transcribedAt: Date?
+    public var timingsMs: [String: Int]?
     public var error: String?
 
     public init(id: UUID = UUID(), title: String, createdAt: Date = .now, sourceName: String,
@@ -67,11 +68,12 @@ public struct RecordingStore: Sendable {
         try Self.encoder.encode(recording).write(to: url, options: .atomic)
     }
 
-    public func finish(_ id: UUID, transcriptJSON: String, durationMs: Int) throws {
+    public func finish(_ id: UUID, transcriptJSON: String, durationMs: Int, timingsMs: [String: Int]) throws {
         try saveTranscript(transcriptJSON, for: id)
         try update(id) {
             $0.durationMs = durationMs
             $0.transcribedAt = .now
+            $0.timingsMs = ($0.timingsMs ?? [:]).merging(timingsMs) { $1 }
             $0.error = nil
         }
     }

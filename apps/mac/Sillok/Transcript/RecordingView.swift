@@ -13,6 +13,8 @@ struct RecordingView: View {
     @State private var renaming = false
     @State private var export: (document: TextDocument, type: UTType)?
     @State private var problem: (title: LocalizedStringKey, message: String)?
+    @State private var query = ""
+    @State private var showingInfo = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,12 +39,19 @@ struct RecordingView: View {
             if let transcript, !transcript.speakers.isEmpty {
                 Button("Speaker Names", systemImage: "person.2") { renaming = true }
             }
+            Button("Copy Text", systemImage: "doc.on.doc") { copyText() }
+                .disabled(json == nil)
             Menu("Export", systemImage: "square.and.arrow.up") {
                 Button("Text") { prepareExport(.txt) }
                 Button("JSON") { prepareExport(.json) }
             }
             .disabled(json == nil)
+            Button("Info", systemImage: "info.circle") { showingInfo = true }
+                .popover(isPresented: $showingInfo) {
+                    RecordingInfoView(recording: recording, transcript: transcript)
+                }
         }
+        .searchable(text: $query, placement: .toolbar, prompt: Text("Search Transcript"))
         .sheet(isPresented: $renaming) {
             if let transcript {
                 SpeakerNamesView(transcript: transcript) { names in rename(names) }
@@ -60,6 +69,7 @@ struct RecordingView: View {
             Text(problem?.message ?? "")
         }
         .task(id: recording.id) {
+            query = ""
             load()
             player.load(library.store.audio(for: recording.id), recording: recording.id,
                         duration: Double(recording.durationMs ?? 0) / 1000)
@@ -69,8 +79,12 @@ struct RecordingView: View {
 
     private func segments(_ transcript: Transcript) -> some View {
         let current = currentSegment(in: transcript)
+        let search = query.trimmingCharacters(in: .whitespaces)
+        let shown = transcript.segments.enumerated().filter {
+            search.isEmpty || $0.element.text.localizedStandardContains(search)
+        }
         return ScrollViewReader { proxy in
-            List(Array(transcript.segments.enumerated()), id: \.offset) { index, segment in
+            List(shown, id: \.offset) { index, segment in
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Button(Timestamp.text(segment.startMs)) { player.play(fromMilliseconds: segment.startMs) }
                         .buttonStyle(.plain)
@@ -83,14 +97,23 @@ struct RecordingView: View {
                             .font(.callout.weight(.semibold))
                             .foregroundStyle(.tint)
                     }
-                    Text(segment.text)
+                    Text(Self.highlighting(search, in: segment.text))
                         .textSelection(.enabled)
                 }
                 .padding(.vertical, 2)
+                .contextMenu {
+                    Button("Copy") { Self.copy(segment.text) }
+                    Button("Play from Here") { player.play(fromMilliseconds: segment.startMs) }
+                }
                 .listRowBackground(index == current ? Color.accentColor.opacity(0.12) : Color.clear)
                 .id(index)
             }
             .listStyle(.plain)
+            .overlay {
+                if shown.isEmpty, !search.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                }
+            }
             .onChange(of: current) { _, index in
                 guard player.isPlaying, let index else { return }
                 withAnimation { proxy.scrollTo(index, anchor: .center) }
@@ -125,6 +148,31 @@ struct RecordingView: View {
             load()
         } catch {
             problem = ("The Speaker Names Cannot Be Saved", error.localizedDescription)
+        }
+    }
+
+    private static func highlighting(_ search: String, in text: String) -> AttributedString {
+        var attributed = AttributedString(text)
+        guard !search.isEmpty else { return attributed }
+        var rest = attributed.startIndex..<attributed.endIndex
+        while let found = attributed[rest].range(of: search, options: [.caseInsensitive, .diacriticInsensitive]) {
+            attributed[found].backgroundColor = .yellow.opacity(0.4)
+            rest = found.upperBound..<attributed.endIndex
+        }
+        return attributed
+    }
+
+    private static func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func copyText() {
+        guard let json else { return }
+        do {
+            Self.copy(try Export.render(json, as: .txt, speakerLabel: String(localized: "Speaker {n}")))
+        } catch {
+            problem = ("The Transcript Cannot Be Copied", error.localizedDescription)
         }
     }
 

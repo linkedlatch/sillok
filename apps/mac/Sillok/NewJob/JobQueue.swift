@@ -15,11 +15,45 @@ final class JobQueue {
         var source: URL?
         var state: State
         var previews = Previews()
+        var step: Step?
+        var stepStarted = Date.now
+        var timings: [String: Int] = [:]
 
         var segments: [Transcript.Segment] { previews.segments }
 
         var isAdding: Bool {
             if case .adding = state { true } else { false }
+        }
+
+        var progress: (step: Step, fraction: Double)? {
+            switch state {
+            case .failed: nil
+            case .adding(let fraction): (.adding, fraction)
+            case .waiting: (.adding, 1)
+            case .reading(let fraction): (.reading, fraction)
+            case .running(let stage, let fraction): (.stage(stage), fraction)
+            }
+        }
+
+        var remaining: Duration? {
+            guard let progress, progress.step == step, progress.fraction >= 0.03 else { return nil }
+            let elapsed = Date.now.timeIntervalSince(stepStarted)
+            guard elapsed >= 20 else { return nil }
+            return .seconds(elapsed * (1 - progress.fraction) / progress.fraction)
+        }
+
+        mutating func startStep(_ next: Step?, at time: Date) {
+            guard next != step else { return }
+            endStep(at: time)
+            step = next
+            stepStarted = time
+        }
+
+        mutating func endStep(at time: Date = .now) {
+            if let step {
+                timings[step.key, default: 0] += Int(time.timeIntervalSince(stepStarted) * 1000)
+            }
+            step = nil
         }
     }
 
@@ -41,6 +75,7 @@ final class JobQueue {
     private var worker: Task<Void, Never>?
     private var cancellers: [UUID: () -> Void] = [:]
     private var started = false
+    private var activity: NSObjectProtocol?
 
     init(models: ModelManager, library: Library) {
         self.models = models
@@ -109,7 +144,9 @@ final class JobQueue {
                 await add(next)
             }
             adder = nil
+            keepAwake()
         }
+        keepAwake()
     }
 
     private func transcribeWaiting() {
@@ -119,6 +156,19 @@ final class JobQueue {
                 await transcribe(next)
             }
             worker = nil
+            keepAwake()
+        }
+        keepAwake()
+    }
+
+    private func keepAwake() {
+        let busy = adder != nil || worker != nil
+        if busy, activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(
+                options: .userInitiated, reason: "Transcribing recordings")
+        } else if !busy, let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+            self.activity = nil
         }
     }
 
@@ -140,8 +190,9 @@ final class JobQueue {
                         engine: engine, input: source, output: staging.appending(path: RecordingStore.audioName),
                         events: events)
                 }
-                let recording = Recording(id: item.id, title: item.title, sourceName: item.sourceName,
+                var recording = Recording(id: item.id, title: item.title, sourceName: item.sourceName,
                                           options: item.options, transcriptionModel: item.modelID)
+                recording.timingsMs = self.item(item.id)?.timings
                 try store.add(staging: staging, recording: recording)
             } catch {
                 store.discard(staging: staging)
@@ -173,7 +224,8 @@ final class JobQueue {
                     engine: engine, copy: store.audio(for: item.id), options: item.options,
                     checkpoint: store.checkpoint(for: item.id), events: events)
             }
-            try store.finish(item.id, transcriptJSON: result.json, durationMs: result.transcript.durationMs)
+            try store.finish(item.id, transcriptJSON: result.json, durationMs: result.transcript.durationMs,
+                             timingsMs: self.item(item.id)?.timings ?? [:])
             library.reload()
             items.removeAll { $0.id == item.id }
             completed = item.id
@@ -199,20 +251,23 @@ final class JobQueue {
         _ id: UUID,
         _ body: @escaping @Sendable (@escaping @Sendable (TranscriptionEvent) -> Void) async throws -> T
     ) async throws -> T {
-        let (events, continuation) = AsyncStream.makeStream(of: TranscriptionEvent.self)
+        let (events, continuation) = AsyncStream.makeStream(of: (event: TranscriptionEvent, time: Date).self)
         let task = Task.detached {
             defer { continuation.finish() }
-            return try await body { continuation.yield($0) }
+            return try await body { continuation.yield(($0, .now)) }
         }
         cancellers[id] = { task.cancel() }
-        defer { cancellers[id] = nil }
-        for await event in events {
-            apply(event, to: id)
+        defer {
+            cancellers[id] = nil
+            update(id) { $0.endStep() }
+        }
+        for await (event, time) in events {
+            apply(event, at: time, to: id)
         }
         return try await task.value
     }
 
-    private func apply(_ event: TranscriptionEvent, to id: UUID) {
+    private func apply(_ event: TranscriptionEvent, at time: Date, to id: UUID) {
         update(id) { item in
             switch event {
             case .reading(let fraction) where item.isAdding: item.state = .adding(fraction / 2)
@@ -221,6 +276,7 @@ final class JobQueue {
             case .stage(let stage, let fraction): item.state = .running(stage, fraction)
             case .preview(let preview): item.previews.add(preview)
             }
+            item.startStep(item.progress?.step, at: time)
         }
     }
 

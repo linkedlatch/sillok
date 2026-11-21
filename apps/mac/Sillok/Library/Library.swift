@@ -18,6 +18,13 @@ final class Library {
         recordings = (try? store.list()) ?? []
     }
 
+    func rename(_ id: UUID, to title: String) {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        try? store.update(id) { $0.title = title }
+        reload()
+    }
+
     func delete(_ id: UUID) {
         try? store.delete(id)
         reload()
