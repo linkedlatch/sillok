@@ -383,6 +383,16 @@
         }
       }
     },
+    "Find…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "찾기…"
+          }
+        }
+      }
+    },
     "GPU": {
       "shouldTranslate": false
     },

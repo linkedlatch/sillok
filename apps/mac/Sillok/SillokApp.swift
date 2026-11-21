@@ -8,6 +8,7 @@ struct SillokApp: App {
     @State private var queue: JobQueue
     @State private var player = Player()
     @State private var navigation = Navigation()
+    @FocusedValue(\.find) private var find
 
     init() {
         let models = ModelManager()
@@ -35,6 +36,11 @@ struct SillokApp: App {
                 Button("New Transcription…") { navigation.importing = true }
                     .keyboardShortcut("n")
                     .disabled(models.state != .ready)
+            }
+            CommandGroup(after: .textEditing) {
+                Button("Find…") { find?() }
+                    .keyboardShortcut("f")
+                    .disabled(find == nil)
             }
         }
 

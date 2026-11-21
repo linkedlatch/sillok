@@ -47,7 +47,7 @@ final class Player {
     }
 
     func play(fromMilliseconds start: Int) {
-        seek(to: max(0, Double(start) / 1000 - 1))
+        seek(to: Double(start) / 1000)
         play()
     }
 

@@ -15,6 +15,7 @@ struct RecordingView: View {
     @State private var problem: (title: LocalizedStringKey, message: String)?
     @State private var query = ""
     @State private var showingInfo = false
+    @FocusState private var searching: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -52,6 +53,8 @@ struct RecordingView: View {
                 }
         }
         .searchable(text: $query, placement: .toolbar, prompt: Text("Search Transcript"))
+        .searchFocused($searching)
+        .focusedSceneValue(\.find, FindAction { searching = true })
         .sheet(isPresented: $renaming) {
             if let transcript {
                 SpeakerNamesView(transcript: transcript) { names in rename(names) }
@@ -185,6 +188,18 @@ struct RecordingView: View {
             problem = ("The Transcript Cannot Be Exported", error.localizedDescription)
         }
     }
+}
+
+struct FindAction {
+    let focus: () -> Void
+
+    func callAsFunction() {
+        focus()
+    }
+}
+
+extension FocusedValues {
+    @Entry var find: FindAction?
 }
 
 private struct PlayerBar: View {
