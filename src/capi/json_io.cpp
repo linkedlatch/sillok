@@ -185,7 +185,12 @@ std::string SegmentsToJson(std::span<const Segment> segments) {
 }
 
 std::vector<Segment> SegmentsFromJson(std::string_view text) {
-  const Json json = Parse(text, "segments");
+  Json json;
+  try {
+    json = Json::parse(text.begin(), text.end());
+  } catch (const Json::exception& error) {
+    throw std::invalid_argument(std::string("segments: ") + error.what());
+  }
   if (!json.is_array() ||
       !std::all_of(json.begin(), json.end(), [](const Json& item) { return item.is_object(); })) {
     throw std::invalid_argument("segments must be an array of objects");

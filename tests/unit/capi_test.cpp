@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -201,6 +202,8 @@ TEST_F(CapiTest, GoesOnFromACheckpointFile) {
   ASSERT_EQ(sillok_job_run(first, nullptr, nullptr, &out), SILLOK_CANCELLED);
   ASSERT_TRUE(std::filesystem::exists(file));
 
+  int calls = 0;
+  FakeBackendOptions().on_transcribe = [&calls](const TranscribeRequest&) { ++calls; };
   sillok_job* again = Job(Engine(), options.dump().c_str());
   Push(again, pcm);
   struct Previews {
@@ -217,11 +220,13 @@ TEST_F(CapiTest, GoesOnFromACheckpointFile) {
   EXPECT_FALSE(std::filesystem::exists(file));  // done with
   ASSERT_FALSE(previews.chunks.empty());
   EXPECT_EQ(previews.chunks.front(), 0);
+  const int continued_calls = std::exchange(calls, 0);
 
   sillok_job* whole = Job(Engine(), R"({"language": "en"})");
   Push(whole, pcm);
   ASSERT_EQ(sillok_job_run(whole, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
   EXPECT_EQ(continued["segments"], Json::parse(Take(out))["segments"]);
+  EXPECT_LT(continued_calls, calls);  // the saved piece is not transcribed again
 }
 
 TEST_F(CapiTest, StartsAnewFromACheckpointOfAnotherRecording) {
