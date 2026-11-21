@@ -23,7 +23,7 @@ struct LlamaAudioConfig {
   std::filesystem::path mmproj;      // GGUF of mtmd's audio encoder
   ComputeDevice device;
   int threads = 4;
-  int context = 8192;       // positions: prompt, audio and output
+  int context = 2048;       // positions: prompt, audio and output
   bool embeddings = false;  // rows are hidden states instead of logits
 };
 

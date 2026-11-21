@@ -16,9 +16,10 @@ namespace {
 // timestamp_segment_time), which llama.cpp's converter does not record.
 constexpr int kClasses = 5000;
 constexpr int kSegmentMs = 80;
-// Positions the model holds: 180 s of audio is 2340, and its words with their
-// slots take fewer than 6000.
-constexpr std::size_t kContext = 8192;
+// Positions the model holds: 30 s of audio is 390, and its words with their
+// slots (a unit's tokens and two) stay near 1100 even in fast Chinese or
+// Japanese, a unit to each character (docs/DESIGN.md D68).
+constexpr std::size_t kContext = 2048;
 // <|audio_start|> and <|audio_end|>, which mtmd puts around the audio.
 constexpr std::size_t kAudioMarkers = 2;
 
@@ -78,9 +79,10 @@ std::vector<int> QwenAligner::Align(std::span<const float> pcm, std::span<const 
 namespace sillok {
 namespace {
 
-// The package's limit (MAX_FORCE_ALIGN_INPUT_SECONDS), and shorter audio is
-// padded with silence to MIN_ASR_INPUT_SECONDS.
-constexpr Milliseconds kMaxAudio{180000};
+// What its context holds with room to spare (the package's limit,
+// MAX_FORCE_ALIGN_INPUT_SECONDS, is 180 s in a larger one), and shorter audio
+// is padded with silence to MIN_ASR_INPUT_SECONDS.
+constexpr Milliseconds kMaxAudio{30000};
 constexpr std::size_t kMinSamples = kSampleRate / 2;
 
 class WordAligner final : public Aligner {
