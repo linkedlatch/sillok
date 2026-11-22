@@ -939,6 +939,16 @@
         }
       }
     },
+    "Search Recordings": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취 검색"
+          }
+        }
+      }
+    },
     "Search Transcript": {
       "localizations": {
         "ko": {

@@ -109,6 +109,10 @@ public struct RecordingStore: Sendable {
         try Transcript(json: transcriptJSON(for: id))
     }
 
+    public func editedTranscript(for id: UUID) throws -> Transcript {
+        try transcript(for: id).applying(edits(for: id))
+    }
+
     func transcriptJSON(for id: UUID) throws -> String {
         try String(contentsOf: folder(for: id).appending(path: Self.transcriptName), encoding: .utf8)
     }

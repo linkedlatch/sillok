@@ -33,4 +33,17 @@ final class Library {
     func recording(_ id: UUID) -> Recording? {
         recordings.first { $0.id == id }
     }
+
+    func search(_ query: String) async -> Set<UUID> {
+        let store = store
+        let recordings = recordings
+        return await Task.detached {
+            let found = recordings.filter { recording in
+                recording.title.localizedStandardContains(query)
+                    || (try? store.editedTranscript(for: recording.id))?.segments
+                        .contains { $0.text.localizedStandardContains(query) } == true
+            }
+            return Set(found.map(\.id))
+        }.value
+    }
 }

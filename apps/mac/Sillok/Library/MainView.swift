@@ -18,6 +18,8 @@ struct MainView: View {
     @State private var deleting: Set<Selection> = []
     @State private var renaming: Recording?
     @State private var title = ""
+    @State private var query = ""
+    @State private var matches: Set<UUID>?
 
     var body: some View {
         NavigationSplitView {
@@ -30,13 +32,18 @@ struct MainView: View {
                     }
                 }
                 Section("Recordings") {
-                    ForEach(library.recordings) { recording in
+                    ForEach(shownRecordings) { recording in
                         RecordingRow(recording: recording)
                             .tag(Selection.recording(recording.id))
                     }
                 }
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            .searchable(text: $query, placement: .sidebar, prompt: Text("Search Recordings"))
+            .overlay {
+                if matches?.isEmpty == true { ContentUnavailableView.search(text: query) }
+            }
+            .task(id: query) { await search() }
             .contextMenu(forSelectionType: Selection.self) { items in
                 if items.count == 1, case .recording(let id) = items.first, let recording = library.recording(id) {
                     Button("Rename…") {
@@ -121,7 +128,7 @@ struct MainView: View {
                 }
             case .recording(let id):
                 if let recording = library.recording(id) {
-                    RecordingView(recording: recording)
+                    RecordingView(recording: recording, initialQuery: matches == nil ? "" : query)
                         .id(id)
                 }
             case nil:
@@ -134,6 +141,25 @@ struct MainView: View {
                 }
             }
         }
+    }
+
+    private var shownRecordings: [Recording] {
+        guard let matches else { return library.recordings }
+        return library.recordings.filter { matches.contains($0.id) }
+    }
+
+    private func search() async {
+        let query = query.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else {
+            matches = nil
+            return
+        }
+        do {
+            try await Task.sleep(for: .milliseconds(200))
+        } catch {
+            return
+        }
+        matches = await library.search(query)
     }
 
     private var deletingTitle: Text {

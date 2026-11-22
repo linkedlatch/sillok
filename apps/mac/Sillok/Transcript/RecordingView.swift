@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct RecordingView: View {
     let recording: Recording
+    let initialQuery: String
     @Environment(Library.self) private var library
     @Environment(Player.self) private var player
     @State private var document: TranscriptDocument?
@@ -77,7 +78,7 @@ struct RecordingView: View {
             Text(problem?.message ?? "")
         }
         .task(id: recording.id) {
-            query = ""
+            query = initialQuery
             load()
             player.load(library.store.audio(for: recording.id), recording: recording.id,
                         duration: Double(recording.durationMs ?? 0) / 1000)
