@@ -105,12 +105,7 @@ final class JobQueue {
     func start() {
         guard !started else { return }
         started = true
-        let pending = (try? library.store.pending()) ?? []
-        items = pending.map { recording in
-            Item(id: recording.id, title: recording.title, sourceName: recording.sourceName,
-                 options: recording.options, modelID: recording.transcriptionModel ?? "",
-                 state: recording.error.map(State.failed) ?? .waiting)
-        } + items
+        items = ((try? library.store.pending()) ?? []).map(Item.init) + items
         transcribeWaiting()
     }
 
@@ -121,6 +116,15 @@ final class JobQueue {
                  source: source, state: .adding(0))
         }
         addPending()
+    }
+
+    func transcribeAgain(_ recording: Recording, options: JobOptions, model: CatalogModel) throws -> UUID {
+        let copy = Recording(title: recording.title, sourceName: recording.sourceName, options: options,
+                             transcriptionModel: model.id)
+        try library.store.add(copyOf: recording.id, as: copy)
+        items.append(Item(copy))
+        transcribeWaiting()
+        return copy.id
     }
 
     func retry(_ id: UUID) {
@@ -302,5 +306,13 @@ final class JobQueue {
             }
         }
         return error.localizedDescription
+    }
+}
+
+extension JobQueue.Item {
+    init(_ recording: Recording) {
+        self.init(id: recording.id, title: recording.title, sourceName: recording.sourceName,
+                  options: recording.options, modelID: recording.transcriptionModel ?? "",
+                  state: recording.error.map(JobQueue.State.failed) ?? .waiting)
     }
 }

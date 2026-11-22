@@ -38,6 +38,16 @@ struct RecordingStoreTests {
         #expect(try store.list().isEmpty)
     }
 
+    @Test func copiesARecordingToTranscribeItAgain() throws {
+        let recording = try save("meeting", at: Date(timeIntervalSince1970: 1_000))
+        let copy = Recording(title: recording.title, sourceName: recording.sourceName,
+                             options: JobOptions(language: "en"), transcriptionModel: "qwen")
+        try store.add(copyOf: recording.id, as: copy)
+        #expect(try store.pending().map(\.id) == [copy.id])
+        #expect(try Data(contentsOf: store.audio(for: copy.id)) == Data("audio".utf8))
+        #expect(try store.list().map(\.id) == [recording.id])
+    }
+
     @Test func finishingARecordingClearsItsError() throws {
         let recording = try add("meeting", at: Date(timeIntervalSince1970: 1_000))
         try store.update(recording.id) { $0.error = "The model failed." }

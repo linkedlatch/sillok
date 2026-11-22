@@ -1132,6 +1132,16 @@
         }
       }
     },
+    "The Recording Cannot Be Transcribed Again": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취를 다시 전사할 수 없음"
+          }
+        }
+      }
+    },
     "The Transcript Cannot Be Copied": {
       "localizations": {
         "ko": {
@@ -1218,6 +1228,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "전사"
+          }
+        }
+      }
+    },
+    "Transcribe Again…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 전사…"
           }
         }
       }

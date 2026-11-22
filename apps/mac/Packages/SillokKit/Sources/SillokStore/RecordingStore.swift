@@ -62,6 +62,17 @@ public struct RecordingStore: Sendable {
         try FileManager.default.moveItem(at: staging, to: folder(for: recording.id))
     }
 
+    public func add(copyOf source: UUID, as recording: Recording) throws {
+        let staging = try makeStaging()
+        do {
+            try FileManager.default.copyItem(at: audio(for: source), to: staging.appending(path: Self.audioName))
+            try add(staging: staging, recording: recording)
+        } catch {
+            discard(staging: staging)
+            throw error
+        }
+    }
+
     public func update(_ id: UUID, _ change: (inout Recording) -> Void) throws {
         let url = folder(for: id).appending(path: Self.metadataName)
         var recording = try Self.decoder.decode(Recording.self, from: Data(contentsOf: url))

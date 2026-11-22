@@ -2,7 +2,7 @@ import SillokEngine
 import SwiftUI
 
 struct NewJobView: View {
-    let sources: [URL]
+    let files: [String]
     let start: (JobOptions, CatalogModel) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -16,8 +16,8 @@ struct NewJobView: View {
         VStack(alignment: .leading, spacing: 0) {
             Form {
                 Section {
-                    ForEach(sources, id: \.self) { source in
-                        Label(source.lastPathComponent, systemImage: "waveform")
+                    ForEach(files, id: \.self) { file in
+                        Label(file, systemImage: "waveform")
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }

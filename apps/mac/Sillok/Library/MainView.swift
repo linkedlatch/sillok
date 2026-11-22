@@ -17,6 +17,8 @@ struct MainView: View {
     @State private var pending: [URL] = []
     @State private var deleting: Set<Selection> = []
     @State private var renaming: Recording?
+    @State private var transcribingAgain: Recording?
+    @State private var problem: String?
     @State private var title = ""
     @State private var query = ""
     @State private var matches: Set<UUID>?
@@ -50,6 +52,7 @@ struct MainView: View {
                         title = recording.title
                         renaming = recording
                     }
+                    Button("Transcribe Again…") { transcribingAgain = recording }
                 }
                 Button("Delete…", role: .destructive) { deleting = items }
             }
@@ -71,11 +74,25 @@ struct MainView: View {
             return true
         }
         .sheet(isPresented: Binding(get: { !pending.isEmpty }, set: { if !$0 { pending = [] } })) {
-            NewJobView(sources: pending) { options, model in
+            NewJobView(files: pending.map(\.lastPathComponent)) { options, model in
                 let first = queue.items.count
                 queue.enqueue(pending, options: options, model: model)
                 if queue.items.indices.contains(first) { selection = [.job(queue.items[first].id)] }
             }
+        }
+        .sheet(item: $transcribingAgain) { recording in
+            NewJobView(files: [recording.title]) { options, model in
+                do {
+                    selection = [.job(try queue.transcribeAgain(recording, options: options, model: model))]
+                } catch {
+                    problem = error.localizedDescription
+                }
+            }
+        }
+        .alert("The Recording Cannot Be Transcribed Again",
+               isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+        } message: {
+            Text(problem ?? "")
         }
         .confirmationDialog(
             deletingTitle,
