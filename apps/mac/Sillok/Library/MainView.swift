@@ -96,6 +96,11 @@ struct MainView: View {
             guard let id = queue.completed, selection.remove(.job(id)) != nil else { return }
             selection.insert(.recording(id))
         }
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            guard selection.count == 1, case .recording = selection.first else { return .ignored }
+            player.skip(by: press.key == .leftArrow ? -5 : 5)
+            return .handled
+        }
         .task { queue.start() }
     }
 

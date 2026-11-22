@@ -170,6 +170,26 @@
         }
       }
     },
+    "Back 5 Seconds": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5초 뒤로"
+          }
+        }
+      }
+    },
+    "Back 5 seconds (←)": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5초 뒤로 (←)"
+          }
+        }
+      }
+    },
     "CPU": {
       "shouldTranslate": false
     },
@@ -499,6 +519,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "찾기…"
+          }
+        }
+      }
+    },
+    "Forward 5 Seconds": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5초 앞으로"
+          }
+        }
+      }
+    },
+    "Forward 5 seconds (→)": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5초 앞으로 (→)"
           }
         }
       }

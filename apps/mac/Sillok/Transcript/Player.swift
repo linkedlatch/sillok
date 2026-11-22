@@ -51,6 +51,10 @@ final class Player {
         play()
     }
 
+    func skip(by seconds: Double) {
+        seek(to: min(max(time + seconds, 0), duration))
+    }
+
     func seek(to seconds: Double) {
         time = seconds
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 1000), toleranceBefore: .zero, toleranceAfter: .zero)

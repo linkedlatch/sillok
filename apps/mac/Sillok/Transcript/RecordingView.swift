@@ -299,6 +299,14 @@ private struct PlayerBar: View {
                 .font(.title3)
                 .frame(width: 24)
                 .keyboardShortcut(.space, modifiers: [])
+            Button("Back 5 Seconds", systemImage: "gobackward.5") { player.skip(by: -5) }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Back 5 seconds (←)")
+            Button("Forward 5 Seconds", systemImage: "goforward.5") { player.skip(by: 5) }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Forward 5 seconds (→)")
             Text(Timestamp.text(Int(player.time * 1000)))
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
