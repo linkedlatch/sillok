@@ -13,9 +13,9 @@ struct MainView: View {
     @Environment(JobQueue.self) private var queue
     @Environment(Player.self) private var player
     @Environment(Navigation.self) private var navigation
-    @State private var selection: Selection?
+    @State private var selection: Set<Selection> = []
     @State private var pending: [URL] = []
-    @State private var deleting: Recording?
+    @State private var deleting: Set<Selection> = []
     @State private var renaming: Recording?
     @State private var title = ""
 
@@ -33,20 +33,20 @@ struct MainView: View {
                     ForEach(library.recordings) { recording in
                         RecordingRow(recording: recording)
                             .tag(Selection.recording(recording.id))
-                            .contextMenu {
-                                Button("Rename…") {
-                                    title = recording.title
-                                    renaming = recording
-                                }
-                                Button("Delete…", role: .destructive) { deleting = recording }
-                            }
                     }
                 }
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
-            .onDeleteCommand {
-                if case .recording(let id) = selection { deleting = library.recording(id) }
+            .contextMenu(forSelectionType: Selection.self) { items in
+                if items.count == 1, case .recording(let id) = items.first, let recording = library.recording(id) {
+                    Button("Rename…") {
+                        title = recording.title
+                        renaming = recording
+                    }
+                }
+                Button("Delete…", role: .destructive) { deleting = items }
             }
+            .onDeleteCommand { deleting = selection }
         } detail: {
             detail
         }
@@ -67,17 +67,17 @@ struct MainView: View {
             NewJobView(sources: pending) { options, model in
                 let first = queue.items.count
                 queue.enqueue(pending, options: options, model: model)
-                if queue.items.indices.contains(first) { selection = .job(queue.items[first].id) }
+                if queue.items.indices.contains(first) { selection = [.job(queue.items[first].id)] }
             }
         }
         .confirmationDialog(
-            Text("Delete “\(deleting?.title ?? "")”?"),
-            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            deletingTitle,
+            isPresented: Binding(get: { !deleting.isEmpty }, set: { if !$0 { deleting = [] } }),
             presenting: deleting
-        ) { recording in
-            Button("Delete", role: .destructive) { delete(recording) }
+        ) { items in
+            Button("Delete", role: .destructive) { delete(items) }
         } message: { _ in
-            Text("The recording and its transcript will be removed. This cannot be undone.")
+            Text("Recordings and their transcripts are removed, and files still transcribing stop. This cannot be undone.")
         }
         .alert("Rename Recording",
                isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
@@ -87,44 +87,73 @@ struct MainView: View {
             Button("Cancel", role: .cancel) {}
         }
         .onChange(of: queue.items.map(\.id)) {
-            guard case .job(let id) = selection, queue.item(id) == nil, queue.completed != id else { return }
-            selection = nil
+            selection = selection.filter {
+                guard case .job(let id) = $0 else { return true }
+                return queue.item(id) != nil || queue.completed == id
+            }
         }
         .onChange(of: queue.completed) {
-            guard let id = queue.completed, selection == .job(id) else { return }
-            selection = .recording(id)
+            guard let id = queue.completed, selection.remove(.job(id)) != nil else { return }
+            selection.insert(.recording(id))
         }
         .task { queue.start() }
     }
 
     @ViewBuilder
     private var detail: some View {
-        switch selection {
-        case .job(let id):
-            if let item = queue.item(id) {
-                JobView(item: item)
-                    .id(id)
-            }
-        case .recording(let id):
-            if let recording = library.recording(id) {
-                RecordingView(recording: recording)
-                    .id(id)
-            }
-        case nil:
+        if selection.count > 1 {
             ContentUnavailableView {
-                Label("No Recording Selected", systemImage: "waveform")
-            } description: {
-                Text("Choose a recording, or drop audio and video files here to transcribe them.")
+                Label("\(selection.count) Items Selected", systemImage: "square.stack")
             } actions: {
-                Button("New Transcription") { navigation.importing = true }
+                Button("Delete…") { deleting = selection }
+            }
+        } else {
+            switch selection.first {
+            case .job(let id):
+                if let item = queue.item(id) {
+                    JobView(item: item)
+                        .id(id)
+                }
+            case .recording(let id):
+                if let recording = library.recording(id) {
+                    RecordingView(recording: recording)
+                        .id(id)
+                }
+            case nil:
+                ContentUnavailableView {
+                    Label("No Recording Selected", systemImage: "waveform")
+                } description: {
+                    Text("Choose a recording, or drop audio and video files here to transcribe them.")
+                } actions: {
+                    Button("New Transcription") { navigation.importing = true }
+                }
             }
         }
     }
 
-    private func delete(_ recording: Recording) {
-        player.unload(recording.id)
-        if selection == .recording(recording.id) { selection = nil }
-        library.delete(recording.id)
+    private var deletingTitle: Text {
+        guard deleting.count == 1, let item = deleting.first else { return Text("Delete \(deleting.count) Items?") }
+        return Text("Delete “\(title(of: item))”?")
+    }
+
+    private func title(of item: Selection) -> String {
+        switch item {
+        case .job(let id): queue.item(id)?.title ?? ""
+        case .recording(let id): library.recording(id)?.title ?? ""
+        }
+    }
+
+    private func delete(_ items: Set<Selection>) {
+        selection.subtract(items)
+        for item in items {
+            switch item {
+            case .job(let id):
+                queue.cancel(id)
+            case .recording(let id):
+                player.unload(id)
+                library.delete(id)
+            }
+        }
     }
 }
 

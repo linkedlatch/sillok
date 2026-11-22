@@ -100,6 +100,16 @@
         }
       }
     },
+    "%lld Items Selected": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 선택됨"
+          }
+        }
+      }
+    },
     "%lld languages · %@": {
       "localizations": {
         "ko": {
@@ -269,6 +279,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 모델을 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete %lld Items?": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개를 삭제할까요?"
           }
         }
       }
@@ -759,6 +779,16 @@
         }
       }
     },
+    "Recordings and their transcripts are removed, and files still transcribing stop. This cannot be undone.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취와 전사 결과가 삭제되고, 전사 중인 파일은 중단됩니다. 되돌릴 수 없습니다."
+          }
+        }
+      }
+    },
     "Remove": {
       "localizations": {
         "ko": {
@@ -1048,16 +1078,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "내려받은 모델에 이상이 없습니다."
-          }
-        }
-      }
-    },
-    "The recording and its transcript will be removed. This cannot be undone.": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "녹음과 전사 결과가 삭제되며, 되돌릴 수 없습니다."
           }
         }
       }
