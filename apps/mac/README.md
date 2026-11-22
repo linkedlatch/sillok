@@ -3,8 +3,9 @@
 A native SwiftUI app for macOS 15 or later on Apple silicon, over the C ABI
 (`include/sillok/sillok.h`). It downloads the models on first launch,
 transcribes audio and video files one after another, and keeps each
-recording with its transcript for listening back, naming the speakers and
-exporting as text or JSON.
+recording with its transcript for listening back, searching, correcting,
+naming the speakers and exporting as text or JSON. Files can also be opened
+with Sillok from Finder or dropped on its Dock icon.
 
 ```
 Sillok.xcodeproj               the app target
@@ -52,7 +53,8 @@ The app runs in the App Sandbox, under the bundle id
 
 ```
 Models/                  the catalog's files; .partial files resume downloads
-Recordings/<id>/         audio.m4a (16 kHz mono), meta.json, transcript.json
+Recordings/<id>/         audio.m4a (16 kHz mono), meta.json, transcript.json,
+                         edits.json
 ```
 
 Adding a file first makes its copy, audio.m4a, with the loudness evened
@@ -60,7 +62,14 @@ out, and writes meta.json; the original is not needed afterwards, and the
 copy is what gets transcribed. A folder without transcript.json is waiting:
 transcription carries on at the next launch from checkpoint.jsonl, and a
 failure stays in meta.json until it is tried again. Quitting while files are
-still being added asks first.
+still being added asks first. Transcribing a recording again, with another
+model or options, clones its copy into a new recording and leaves the old one.
+
+transcript.json stays as the model wrote it. Corrected sentences, speakers
+moved between sentences and speaker names go to edits.json, keyed by sentence
+index and speaker id, and are laid over the transcript wherever it is shown,
+searched, copied or exported; a corrected sentence drops its word times.
+Restoring a sentence removes its edit, and the file goes when no edit is left.
 
 The transcription model in Settings is the default for new files, each of
 which can use another; CPU or GPU and the Neural Engine apply from the next
@@ -69,5 +78,8 @@ downloads there while the current one stays in use, and a model not in use
 can be deleted there; files another downloaded model also needs are kept.
 Whisper's Core ML encoder, which runs on the Neural Engine, downloads with
 its model while the Neural Engine is on, and can be downloaded or deleted on
-its own; without it Whisper runs its encoder on the GPU or CPU. Settings can
-also read every downloaded file through and remove the damaged ones.
+its own; without it Whisper runs its encoder on the GPU or CPU. The memory
+shown for a model counts the encoder when it will be used. A paused download
+resumes from its .partial file, even after relaunching. Settings can also read
+every downloaded file through and remove the damaged ones, and shows how much
+space the models and recordings take.
