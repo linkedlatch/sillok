@@ -6,6 +6,11 @@ import Synchronization
 public struct PendingFile: Sendable, Hashable {
     public let file: CatalogFile
     public let needsDownload: Bool
+    public var downloadedBytes: Int64 = 0
+
+    public var remainingBytes: Int64 {
+        needsDownload ? file.size - downloadedBytes : 0
+    }
 }
 
 public struct InstallProgress: Sendable, Equatable {
@@ -48,11 +53,18 @@ public enum ModelInstaller {
                 case .extract:
                     pending.append(PendingFile(file: file, needsDownload: false))
                 default:
-                    pending.append(PendingFile(file: file, needsDownload: true))
+                    pending.append(PendingFile(file: file, needsDownload: true,
+                                               downloadedBytes: downloaded(file, in: directory)))
                 }
             }
         }
         return pending
+    }
+
+    static func downloaded(_ file: CatalogFile, in directory: URL) -> Int64 {
+        let partial = directory.appending(path: file.file + ".partial")
+        let size = Int64((try? partial.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        return size <= file.size ? size : 0
     }
 
     public static func install(
@@ -62,7 +74,7 @@ public enum ModelInstaller {
         progress: @escaping @Sendable (InstallProgress) -> Void
     ) async throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let totalBytes = pending.filter(\.needsDownload).map(\.file.size).reduce(0, +)
+        let totalBytes = pending.map(\.remainingBytes).reduce(0, +)
         var doneBytes: Int64 = 0
         for item in pending {
             let file = item.file
@@ -72,11 +84,13 @@ public enum ModelInstaller {
                 try FileManager.default.createDirectory(
                     at: partial.deletingLastPathComponent(), withIntermediateDirectories: true)
                 let base = doneBytes
+                let skipped = item.downloadedBytes
                 try await download(file, to: partial, session: session) { bytes in
+                    let completed = min(base + max(bytes - skipped, 0), totalBytes)
                     progress(InstallProgress(file: file.file, phase: .downloading,
-                                             completedBytes: base + bytes, totalBytes: totalBytes))
+                                             completedBytes: completed, totalBytes: totalBytes))
                 }
-                doneBytes += file.size
+                doneBytes += item.remainingBytes
                 progress(InstallProgress(file: file.file, phase: .verifying,
                                          completedBytes: doneBytes, totalBytes: totalBytes))
                 do {

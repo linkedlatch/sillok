@@ -73,6 +73,22 @@ final class ModelManager {
         installedEncoders.contains(encoder.file)
     }
 
+    func memory(of model: CatalogModel) -> Int64 {
+        let memory = model.memory ?? 0
+        guard EngineSettings.npu, let encoder = encoder(of: model), isInstalled(encoder) || !isInstalled(model)
+        else { return memory }
+        return memory + encoder.size
+    }
+
+    func encoderDownload(for model: CatalogModel) -> CatalogFile? {
+        guard EngineSettings.npu, let encoder = encoder(of: model), !isInstalled(encoder) else { return nil }
+        return encoder
+    }
+
+    func downloadSize(of encoder: CatalogFile) -> Int64 {
+        downloadSizes[encoder.file] ?? 0
+    }
+
     func refresh() {
         do {
             transcriptionModels = try Catalog.models().filter { $0.role == .transcription }
@@ -87,10 +103,14 @@ final class ModelManager {
                 if pending.allSatisfy(\.file.zip) {
                     installed.insert(model.id)
                 } else {
-                    sizes[model.id] = Self.wanted(pending).filter(\.needsDownload).map(\.file.size).reduce(0, +)
+                    sizes[model.id] = pending.filter { !$0.file.zip }.map(\.remainingBytes).reduce(0, +)
                 }
-                for file in model.files where file.zip && !pending.contains(where: { $0.file == file }) {
-                    encoders.insert(file.file)
+                for file in model.files where file.zip {
+                    if let item = pending.first(where: { $0.file == file }) {
+                        sizes[file.file] = item.remainingBytes
+                    } else {
+                        encoders.insert(file.file)
+                    }
                 }
             }
             self.installed = installed

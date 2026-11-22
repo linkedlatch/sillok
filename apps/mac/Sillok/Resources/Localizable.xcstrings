@@ -140,6 +140,16 @@
         }
       }
     },
+    "Also downloads the Neural Engine encoder (%@).": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neural Engine 인코더(%@)도 함께 받습니다."
+          }
+        }
+      }
+    },
     "CPU": {
       "shouldTranslate": false
     },
@@ -333,6 +343,16 @@
         }
       }
     },
+    "Download size: %@, plus %@ for the Neural Engine encoder": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 크기: %1$@, Neural Engine 인코더 %2$@ 추가"
+          }
+        }
+      }
+    },
     "Download the Models": {
       "localizations": {
         "ko": {
@@ -349,6 +369,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 내려받는 중"
+          }
+        }
+      }
+    },
+    "Each recording keeps its copy for listening and its transcript.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "녹취마다 듣기용 사본과 전사 결과를 저장합니다."
           }
         }
       }
@@ -495,6 +525,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "길이"
+          }
+        }
+      }
+    },
+    "Measuring…": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산 중…"
           }
         }
       }
@@ -769,6 +809,16 @@
         }
       }
     },
+    "Show in Finder": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder에서 보기"
+          }
+        }
+      }
+    },
     "Sillok": {
       "shouldTranslate": false
     },
@@ -858,6 +908,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "시작하는 중…"
+          }
+        }
+      }
+    },
+    "Storage": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 공간"
           }
         }
       }
@@ -1102,16 +1162,6 @@
         }
       }
     },
-    "Whisper runs its encoder on the Neural Engine, which needs an extra download for each Whisper model family. Downloads include it while this is on.": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Whisper의 인코더를 Neural Engine에서 실행합니다. Whisper 모델 계열마다 추가로 내려받아야 하며, 켜 두면 모델을 받을 때 함께 받습니다."
-          }
-        }
-      }
-    },
     "Whisper then runs its encoder on the GPU or CPU. You can download it again here.": {
       "localizations": {
         "ko": {
@@ -1122,12 +1172,22 @@
         }
       }
     },
-    "Whisper's encoder runs faster there, from another %@ download.": {
+    "Whisper's encoder runs about twice as fast on the Neural Engine. While this is on, downloads include it and the memory shown counts it.": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Whisper의 인코더가 더 빠르게 실행됩니다. %@를 추가로 내려받습니다."
+            "value": "Neural Engine에서는 Whisper의 인코더가 약 2배 빠르게 실행됩니다. 켜 두면 모델을 받을 때 함께 받고, 표시된 메모리에도 포함됩니다."
+          }
+        }
+      }
+    },
+    "Whisper's encoder runs about twice as fast there. It takes another %@ to download and about as much more memory.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whisper의 인코더가 약 2배 빠르게 실행됩니다. %@를 추가로 내려받고, 메모리도 그만큼 더 사용합니다."
           }
         }
       }

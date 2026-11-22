@@ -10,6 +10,9 @@ struct SettingsView: View {
             Tab("Performance", systemImage: "cpu") {
                 PerformanceSettingsView()
             }
+            Tab("Storage", systemImage: "internaldrive") {
+                StorageSettingsView()
+            }
         }
         .frame(width: 520)
     }
@@ -27,7 +30,7 @@ private struct ModelSettingsView: View {
             Section {
                 Toggle("Use the Neural Engine", isOn: $npu)
             } footer: {
-                Text("Whisper runs its encoder on the Neural Engine, which needs an extra download for each Whisper model family. Downloads include it while this is on.")
+                Text("Whisper's encoder runs about twice as fast on the Neural Engine. While this is on, downloads include it and the memory shown counts it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -43,7 +46,10 @@ private struct ModelSettingsView: View {
                                 Text(failure.message)
                                     .foregroundStyle(.red)
                             } else {
-                                Text(model.footprint)
+                                Text(model.footprint(memory: models.memory(of: model)))
+                                if !models.isInstalled(model), let encoder = models.encoderDownload(for: model) {
+                                    Text("Also downloads the Neural Engine encoder (\(models.downloadSize(of: encoder).formatted(.byteCount(style: .file)))).")
+                                }
                             }
                         }
                     }
@@ -197,18 +203,67 @@ private struct PerformanceSettingsView: View {
     }
 }
 
+private struct StorageSettingsView: View {
+    @Environment(ModelManager.self) private var models
+    @Environment(Library.self) private var library
+    @State private var sizes: [URL: Int64] = [:]
+
+    var body: some View {
+        Form {
+            Section {
+                row("Models", at: models.directory)
+                row("Recordings", at: library.store.root)
+            } footer: {
+                Text("Each recording keeps its copy for listening and its transcript.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
+        .task {
+            let folders = [models.directory, library.store.root]
+            sizes = await Task.detached { Dictionary(uniqueKeysWithValues: folders.map { ($0, Self.size(of: $0)) }) }.value
+        }
+    }
+
+    private func row(_ title: LocalizedStringKey, at folder: URL) -> some View {
+        LabeledContent {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+                .disabled(!FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)))
+        } label: {
+            Text(title)
+            if let size = sizes[folder] {
+                Text(size.formatted(.byteCount(style: .file)))
+            } else {
+                Text("Measuring…")
+            }
+        }
+    }
+
+    private nonisolated static func size(of folder: URL) -> Int64 {
+        let keys: [URLResourceKey] = [.isRegularFileKey, .totalFileAllocatedSizeKey]
+        guard let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys) else { return 0 }
+        var total: Int64 = 0
+        for case let file as URL in files {
+            guard let values = try? file.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
+            total += Int64(values.totalFileAllocatedSize ?? 0)
+        }
+        return total
+    }
+}
+
 extension CatalogModel {
     var title: String {
         "\(family) \(quantization)"
     }
 
-    var footprint: String {
+    func footprint(memory: Int64) -> String {
         let size = files.filter { !$0.zip }.map(\.size).reduce(0, +).formatted(.byteCount(style: .file))
-        let memory = (memory ?? 0).formatted(.byteCount(style: .memory))
-        return String(localized: "\(size) download · \(memory) of memory")
+        return String(localized: "\(size) download · \(memory.formatted(.byteCount(style: .memory))) of memory")
     }
 
-    var details: String {
-        String(localized: "\(languages?.count ?? 0) languages · \(footprint)")
+    func details(memory: Int64) -> String {
+        String(localized: "\(languages?.count ?? 0) languages · \(footprint(memory: memory))")
     }
 }

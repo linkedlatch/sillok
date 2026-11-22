@@ -22,13 +22,13 @@ struct ModelSetupView: View {
                             TranscriptionModelOptions(families: manager.transcriptionFamilies)
                         } label: {
                             Text(model.role.title)
-                            Text(model.details)
+                            Text(model.details(memory: manager.memory(of: model)))
                         }
                         .disabled(manager.download != nil)
                         if let encoder = manager.encoder(of: model) {
                             Toggle(isOn: $npu) {
                                 Text("Use the Neural Engine")
-                                Text("Whisper's encoder runs faster there, from another \(encoder.size.formatted(.byteCount(style: .file))) download.")
+                                Text("Whisper's encoder runs about twice as fast there. It takes another \(manager.downloadSize(of: encoder).formatted(.byteCount(style: .file))) to download and about as much more memory.")
                             }
                             .disabled(manager.download != nil)
                         }
@@ -86,8 +86,14 @@ struct ModelSetupView: View {
                     problem(failure.message) { manager.install(id) }
                 } else {
                     HStack {
-                        Text("Download size: \(manager.downloadSize.formatted(.byteCount(style: .file)))")
-                            .foregroundStyle(.secondary)
+                        Group {
+                            if let model = manager.transcriptionModel, let encoder = manager.encoderDownload(for: model) {
+                                Text("Download size: \(manager.downloadSize.formatted(.byteCount(style: .file))), plus \(manager.downloadSize(of: encoder).formatted(.byteCount(style: .file))) for the Neural Engine encoder")
+                            } else {
+                                Text("Download size: \(manager.downloadSize.formatted(.byteCount(style: .file)))")
+                            }
+                        }
+                        .foregroundStyle(.secondary)
                         Spacer()
                         Button("Download") { manager.install(id) }
                             .keyboardShortcut(.defaultAction)

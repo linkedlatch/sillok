@@ -63,6 +63,32 @@ struct ModelInstallerTests {
         #expect(leftovers == ["model.bin"])
     }
 
+    @Test func resumesAPartialFileAndCountsOnlyWhatIsLeft() async throws {
+        let contents = Data((0..<(2 << 20)).map { UInt8($0 % 251) })
+        let local = try source("model.bin", contents: contents)
+        let file = CatalogFile(file: local.file, url: URL(string: "ranged://models/model.bin")!, size: local.size,
+                               sha256: local.sha256, zip: false)
+        RangedProtocol.contents.withLock { $0 = contents }
+        let models = root.appending(path: "models")
+        try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
+        try contents.prefix(1 << 20).write(to: models.appending(path: "model.bin.partial"))
+        #expect(ModelInstaller.downloaded(file, in: models) == 1 << 20)
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RangedProtocol.self]
+        let reports = Mutex<[InstallProgress]>([])
+        let pending = PendingFile(file: file, needsDownload: true, downloadedBytes: 1 << 20)
+        try await ModelInstaller.install([pending], into: models, session: URLSession(configuration: configuration)) {
+            progress in reports.withLock { $0.append(progress) }
+        }
+        #expect(try Data(contentsOf: models.appending(path: "model.bin")) == contents)
+        #expect(RangedProtocol.ranges.withLock { $0 } == ["bytes=\(1 << 20)-"])
+        let downloading = reports.withLock { $0.filter { $0.phase == .downloading } }
+        #expect(!downloading.isEmpty)
+        #expect(downloading.allSatisfy { $0.totalBytes == 1 << 20 && $0.completedBytes <= 1 << 20 })
+        #expect(reports.withLock { $0.last?.completedBytes } == Int64(1 << 20))
+    }
+
     @Test func extractsAnArchiveAndRemovesIt() async throws {
         let bundle = root.appending(path: "build/encoder.mlmodelc")
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
@@ -119,4 +145,36 @@ struct ModelInstallerTests {
         let left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
         #expect(left == Set(model.files.filter { !$0.zip }.map(\.file)))
     }
+}
+
+final class RangedProtocol: URLProtocol {
+    static let contents = Mutex(Data())
+    static let ranges = Mutex<[String]>([])
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.scheme == "ranged"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        let data = Self.contents.withLock { $0 }
+        let range = request.value(forHTTPHeaderField: "Range")
+        Self.ranges.withLock { $0.append(range ?? "") }
+        let start = range.flatMap { Int($0.dropFirst("bytes=".count).dropLast()) } ?? 0
+        let response = HTTPURLResponse(url: request.url!, statusCode: range == nil ? 200 : 206,
+                                       httpVersion: "HTTP/1.1", headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        var offset = start
+        while offset < data.count {
+            let end = min(offset + (64 << 10), data.count)
+            client?.urlProtocol(self, didLoad: data.subdata(in: offset..<end))
+            offset = end
+        }
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
