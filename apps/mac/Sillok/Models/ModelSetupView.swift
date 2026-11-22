@@ -74,12 +74,12 @@ struct ModelSetupView: View {
                     ProgressView(value: download.progress?.fraction ?? 0) {
                         download.progress?.title ?? Text("Starting…")
                     } currentValueLabel: {
-                        if let progress = download.progress {
-                            Text("\(progress.completedBytes.formatted(.byteCount(style: .file))) of \(progress.totalBytes.formatted(.byteCount(style: .file)))")
+                        if download.progress?.phase == .downloading {
+                            download.status
                                 .monospacedDigit()
                         }
                     }
-                    Button("Cancel") { manager.cancel() }
+                    Button("Pause") { manager.pause() }
                 }
             } else if let id = manager.transcriptionModel?.id {
                 if let failure = manager.failure, failure.key == id {
@@ -95,7 +95,7 @@ struct ModelSetupView: View {
                         }
                         .foregroundStyle(.secondary)
                         Spacer()
-                        Button("Download") { manager.install(id) }
+                        Button(manager.partlyDownloaded.contains(id) ? "Resume" : "Download") { manager.install(id) }
                             .keyboardShortcut(.defaultAction)
                     }
                 }
@@ -137,6 +137,17 @@ extension ModelRole {
         case .transcription: "Transcription"
         case .diarization: "Speaker diarization"
         }
+    }
+}
+
+extension ModelManager.Download {
+    var status: Text {
+        guard let progress else { return Text("Starting…") }
+        guard progress.phase == .downloading else { return progress.title }
+        let done = progress.completedBytes.formatted(.byteCount(style: .file))
+        let total = progress.totalBytes.formatted(.byteCount(style: .file))
+        guard let speed = bytesPerSecond?.formatted(.byteCount(style: .file)) else { return Text("\(done) of \(total)") }
+        return Text("\(done) of \(total) · \(speed)/s")
     }
 }
 

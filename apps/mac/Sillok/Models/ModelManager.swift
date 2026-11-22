@@ -22,7 +22,14 @@ final class ModelManager {
 
     struct Download: Equatable {
         let key: String
+        let started = Date.now
         var progress: InstallProgress?
+
+        var bytesPerSecond: Int64? {
+            guard let progress, progress.phase == .downloading else { return nil }
+            let elapsed = Date.now.timeIntervalSince(started)
+            return elapsed >= 1 ? Int64(Double(progress.completedBytes) / elapsed) : nil
+        }
     }
 
     private(set) var state: State = .checking
@@ -31,6 +38,7 @@ final class ModelManager {
     private(set) var installed: Set<String> = []
     private(set) var downloadSizes: [String: Int64] = [:]
     private(set) var installedEncoders: Set<String> = []
+    private(set) var partlyDownloaded: Set<String> = []
     private(set) var download: Download?
     private(set) var failure: (key: String, message: String)?
     private(set) var check: Check?
@@ -98,6 +106,7 @@ final class ModelManager {
             var installed: Set<String> = []
             var sizes: [String: Int64] = [:]
             var encoders: Set<String> = []
+            var partial: Set<String> = []
             for model in transcriptionModels {
                 let pending = try pendingFiles(for: model.id)
                 if pending.allSatisfy(\.file.zip) {
@@ -105,9 +114,13 @@ final class ModelManager {
                 } else {
                     sizes[model.id] = pending.filter { !$0.file.zip }.map(\.remainingBytes).reduce(0, +)
                 }
+                if pending.contains(where: { !$0.file.zip && $0.downloadedBytes > 0 }) {
+                    partial.insert(model.id)
+                }
                 for file in model.files where file.zip {
                     if let item = pending.first(where: { $0.file == file }) {
                         sizes[file.file] = item.remainingBytes
+                        if item.downloadedBytes > 0 { partial.insert(file.file) }
                     } else {
                         encoders.insert(file.file)
                     }
@@ -116,6 +129,7 @@ final class ModelManager {
             self.installed = installed
             downloadSizes = sizes
             installedEncoders = encoders
+            partlyDownloaded = partial
             models = try Catalog.engineModels(transcriptionModel: EngineSettings.transcriptionModel)
             state = transcriptionModel.map(isInstalled) == true ? .ready : .missing
         } catch {
@@ -172,7 +186,7 @@ final class ModelManager {
         }
     }
 
-    func cancel() {
+    func pause() {
         installTask?.cancel()
     }
 

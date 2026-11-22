@@ -31,6 +31,10 @@ struct JobView: View {
                                 remaining: step == item.step ? item.remaining : nil)
                     }
                 }
+                if item.state == .waiting {
+                    Text("Number \(queue.position(of: item.id)) in line, after the files above it.")
+                        .foregroundStyle(.secondary)
+                }
                 Button("Cancel") { queue.cancel(item.id) }
             }
 

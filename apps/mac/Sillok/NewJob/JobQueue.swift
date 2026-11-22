@@ -98,6 +98,10 @@ final class JobQueue {
         items.first { $0.id == id }
     }
 
+    func position(of id: UUID) -> Int {
+        (items.filter { $0.state == .waiting }.firstIndex { $0.id == id } ?? 0) + 1
+    }
+
     func start() {
         guard !started else { return }
         started = true

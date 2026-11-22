@@ -67,6 +67,16 @@
         }
       }
     },
+    "%@ of %@ · %@/s": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@ · 초당 %3$@"
+          }
+        }
+      }
+    },
     "%@ · %@": {
       "shouldTranslate": false
     },
@@ -629,6 +639,16 @@
         }
       }
     },
+    "Number %lld in line, after the files above it.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대기열 %lld번째입니다. 위의 파일들이 끝나면 시작합니다."
+          }
+        }
+      }
+    },
     "Pause": {
       "localizations": {
         "ko": {
@@ -785,6 +805,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "이름 변경…"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이어받기"
+          }
+        }
+      }
+    },
+    "Resume %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 이어받기"
           }
         }
       }
@@ -1152,12 +1192,12 @@
         }
       }
     },
-    "Waiting": {
+    "Waiting (%lld)": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대기 중"
+            "value": "대기 중 (%lld번째)"
           }
         }
       }

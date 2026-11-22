@@ -130,6 +130,7 @@ struct MainView: View {
 
 private struct JobRow: View {
     let item: JobQueue.Item
+    @Environment(JobQueue.self) private var queue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -150,7 +151,7 @@ private struct JobRow: View {
         case .adding(let fraction) where fraction > 0:
             Text("\(Text(Step.adding.title)) \(fraction.formatted(.percent.precision(.fractionLength(0))))")
         case .adding: Text(Step.adding.title)
-        case .waiting: Text("Waiting")
+        case .waiting: Text("Waiting (\(queue.position(of: item.id)))")
         case .reading: Text(Step.reading.title)
         case .running(let stage, let fraction) where fraction > 0:
             Text("\(Text(Step.stage(stage).title)) \(fraction.formatted(.percent.precision(.fractionLength(0))))")

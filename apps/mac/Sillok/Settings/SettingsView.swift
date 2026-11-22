@@ -45,6 +45,8 @@ private struct ModelSettingsView: View {
                             if let failure = models.failure, failure.key == model.id {
                                 Text(failure.message)
                                     .foregroundStyle(.red)
+                            } else if let download = models.download, download.key == model.id {
+                                download.status
                             } else {
                                 Text(model.footprint(memory: models.memory(of: model)))
                                 if !models.isInstalled(model), let encoder = models.encoderDownload(for: model) {
@@ -61,6 +63,8 @@ private struct ModelSettingsView: View {
                             if let failure = models.failure, failure.key == encoder.file {
                                 Text(failure.message)
                                     .foregroundStyle(.red)
+                            } else if let download = models.download, download.key == encoder.file {
+                                download.status
                             } else {
                                 Text(encoder.size.formatted(.byteCount(style: .file)))
                             }
@@ -138,10 +142,7 @@ private struct ModelSettingsView: View {
         if let download = models.download, download.key == model.id {
             progress(download)
         } else if !models.isInstalled(model) {
-            Button("Download \((models.downloadSizes[model.id] ?? 0).formatted(.byteCount(style: .file)))") {
-                models.install(model.id)
-            }
-            .disabled(models.download != nil || models.check == .running)
+            downloadButton(key: model.id, size: models.downloadSizes[model.id] ?? 0) { models.install(model.id) }
         } else if model.id == models.transcriptionModel?.id {
             Label("In Use", systemImage: "checkmark")
                 .foregroundStyle(.secondary)
@@ -162,8 +163,7 @@ private struct ModelSettingsView: View {
         if let download = models.download, download.key == encoder.file {
             progress(download)
         } else if !models.isInstalled(encoder) {
-            Button("Download") { models.install(encoder) }
-                .disabled(models.download != nil || models.check == .running)
+            downloadButton(key: encoder.file, size: models.downloadSize(of: encoder)) { models.install(encoder) }
         } else {
             Button("Delete", systemImage: "trash") { deletingEncoder = encoder }
                 .labelStyle(.iconOnly)
@@ -173,11 +173,17 @@ private struct ModelSettingsView: View {
         }
     }
 
+    private func downloadButton(key: String, size: Int64, action: @escaping () -> Void) -> some View {
+        let size = size.formatted(.byteCount(style: .file))
+        return Button(models.partlyDownloaded.contains(key) ? "Resume \(size)" : "Download \(size)", action: action)
+            .disabled(models.download != nil || models.check == .running)
+    }
+
     private func progress(_ download: ModelManager.Download) -> some View {
         HStack {
             ProgressView(value: download.progress?.fraction ?? 0)
                 .frame(width: 100)
-            Button("Cancel") { models.cancel() }
+            Button("Pause") { models.pause() }
         }
     }
 }
