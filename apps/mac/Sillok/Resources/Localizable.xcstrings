@@ -1282,6 +1282,26 @@
         }
       }
     },
+    "Transcription Failed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 실패"
+          }
+        }
+      }
+    },
+    "Transcription Finished": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전사 완료"
+          }
+        }
+      }
+    },
     "Try Again": {
       "localizations": {
         "ko": {

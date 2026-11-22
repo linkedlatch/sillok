@@ -115,6 +115,7 @@ final class JobQueue {
                  sourceName: source.lastPathComponent, options: options, modelID: model.id,
                  source: source, state: .adding(0))
         }
+        Notifications.requestPermission()
         addPending()
     }
 
@@ -123,6 +124,7 @@ final class JobQueue {
                              transcriptionModel: model.id)
         try library.store.add(copyOf: recording.id, as: copy)
         items.append(Item(copy))
+        Notifications.requestPermission()
         transcribeWaiting()
         return copy.id
     }
@@ -241,6 +243,7 @@ final class JobQueue {
             library.reload()
             items.removeAll { $0.id == item.id }
             completed = item.id
+            Notifications.finished(item.title)
         } catch is CancellationError {
             if self.item(item.id) == nil {
                 try? store.delete(item.id)
@@ -249,6 +252,7 @@ final class JobQueue {
             let message = Self.describe(error)
             try? store.update(item.id) { $0.error = message }
             update(item.id) { $0.state = .failed(message) }
+            Notifications.failed(item.title, message: message)
         }
     }
 
