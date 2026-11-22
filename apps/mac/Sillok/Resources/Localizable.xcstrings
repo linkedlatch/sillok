@@ -413,6 +413,26 @@
         }
       }
     },
+    "Edit Text": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 수정"
+          }
+        }
+      }
+    },
+    "Edited. The original: %@": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수정됨. 원본: %@"
+          }
+        }
+      }
+    },
     "Export": {
       "localizations": {
         "ko": {
@@ -839,6 +859,16 @@
         }
       }
     },
+    "Restore the Original": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원본으로 되돌리기"
+          }
+        }
+      }
+    },
     "Resume": {
       "localizations": {
         "ko": {
@@ -918,6 +948,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sillok은 이 Mac에서 전사합니다. 아래 모델을 한 번만 받으면 이후에는 인터넷 없이 동작합니다."
+          }
+        }
+      }
+    },
+    "Speaker": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화자"
           }
         }
       }
@@ -1022,22 +1062,22 @@
         }
       }
     },
+    "The Change Cannot Be Saved": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항을 저장할 수 없음"
+          }
+        }
+      }
+    },
     "The GPU failed, so this ran on the CPU.": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "GPU에서 실패해 CPU로 실행했습니다."
-          }
-        }
-      }
-    },
-    "The Speaker Names Cannot Be Saved": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화자 이름을 저장할 수 없음"
           }
         }
       }

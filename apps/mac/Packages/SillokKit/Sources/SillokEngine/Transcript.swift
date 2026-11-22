@@ -10,16 +10,16 @@ public struct Transcript: Codable, Sendable, Equatable {
         public let text: String
         public let startMs: Int
         public let endMs: Int
-        public let speaker: Int?
+        public var speaker: Int?
     }
 
     public struct Segment: Codable, Sendable, Equatable {
         public let startMs: Int
         public let endMs: Int
-        public let text: String
+        public var text: String
         public let language: String
-        public let speaker: Int?
-        public let words: [Word]
+        public var speaker: Int?
+        public var words: [Word]
     }
 
     public struct ModelUse: Codable, Sendable, Equatable {
@@ -31,11 +31,15 @@ public struct Transcript: Codable, Sendable, Equatable {
     public let version: Int
     public let durationMs: Int
     public var speakers: [Speaker]
-    public let segments: [Segment]
+    public var segments: [Segment]
     public let models: [String: ModelUse]
 
     public init(json: String) throws {
         self = try Self.decoder.decode(Transcript.self, from: Data(json.utf8))
+    }
+
+    public func json() throws -> String {
+        String(decoding: try Self.encoder.encode(self), as: UTF8.self)
     }
 
     static let decoder: JSONDecoder = {
@@ -44,6 +48,11 @@ public struct Transcript: Codable, Sendable, Equatable {
         return decoder
     }()
 
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        return encoder
+    }()
 }
 
 public struct Preview: Sendable, Equatable {

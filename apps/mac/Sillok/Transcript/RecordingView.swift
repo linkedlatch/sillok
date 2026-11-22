@@ -7,8 +7,7 @@ struct RecordingView: View {
     let recording: Recording
     @Environment(Library.self) private var library
     @Environment(Player.self) private var player
-    @State private var json: String?
-    @State private var transcript: Transcript?
+    @State private var document: TranscriptDocument?
     @State private var failure: String?
     @State private var renaming = false
     @State private var export: (document: TextDocument, type: UTType)?
@@ -17,6 +16,9 @@ struct RecordingView: View {
     @State private var showingInfo = false
     @FocusState private var searching: Bool
     @State private var following = true
+    @State private var editing: Int?
+    @State private var draft = ""
+    @FocusState private var editorFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,8 +30,8 @@ struct RecordingView: View {
             }
             .padding(24)
 
-            if let transcript {
-                segments(transcript)
+            if let document {
+                segments(document)
                 Divider()
                 PlayerBar()
             } else if let failure {
@@ -38,27 +40,29 @@ struct RecordingView: View {
             }
         }
         .toolbar {
-            if let transcript, !transcript.speakers.isEmpty {
+            if let document, !document.transcript.speakers.isEmpty {
                 Button("Speaker Names", systemImage: "person.2") { renaming = true }
             }
             Button("Copy Text", systemImage: "doc.on.doc") { copyText() }
-                .disabled(json == nil)
+                .disabled(document == nil)
             Menu("Export", systemImage: "square.and.arrow.up") {
                 Button("Text") { prepareExport(.txt) }
                 Button("JSON") { prepareExport(.json) }
             }
-            .disabled(json == nil)
+            .disabled(document == nil)
             Button("Info", systemImage: "info.circle") { showingInfo = true }
                 .popover(isPresented: $showingInfo) {
-                    RecordingInfoView(recording: recording, transcript: transcript)
+                    RecordingInfoView(recording: recording, transcript: document?.transcript)
                 }
         }
         .searchable(text: $query, placement: .toolbar, prompt: Text("Search Transcript"))
         .searchFocused($searching)
         .focusedSceneValue(\.find, FindAction { searching = true })
         .sheet(isPresented: $renaming) {
-            if let transcript {
-                SpeakerNamesView(transcript: transcript) { names in rename(names) }
+            if let document {
+                SpeakerNamesView(transcript: document.transcript) { names in
+                    save { try document.renameSpeakers(names) }
+                }
             }
         }
         .fileExporter(isPresented: Binding(get: { export != nil }, set: { if !$0 { export = nil } }),
@@ -81,7 +85,8 @@ struct RecordingView: View {
         .onDisappear { player.pause() }
     }
 
-    private func segments(_ transcript: Transcript) -> some View {
+    private func segments(_ document: TranscriptDocument) -> some View {
+        let transcript = document.transcript
         let current = currentSegment(in: transcript)
         let search = query.trimmingCharacters(in: .whitespaces)
         let shown = transcript.segments.enumerated().filter {
@@ -91,15 +96,11 @@ struct RecordingView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(shown, id: \.offset) { index, segment in
-                        row(segment, in: transcript, search: search)
+                        row(index, segment, in: document, search: search)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                             .background(index == current ? Color.accentColor.opacity(0.12) : Color.clear)
-                            .contextMenu {
-                                Button("Copy") { Self.copy(segment.text) }
-                                Button("Play from Here") { play(from: segment.startMs) }
-                            }
+                            .contextMenu { menu(index, segment, in: document) }
                             .id(index)
                         Divider()
                             .padding(.leading, 16)
@@ -132,10 +133,14 @@ struct RecordingView: View {
                 guard player.isPlaying, following, let index else { return }
                 withAnimation { proxy.scrollTo(index, anchor: .center) }
             }
+            .onChange(of: editorFocused) { _, focused in
+                if !focused, let editing { commit(editing, in: document) }
+            }
         }
     }
 
-    private func row(_ segment: Transcript.Segment, in transcript: Transcript, search: String) -> some View {
+    private func row(_ index: Int, _ segment: Transcript.Segment, in document: TranscriptDocument,
+                     search: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Button(Timestamp.text(segment.startMs)) { play(from: segment.startMs) }
                 .buttonStyle(.plain)
@@ -144,13 +149,61 @@ struct RecordingView: View {
                 .help("Play from here")
                 .accessibilityLabel(Text("Play from \(Timestamp.text(segment.startMs))"))
             if let speaker = segment.speaker {
-                Text(Speakers.name(speaker, in: transcript))
+                Text(Speakers.name(speaker, in: document.transcript))
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.tint)
             }
-            Text(Self.highlighting(search, in: segment.text))
-                .textSelection(.enabled)
+            if editing == index {
+                TextField("Text", text: $draft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .focused($editorFocused)
+                    .onAppear { editorFocused = true }
+                    .onSubmit { commit(index, in: document) }
+                    .onExitCommand { editing = nil }
+            } else {
+                Text(Self.highlighting(search, in: segment.text))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: 2) { edit(index, segment) }
+                    .simultaneousGesture(TapGesture().onEnded { player.seek(to: Double(segment.startMs) / 1000) })
+            }
+            if document.edits.isEdited(index) {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+                    .help(Text("Edited. The original: \(document.originalText(of: index))"))
+            }
         }
+    }
+
+    @ViewBuilder
+    private func menu(_ index: Int, _ segment: Transcript.Segment, in document: TranscriptDocument) -> some View {
+        Button("Copy") { Self.copy(segment.text) }
+        Button("Play from Here") { play(from: segment.startMs) }
+        Divider()
+        Button("Edit Text") { edit(index, segment) }
+        if !document.transcript.speakers.isEmpty {
+            Picker("Speaker", selection: Binding(
+                get: { segment.speaker },
+                set: { speaker in if let speaker { save { try document.setSpeaker(speaker, of: index) } } }
+            )) {
+                ForEach(document.transcript.speakers) { speaker in
+                    Text(Speakers.name(speaker.id, in: document.transcript)).tag(Int?.some(speaker.id))
+                }
+            }
+        }
+        if document.edits.isEdited(index) {
+            Button("Restore the Original") { save { try document.restore(index) } }
+        }
+    }
+
+    private func edit(_ index: Int, _ segment: Transcript.Segment) {
+        draft = segment.text
+        editing = index
+    }
+
+    private func commit(_ index: Int, in document: TranscriptDocument) {
+        editing = nil
+        save { try document.setText(draft, of: index) }
     }
 
     private func play(from milliseconds: Int) {
@@ -166,25 +219,19 @@ struct RecordingView: View {
 
     private func load() {
         do {
-            let json = try library.store.transcriptJSON(for: recording.id)
-            transcript = try Transcript(json: json)
-            self.json = json
+            document = try TranscriptDocument(id: recording.id, store: library.store)
             failure = nil
         } catch {
-            transcript = nil
-            json = nil
+            document = nil
             failure = error.localizedDescription
         }
     }
 
-    private func rename(_ names: [Int: String]) {
-        guard let json else { return }
+    private func save(_ change: () throws -> Void) {
         do {
-            let renamed = try Transcript.renamingSpeakers(in: json, names: names)
-            try library.store.saveTranscript(renamed, for: recording.id)
-            load()
+            try change()
         } catch {
-            problem = ("The Speaker Names Cannot Be Saved", error.localizedDescription)
+            problem = ("The Change Cannot Be Saved", error.localizedDescription)
         }
     }
 
@@ -204,19 +251,23 @@ struct RecordingView: View {
         NSPasteboard.general.setString(text, forType: .string)
     }
 
+    private static func render(_ transcript: Transcript, as format: ExportFormat) throws -> String {
+        try Export.render(transcript.json(), as: format, speakerLabel: String(localized: "Speaker {n}"))
+    }
+
     private func copyText() {
-        guard let json else { return }
+        guard let document else { return }
         do {
-            Self.copy(try Export.render(json, as: .txt, speakerLabel: String(localized: "Speaker {n}")))
+            Self.copy(try Self.render(document.transcript, as: .txt))
         } catch {
             problem = ("The Transcript Cannot Be Copied", error.localizedDescription)
         }
     }
 
     private func prepareExport(_ format: ExportFormat) {
-        guard let json else { return }
+        guard let document else { return }
         do {
-            let text = try Export.render(json, as: format, speakerLabel: String(localized: "Speaker {n}"))
+            let text = try Self.render(document.transcript, as: format)
             export = (TextDocument(text: text), format == .json ? .json : .plainText)
         } catch {
             problem = ("The Transcript Cannot Be Exported", error.localizedDescription)

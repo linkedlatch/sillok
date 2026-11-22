@@ -31,6 +31,7 @@ public struct RecordingStore: Sendable {
     static let transcriptName = "transcript.json"
     static let metadataName = "meta.json"
     static let checkpointName = "checkpoint.jsonl"
+    static let editsName = "edits.json"
 
     public let root: URL
 
@@ -69,7 +70,7 @@ public struct RecordingStore: Sendable {
     }
 
     public func finish(_ id: UUID, transcriptJSON: String, durationMs: Int, timingsMs: [String: Int]) throws {
-        try saveTranscript(transcriptJSON, for: id)
+        try Data(transcriptJSON.utf8).write(to: folder(for: id).appending(path: Self.transcriptName), options: .atomic)
         try update(id) {
             $0.durationMs = durationMs
             $0.transcribedAt = .now
@@ -104,12 +105,27 @@ public struct RecordingStore: Sendable {
         FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
     }
 
-    public func transcriptJSON(for id: UUID) throws -> String {
+    public func transcript(for id: UUID) throws -> Transcript {
+        try Transcript(json: transcriptJSON(for: id))
+    }
+
+    func transcriptJSON(for id: UUID) throws -> String {
         try String(contentsOf: folder(for: id).appending(path: Self.transcriptName), encoding: .utf8)
     }
 
-    public func saveTranscript(_ json: String, for id: UUID) throws {
-        try Data(json.utf8).write(to: folder(for: id).appending(path: Self.transcriptName), options: .atomic)
+    public func edits(for id: UUID) throws -> TranscriptEdits {
+        let url = folder(for: id).appending(path: Self.editsName)
+        guard Self.exists(url) else { return TranscriptEdits() }
+        return try Self.decoder.decode(TranscriptEdits.self, from: Data(contentsOf: url))
+    }
+
+    public func save(_ edits: TranscriptEdits, for id: UUID) throws {
+        let url = folder(for: id).appending(path: Self.editsName)
+        if edits.isEmpty {
+            if Self.exists(url) { try FileManager.default.removeItem(at: url) }
+        } else {
+            try Self.encoder.encode(edits).write(to: url, options: .atomic)
+        }
     }
 
     public func delete(_ id: UUID) throws {
