@@ -14,7 +14,6 @@ struct MainView: View {
     @Environment(Player.self) private var player
     @Environment(Navigation.self) private var navigation
     @State private var selection: Set<Selection> = []
-    @State private var pending: [URL] = []
     @State private var deleting: Set<Selection> = []
     @State private var renaming: Recording?
     @State private var transcribingAgain: Recording?
@@ -65,18 +64,16 @@ struct MainView: View {
         }
         .fileImporter(isPresented: Bindable(navigation).importing, allowedContentTypes: [.audio, .movie],
                       allowsMultipleSelection: true) { result in
-            if case .success(let urls) = result, !urls.isEmpty { pending = urls }
+            if case .success(let urls) = result { navigation.adding = urls }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            let files = urls.filter(\.isFileURL)
-            guard !files.isEmpty else { return false }
-            pending = files
-            return true
+            navigation.adding = urls.filter(\.isFileURL)
+            return !navigation.adding.isEmpty
         }
-        .sheet(isPresented: Binding(get: { !pending.isEmpty }, set: { if !$0 { pending = [] } })) {
-            NewJobView(files: pending.map(\.lastPathComponent)) { options, model in
+        .sheet(isPresented: Binding(get: { !navigation.adding.isEmpty }, set: { if !$0 { navigation.adding = [] } })) {
+            NewJobView(files: navigation.adding.map(\.lastPathComponent)) { options, model in
                 let first = queue.items.count
-                queue.enqueue(pending, options: options, model: model)
+                queue.enqueue(navigation.adding, options: options, model: model)
                 if queue.items.indices.contains(first) { selection = [.job(queue.items[first].id)] }
             }
         }

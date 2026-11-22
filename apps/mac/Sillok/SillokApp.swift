@@ -7,7 +7,6 @@ struct SillokApp: App {
     @State private var library: Library
     @State private var queue: JobQueue
     @State private var player = Player()
-    @State private var navigation = Navigation()
     @FocusedValue(\.find) private var find
 
     init() {
@@ -25,7 +24,7 @@ struct SillokApp: App {
                 .environment(library)
                 .environment(queue)
                 .environment(player)
-                .environment(navigation)
+                .environment(delegate.navigation)
                 .task {
                     delegate.queue = queue
                     models.refresh()
@@ -33,7 +32,7 @@ struct SillokApp: App {
         }
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("New Transcription…") { navigation.importing = true }
+                Button("New Transcription…") { delegate.navigation.importing = true }
                     .keyboardShortcut("n")
                     .disabled(models.state != .ready)
             }
@@ -53,8 +52,14 @@ struct SillokApp: App {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    let navigation = Navigation()
     var queue: JobQueue?
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        navigation.adding += urls.filter(\.isFileURL)
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard queue?.isAdding == true else { return .terminateNow }
