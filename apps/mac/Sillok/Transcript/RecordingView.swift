@@ -17,9 +17,8 @@ struct RecordingView: View {
     @State private var showingInfo = false
     @FocusState private var searching: Bool
     @State private var following = true
-    @State private var editing: Int?
-    @State private var draft = ""
-    @FocusState private var editorFocused: Bool
+    @State private var searchStep = 0
+    @State private var editing: SentenceEdit?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -58,7 +57,13 @@ struct RecordingView: View {
         }
         .searchable(text: $query, placement: .toolbar, prompt: Text("Search Transcript"))
         .searchFocused($searching)
+        .onSubmit(of: .search) { searchStep += 1 }
         .focusedSceneValue(\.find, FindAction { searching = true })
+        .sheet(item: $editing) { sentence in
+            SentenceEditView(text: sentence.text) { text in
+                save { try document?.setText(text, of: sentence.id) }
+            }
+        }
         .sheet(isPresented: $renaming) {
             if let document {
                 SpeakerNamesView(transcript: document.transcript) { names in
@@ -90,121 +95,29 @@ struct RecordingView: View {
         let transcript = document.transcript
         let current = currentSegment(in: transcript)
         let search = query.trimmingCharacters(in: .whitespaces)
-        let shown = transcript.segments.enumerated().filter {
-            search.isEmpty || $0.element.text.localizedStandardContains(search)
+        return TranscriptTextView(
+            document: document, search: search, searchStep: searchStep, current: current, following: $following,
+            play: { play(from: transcript.segments[$0].startMs) },
+            edit: { editing = SentenceEdit(id: $0, text: transcript.segments[$0].text) },
+            change: save
+        )
+        .overlay {
+            if transcript.segments.isEmpty {
+                ContentUnavailableView("No Speech Found", systemImage: "waveform.slash",
+                                       description: Text("Sillok heard no speech in this recording."))
+            } else if !search.isEmpty,
+                      !transcript.segments.contains(where: { TranscriptTextView.matches(search, in: $0.text) }) {
+                ContentUnavailableView.search(text: search)
+            }
         }
-        return ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(shown, id: \.offset) { index, segment in
-                        row(index, segment, in: document, search: search)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(index == current ? Color.accentColor.opacity(0.12) : Color.clear)
-                            .contextMenu { menu(index, segment, in: document) }
-                            .id(index)
-                        Divider()
-                            .padding(.leading, 16)
-                    }
-                }
-            }
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting { following = false }
-            }
-            .overlay {
-                if transcript.segments.isEmpty {
-                    ContentUnavailableView("No Speech Found", systemImage: "waveform.slash",
-                                           description: Text("Sillok heard no speech in this recording."))
-                } else if shown.isEmpty, !search.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if player.isPlaying, !following, search.isEmpty, let current {
-                    Button("Now Playing", systemImage: "waveform") {
-                        following = true
-                        withAnimation { proxy.scrollTo(current, anchor: .center) }
-                    }
+        .overlay(alignment: .bottom) {
+            if player.isPlaying, !following {
+                Button("Now Playing", systemImage: "waveform") { following = true }
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.capsule)
                     .padding(.bottom, 12)
-                }
-            }
-            .onChange(of: current) { _, index in
-                guard player.isPlaying, following, let index else { return }
-                withAnimation { proxy.scrollTo(index, anchor: .center) }
-            }
-            .onChange(of: editorFocused) { _, focused in
-                if !focused, let editing { commit(editing, in: document) }
             }
         }
-    }
-
-    private func row(_ index: Int, _ segment: Transcript.Segment, in document: TranscriptDocument,
-                     search: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Button(Timestamp.text(segment.startMs)) { play(from: segment.startMs) }
-                .buttonStyle(.plain)
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .help("Play from here")
-                .accessibilityLabel(Text("Play from \(Timestamp.text(segment.startMs))"))
-            if let speaker = segment.speaker {
-                Text(Speakers.name(speaker, in: document.transcript))
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.tint)
-            }
-            if editing == index {
-                TextField("Text", text: $draft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .focused($editorFocused)
-                    .onAppear { editorFocused = true }
-                    .onSubmit { commit(index, in: document) }
-                    .onExitCommand { editing = nil }
-            } else {
-                Text(Self.highlighting(search, in: segment.text))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: 2) { edit(index, segment) }
-                    .simultaneousGesture(TapGesture().onEnded { player.seek(to: Double(segment.startMs) / 1000) })
-            }
-            if document.edits.isEdited(index) {
-                Image(systemName: "pencil")
-                    .foregroundStyle(.secondary)
-                    .help(Text("Edited. The original: \(document.originalText(of: index))"))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func menu(_ index: Int, _ segment: Transcript.Segment, in document: TranscriptDocument) -> some View {
-        Button("Copy") { Self.copy(segment.text) }
-        Button("Play from Here") { play(from: segment.startMs) }
-        Divider()
-        Button("Edit Text") { edit(index, segment) }
-        if !document.transcript.speakers.isEmpty {
-            Picker("Speaker", selection: Binding(
-                get: { segment.speaker },
-                set: { speaker in if let speaker { save { try document.setSpeaker(speaker, of: index) } } }
-            )) {
-                ForEach(document.transcript.speakers) { speaker in
-                    Text(Speakers.name(speaker.id, in: document.transcript)).tag(Int?.some(speaker.id))
-                }
-            }
-        }
-        if document.edits.isEdited(index) {
-            Button("Restore the Original") { save { try document.restore(index) } }
-        }
-    }
-
-    private func edit(_ index: Int, _ segment: Transcript.Segment) {
-        draft = segment.text
-        editing = index
-    }
-
-    private func commit(_ index: Int, in document: TranscriptDocument) {
-        editing = nil
-        save { try document.setText(draft, of: index) }
     }
 
     private func play(from milliseconds: Int) {
@@ -236,17 +149,6 @@ struct RecordingView: View {
         }
     }
 
-    private static func highlighting(_ search: String, in text: String) -> AttributedString {
-        var attributed = AttributedString(text)
-        guard !search.isEmpty else { return attributed }
-        var rest = attributed.startIndex..<attributed.endIndex
-        while let found = attributed[rest].range(of: search, options: [.caseInsensitive, .diacriticInsensitive]) {
-            attributed[found].backgroundColor = .yellow.opacity(0.4)
-            rest = found.upperBound..<attributed.endIndex
-        }
-        return attributed
-    }
-
     private static func copy(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
@@ -273,6 +175,36 @@ struct RecordingView: View {
         } catch {
             problem = ("The Transcript Cannot Be Exported", error.localizedDescription)
         }
+    }
+}
+
+private struct SentenceEdit: Identifiable {
+    let id: Int
+    let text: String
+}
+
+private struct SentenceEditView: View {
+    @State var text: String
+    let save: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 16) {
+            TextEditor(text: $text)
+                .font(.body)
+                .frame(minHeight: 80)
+            HStack {
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    save(text)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 440)
     }
 }
 

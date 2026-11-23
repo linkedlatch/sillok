@@ -433,12 +433,12 @@
         }
       }
     },
-    "Edit Text": {
+    "Edit Text…": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "텍스트 수정"
+            "value": "텍스트 수정…"
           }
         }
       }
