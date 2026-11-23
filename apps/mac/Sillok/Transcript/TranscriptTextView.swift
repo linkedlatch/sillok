@@ -4,6 +4,7 @@ import SwiftUI
 
 struct TranscriptTextView: NSViewRepresentable {
     let document: TranscriptDocument
+    let player: Player
     let search: String
     let searchStep: Int
     let current: Int?
@@ -31,7 +32,8 @@ struct TranscriptTextView: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.autoresizingMask = .width
         textView.textContainer?.widthTracksTextView = true
-        let scrollView = NSScrollView()
+        let scrollView = TranscriptScrollView()
+        scrollView.userScrolled = context.coordinator.userScrolled
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
@@ -179,8 +181,29 @@ struct TranscriptTextView: NSViewRepresentable {
     }
 }
 
+private final class TranscriptScrollView: NSScrollView {
+    var userScrolled: () -> Void = {}
+
+    override func scrollWheel(with event: NSEvent) {
+        userScrolled()
+        super.scrollWheel(with: event)
+    }
+}
+
 private final class SentenceTextView: NSTextView {
     weak var coordinator: TranscriptTextView.Coordinator?
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.function, .numericPad])
+        guard modifiers.isEmpty, let player = coordinator?.parent?.player else { return super.keyDown(with: event) }
+        switch event.specialKey {
+        case .leftArrow: player.skip(by: -5)
+        case .rightArrow: player.skip(by: 5)
+        default:
+            guard event.charactersIgnoringModifiers == " " else { return super.keyDown(with: event) }
+            player.toggle()
+        }
+    }
 
     override func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)

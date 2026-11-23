@@ -96,7 +96,7 @@ struct RecordingView: View {
         let current = currentSegment(in: transcript)
         let search = query.trimmingCharacters(in: .whitespaces)
         return TranscriptTextView(
-            document: document, search: search, searchStep: searchStep, current: current, following: $following,
+            document: document, player: player, search: search, searchStep: searchStep, current: current, following: $following,
             play: { play(from: transcript.segments[$0].startMs) },
             edit: { editing = SentenceEdit(id: $0, text: transcript.segments[$0].text) },
             change: save
