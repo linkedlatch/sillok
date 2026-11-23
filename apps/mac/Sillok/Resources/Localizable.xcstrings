@@ -1,0 +1,1399 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
+    },
+    "%@ · %@" : {
+      "shouldTranslate" : false
+    },
+    "%@ · %lld languages" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$lld개 언어"
+          }
+        }
+      }
+    },
+    "%@ (recommended)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (권장)"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "shouldTranslate" : false
+    },
+    "%@ could not be extracted." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 파일의 압축을 풀지 못했습니다."
+          }
+        }
+      }
+    },
+    "%@ did not download completely." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 파일을 끝까지 받지 못했습니다."
+          }
+        }
+      }
+    },
+    "%@ download · %@ of memory" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다운로드 %1$@ · 메모리 %2$@"
+          }
+        }
+      }
+    },
+    "%@ is damaged." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 파일이 손상되었습니다."
+          }
+        }
+      }
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ of %@ · %@/s" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@ · 초당 %3$@"
+          }
+        }
+      }
+    },
+    "%@× real time" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실시간의 %@배"
+          }
+        }
+      }
+    },
+    "%lld Items Selected" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개 선택됨"
+          }
+        }
+      }
+    },
+    "%lld languages · %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld개 언어 · %2$@"
+          }
+        }
+      }
+    },
+    "A model failed to load: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델을 불러오지 못했습니다: %@"
+          }
+        }
+      }
+    },
+    "About %@ left" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약 %@ 남음"
+          }
+        }
+      }
+    },
+    "Added" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추가"
+          }
+        }
+      }
+    },
+    "Adding the file" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일 추가"
+          }
+        }
+      }
+    },
+    "Also downloads the Neural Engine encoder (%@)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neural Engine 인코더(%@)도 함께 받습니다."
+          }
+        }
+      }
+    },
+    "Back 5 Seconds" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5초 뒤로"
+          }
+        }
+      }
+    },
+    "Back 5 seconds (←)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5초 뒤로 (←)"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소"
+          }
+        }
+      }
+    },
+    "Changes apply from the next transcription." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바꾼 설정은 다음 전사부터 적용됩니다."
+          }
+        }
+      }
+    },
+    "Check" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검사"
+          }
+        }
+      }
+    },
+    "Check for damage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "손상 검사"
+          }
+        }
+      }
+    },
+    "Checking %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 확인 중"
+          }
+        }
+      }
+    },
+    "Choose a recording, or drop audio and video files here to transcribe them." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취를 고르거나, 전사할 오디오·비디오 파일을 여기에 끌어다 놓으세요."
+          }
+        }
+      }
+    },
+    "Compute on" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연산 장치"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복사"
+          }
+        }
+      }
+    },
+    "Copy Text" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트 복사"
+          }
+        }
+      }
+    },
+    "CPU" : {
+      "shouldTranslate" : false
+    },
+    "Delete" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제"
+          }
+        }
+      }
+    },
+    "Delete “%@”?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” 녹취를 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete %@?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 모델을 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete %lld Items?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개를 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete the Neural Engine encoder?" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neural Engine 인코더를 삭제할까요?"
+          }
+        }
+      }
+    },
+    "Delete…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제…"
+          }
+        }
+      }
+    },
+    "Detect automatically" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자동 감지"
+          }
+        }
+      }
+    },
+    "Device" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "장치"
+          }
+        }
+      }
+    },
+    "Download" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받기"
+          }
+        }
+      }
+    },
+    "Download %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 내려받기"
+          }
+        }
+      }
+    },
+    "Download size: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다운로드 크기: %@"
+          }
+        }
+      }
+    },
+    "Download size: %@, plus %@ for the Neural Engine encoder" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다운로드 크기: %1$@, Neural Engine 인코더 %2$@ 추가"
+          }
+        }
+      }
+    },
+    "Download the Models" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델 내려받기"
+          }
+        }
+      }
+    },
+    "Downloading %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 내려받는 중"
+          }
+        }
+      }
+    },
+    "Each recording keeps its copy for listening and its transcript." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취마다 듣기용 사본과 전사 결과를 저장합니다."
+          }
+        }
+      }
+    },
+    "Edit Text…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트 수정…"
+          }
+        }
+      }
+    },
+    "Edited. The original: %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수정됨. 원본: %@"
+          }
+        }
+      }
+    },
+    "Export" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내보내기"
+          }
+        }
+      }
+    },
+    "Extracting %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 압축 푸는 중"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실패"
+          }
+        }
+      }
+    },
+    "Files are still being added." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 파일을 추가하는 중입니다."
+          }
+        }
+      }
+    },
+    "Files not added yet are left out if you quit now. You can add them again later." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 종료하면 추가가 끝나지 않은 파일은 빠집니다. 나중에 다시 추가할 수 있습니다."
+          }
+        }
+      }
+    },
+    "Find…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "찾기…"
+          }
+        }
+      }
+    },
+    "Finding speech" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음성 구간 찾기"
+          }
+        }
+      }
+    },
+    "Forward 5 Seconds" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5초 앞으로"
+          }
+        }
+      }
+    },
+    "Forward 5 seconds (→)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5초 앞으로 (→)"
+          }
+        }
+      }
+    },
+    "GPU" : {
+      "shouldTranslate" : false
+    },
+    "Identify speakers" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 구분"
+          }
+        }
+      }
+    },
+    "Identifying speakers" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 구분"
+          }
+        }
+      }
+    },
+    "In Use" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용 중"
+          }
+        }
+      }
+    },
+    "Info" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정보"
+          }
+        }
+      }
+    },
+    "JSON" : {
+      "shouldTranslate" : false
+    },
+    "Language" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언어"
+          }
+        }
+      }
+    },
+    "Latest" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "최신"
+          }
+        }
+      }
+    },
+    "Length" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "길이"
+          }
+        }
+      }
+    },
+    "Measuring…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계산 중…"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델"
+          }
+        }
+      }
+    },
+    "Models" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델"
+          }
+        }
+      }
+    },
+    "Names and jargon, one per line" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름이나 전문 용어를 한 줄에 하나씩"
+          }
+        }
+      }
+    },
+    "Neural Engine encoder" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neural Engine 인코더"
+          }
+        }
+      }
+    },
+    "New Transcription" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 전사"
+          }
+        }
+      }
+    },
+    "New Transcription…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 전사…"
+          }
+        }
+      }
+    },
+    "No Recording Selected" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 녹취 없음"
+          }
+        }
+      }
+    },
+    "No Speech Found" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음성 없음"
+          }
+        }
+      }
+    },
+    "Now Playing" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재생 중인 문장"
+          }
+        }
+      }
+    },
+    "Number %lld in line, after the files above it." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대기열 %lld번째입니다. 위의 파일들이 끝나면 시작합니다."
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일시 정지"
+          }
+        }
+      }
+    },
+    "Performance" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "성능"
+          }
+        }
+      }
+    },
+    "Play" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재생"
+          }
+        }
+      }
+    },
+    "Play from %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@부터 재생"
+          }
+        }
+      }
+    },
+    "Play from here" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기서부터 재생"
+          }
+        }
+      }
+    },
+    "Play from Here" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기부터 재생"
+          }
+        }
+      }
+    },
+    "Quit" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "종료"
+          }
+        }
+      }
+    },
+    "Reading each downloaded file through…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받은 파일을 모두 읽는 중…"
+          }
+        }
+      }
+    },
+    "Reading the file" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일 읽기"
+          }
+        }
+      }
+    },
+    "Reads each downloaded file and compares it with the original. Large files take a while." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받은 파일을 하나씩 읽어 원본과 비교합니다. 큰 파일은 시간이 걸립니다."
+          }
+        }
+      }
+    },
+    "Recordings" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취"
+          }
+        }
+      }
+    },
+    "Recordings and their transcripts are removed, and files still transcribing stop. This cannot be undone." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취와 전사 결과가 삭제되고, 전사 중인 파일은 중단됩니다. 되돌릴 수 없습니다."
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제거"
+          }
+        }
+      }
+    },
+    "Removed %lld damaged files. Download them again." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "손상된 파일 %lld개를 지웠습니다. 다시 내려받으세요."
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름 변경"
+          }
+        }
+      }
+    },
+    "Rename Recording" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹음 이름 변경"
+          }
+        }
+      }
+    },
+    "Rename…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이름 변경…"
+          }
+        }
+      }
+    },
+    "Restore the Original" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "원본으로 되돌리기"
+          }
+        }
+      }
+    },
+    "Resume" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이어받기"
+          }
+        }
+      }
+    },
+    "Resume %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 이어받기"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장"
+          }
+        }
+      }
+    },
+    "Search Recordings" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취 검색"
+          }
+        }
+      }
+    },
+    "Search Transcript" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 결과 검색"
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finder에서 보기"
+          }
+        }
+      }
+    },
+    "Sillok" : {
+      "shouldTranslate" : false
+    },
+    "Sillok cannot read the audio of this file." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 파일의 오디오를 읽을 수 없습니다."
+          }
+        }
+      }
+    },
+    "Sillok heard no speech in this recording." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 녹음에서 음성을 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "Sillok transcribes on this Mac. It needs these models once and works offline afterwards." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sillok은 이 Mac에서 전사합니다. 아래 모델을 한 번만 받으면 이후에는 인터넷 없이 동작합니다."
+          }
+        }
+      }
+    },
+    "Speaker" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자"
+          }
+        }
+      }
+    },
+    "Speaker {n}" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 {n}"
+          }
+        }
+      }
+    },
+    "Speaker %lld" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 %lld"
+          }
+        }
+      }
+    },
+    "Speaker diarization" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 분리"
+          }
+        }
+      }
+    },
+    "Speaker Names" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자 이름"
+          }
+        }
+      }
+    },
+    "Speed" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "속도"
+          }
+        }
+      }
+    },
+    "Starting…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시작하는 중…"
+          }
+        }
+      }
+    },
+    "Storage" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장 공간"
+          }
+        }
+      }
+    },
+    "Terms" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "용어"
+          }
+        }
+      }
+    },
+    "Terms the recording may contain help the model spell them." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취에 나올 용어를 알려주면 모델이 정확히 받아 적는 데 도움이 됩니다."
+          }
+        }
+      }
+    },
+    "Text" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트"
+          }
+        }
+      }
+    },
+    "The Change Cannot Be Saved" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변경 사항을 저장할 수 없음"
+          }
+        }
+      }
+    },
+    "The downloaded models are intact." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내려받은 모델에 이상이 없습니다."
+          }
+        }
+      }
+    },
+    "The GPU failed, so this ran on the CPU." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPU에서 실패해 CPU로 실행했습니다."
+          }
+        }
+      }
+    },
+    "The Recording Cannot Be Transcribed Again" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "녹취를 다시 전사할 수 없음"
+          }
+        }
+      }
+    },
+    "The server refused %@ (HTTP %lld)." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버가 %1$@ 파일을 거부했습니다(HTTP %2$lld)."
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Copied" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 결과를 복사할 수 없습니다"
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Exported" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 결과를 내보낼 수 없음"
+          }
+        }
+      }
+    },
+    "The Transcript Cannot Be Read" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 결과를 읽을 수 없음"
+          }
+        }
+      }
+    },
+    "Timing words" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단어 시각 맞추기"
+          }
+        }
+      }
+    },
+    "Title" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제목"
+          }
+        }
+      }
+    },
+    "Total" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "합계"
+          }
+        }
+      }
+    },
+    "Transcribe" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사"
+          }
+        }
+      }
+    },
+    "Transcribe Again…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 전사…"
+          }
+        }
+      }
+    },
+    "Transcribed" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사"
+          }
+        }
+      }
+    },
+    "Transcribing" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 중"
+          }
+        }
+      }
+    },
+    "Transcribing speech" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사"
+          }
+        }
+      }
+    },
+    "Transcription" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사"
+          }
+        }
+      }
+    },
+    "Transcription Failed" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 실패"
+          }
+        }
+      }
+    },
+    "Transcription Finished" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전사 완료"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        }
+      }
+    },
+    "Use" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용"
+          }
+        }
+      }
+    },
+    "Use the Neural Engine" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neural Engine 사용"
+          }
+        }
+      }
+    },
+    "Voice detection" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음성 감지"
+          }
+        }
+      }
+    },
+    "Waiting (%lld)" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대기 중 (%lld번째)"
+          }
+        }
+      }
+    },
+    "Whisper then runs its encoder on the GPU or CPU. You can download it again here." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제하면 Whisper의 인코더는 GPU나 CPU에서 실행됩니다. 여기서 다시 내려받을 수 있습니다."
+          }
+        }
+      }
+    },
+    "Whisper's encoder runs about twice as fast on the Neural Engine. While this is on, downloads include it and the memory shown counts it." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neural Engine에서는 Whisper의 인코더가 약 2배 빠르게 실행됩니다. 켜 두면 모델을 받을 때 함께 받고, 표시된 메모리에도 포함됩니다."
+          }
+        }
+      }
+    },
+    "Whisper's encoder runs about twice as fast there. It takes another %@ to download and about as much more memory." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whisper의 인코더가 약 2배 빠르게 실행됩니다. %@를 추가로 내려받고, 메모리도 그만큼 더 사용합니다."
+          }
+        }
+      }
+    },
+    "You can download it again here." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제한 모델은 여기서 다시 내려받을 수 있습니다."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
