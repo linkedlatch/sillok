@@ -24,7 +24,6 @@ src/backends/             one directory per model; models.cpp picks the models
 src/media/                FFmpeg: reading audio and video files, converting audio to 16 kHz mono
 src/capi/                 the C ABI over the core (JSON in and out)
 apps/cli/                 the sillok command-line app
-apps/app/                 the Flutter app (Windows, macOS on Apple silicon)
 apps/mac/                 the native macOS app (SwiftUI)
 tests/                    unit tests with fake models, integration probe; tests/data/media: short test files
 third_party/              llama.cpp, whisper.cpp, NeMo-Speech.cpp, FFmpeg, googletest, nlohmann/json (submodules)
@@ -92,39 +91,6 @@ sillok export lecture.json --format txt --speaker-label "화자 {n}"
 Audio and video files (M4A/MP4, MP3, WAV, FLAC, Ogg, Opus, WebM, AMR, WMA,
 ...) are read by the library. `SILLOK_LOG=1` shows the model libraries' and
 FFmpeg's logs.
-
-## App
-
-`apps/app` is one Flutter app for Windows (x86_64) and macOS (Apple silicon),
-over the C ABI through `dart:ffi`. Its build hook (`apps/app/hook/build.dart`) builds the
-library with this repository's CMake project for the target and bundles it
-with FFmpeg's libraries, so a plain `flutter run` or `flutter build` is
-enough once the library's own requirements are met (see Build; on Windows,
-the Vulkan SDK in `C:\VulkanSDK` adds the GPU). The first build of each
-target compiles the library and takes a few minutes.
-
-```
-cd apps/app
-flutter test                                    # the hook builds the library for this machine
-SILLOK_TEST_MODELS=../../models \
-    SILLOK_TEST_AUDIO=../../tests/data/audio/fleurs/en_us/1003119935936341070.wav flutter test
-flutter build windows                           # or macos
-flutter test integration_test -d windows        # the built app; or -d macos
-```
-
-Each push builds the apps in CI (the `app` workflow): `sillok-windows-x64` and
-`sillok-macos` under the run's artifacts. The macOS
-app has an ad-hoc signature but is not notarized, so macOS refuses to open it
-the first time it comes from a download. Try to open it once, then choose
-Open Anyway in System Settings > Privacy & Security and enter your password;
-it opens normally from then on. Alternatively, remove the download mark
-before opening it:
-
-```
-xattr -dr com.apple.quarantine Sillok.app
-```
-
-A copy built on the Mac itself has no download mark and opens directly.
 
 ## macOS app
 

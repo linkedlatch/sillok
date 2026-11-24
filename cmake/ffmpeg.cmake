@@ -57,9 +57,8 @@ set(ffmpeg_args
     --enable-encoder=aac --enable-muxer=ipod)
 
 if(APPLE)
-    # The SDK and architecture are given explicitly: the compiler may be the
-    # toolchain's own clang (Flutter's build hook), which finds no SDK by
-    # itself.
+    # The SDK and architecture are given explicitly: the compiler may be a
+    # toolchain's own clang, which finds no SDK by itself.
     if(IS_ABSOLUTE "${CMAKE_OSX_SYSROOT}")
         set(sdk "${CMAKE_OSX_SYSROOT}")
     else()
@@ -88,7 +87,7 @@ if(APPLE)
         --install-name-dir=@rpath
         --target-os=darwin --arch=${arch} --cc=${CMAKE_C_COMPILER} --host-cc=/usr/bin/cc
         "--extra-cflags=-target ${target} -isysroot ${sdk}"
-        # Room for Flutter to rewrite the libraries' install names.
+        # Room for apps to rewrite the libraries' install names.
         "--extra-ldflags=-target ${target} -isysroot ${sdk} -Wl,-headerpad_max_install_names")
 elseif(MSVC)
     # cl or clang-cl from the developer environment. Arm assembly would need

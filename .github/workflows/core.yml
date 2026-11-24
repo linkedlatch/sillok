@@ -1,6 +1,6 @@
-# Builds the core library and the command-line app, which run on more platforms
-# than the Flutter app, and runs the model-free tests. The real-model
-# integration tests skip here: CI has neither the models nor the recordings.
+# Builds the core library and the command-line app, and runs the model-free
+# tests. The real-model integration tests skip here: CI has neither the models
+# nor the recordings.
 name: core
 
 on:
