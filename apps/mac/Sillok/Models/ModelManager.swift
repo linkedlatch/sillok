@@ -113,9 +113,10 @@ final class ModelManager {
                     installed.insert(model.id)
                 } else {
                     sizes[model.id] = pending.filter { !$0.file.zip }.map(\.remainingBytes).reduce(0, +)
-                }
-                if pending.contains(where: { !$0.file.zip && $0.downloadedBytes > 0 }) {
-                    partial.insert(model.id)
+                    let others = transcriptionModels.filter { $0.id != model.id }
+                    if ModelInstaller.isStarted(model, sharingFilesWith: others, pending: pending) {
+                        partial.insert(model.id)
+                    }
                 }
                 for file in model.files where file.zip {
                     if let item = pending.first(where: { $0.file == file }) {
@@ -147,24 +148,42 @@ final class ModelManager {
     }
 
     func remove(_ id: String) {
-        guard download == nil, id != transcriptionModel?.id,
-            let model = transcriptionModels.first(where: { $0.id == id })
-        else { return }
-        let others = transcriptionModels.filter { $0.id != id && isInstalled($0) }
-        do {
-            try ModelInstaller.remove(model, keepingFilesOf: others, from: directory)
-        } catch {
-            failure = (id, Self.describe(error))
+        Task {
+            await stopDownload(key: id)
+            guard download == nil, let model = transcriptionModels.first(where: { $0.id == id }),
+                id != transcriptionModel?.id || !isInstalled(model)
+            else { return }
+            let others = transcriptionModels.filter {
+                $0.id != id && (isInstalled($0) || partlyDownloaded.contains($0.id))
+            }
+            remove(key: id) {
+                try ModelInstaller.remove(model, keepingFilesOf: others, from: directory)
+            }
         }
-        refresh()
     }
 
     func remove(_ encoder: CatalogFile) {
-        guard download == nil else { return }
+        Task {
+            await stopDownload(key: encoder.file)
+            guard download == nil else { return }
+            remove(key: encoder.file) {
+                try ModelInstaller.remove([encoder], from: directory)
+            }
+        }
+    }
+
+    private func stopDownload(key: String) async {
+        guard download?.key == key else { return }
+        installTask?.cancel()
+        await installTask?.value
+    }
+
+    private func remove(key: String, files: () throws -> Void) {
+        if failure?.key == key { failure = nil }
         do {
-            try ModelInstaller.remove([encoder], from: directory)
+            try files()
         } catch {
-            failure = (encoder.file, Self.describe(error))
+            failure = (key, Self.describe(error))
         }
         refresh()
     }

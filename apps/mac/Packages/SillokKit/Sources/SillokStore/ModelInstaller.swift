@@ -61,6 +61,16 @@ public enum ModelInstaller {
         return pending
     }
 
+    public static func isStarted(_ model: CatalogModel, sharingFilesWith others: [CatalogModel],
+                                 pending: [PendingFile]) -> Bool {
+        let shared = Set(others.flatMap(\.files).map(\.file))
+        return model.files.contains { file in
+            guard !file.zip, !shared.contains(file.file) else { return false }
+            guard let item = pending.first(where: { $0.file == file }) else { return true }
+            return item.downloadedBytes > 0
+        }
+    }
+
     static func downloaded(_ file: CatalogFile, in directory: URL) -> Int64 {
         let partial = directory.appending(path: file.file + ".partial")
         let size = Int64((try? partial.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)

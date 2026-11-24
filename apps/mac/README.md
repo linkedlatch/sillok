@@ -75,7 +75,8 @@ The transcription model in Settings is the default for new files, each of
 which can use another; CPU or GPU and the Neural Engine apply from the next
 transcription. A transcription model chosen in Settings
 downloads there while the current one stays in use, and a model not in use
-can be deleted there; files another downloaded model also needs are kept.
+can be deleted there, as can a download, running or paused; files another
+downloaded model also needs are kept.
 Whisper's Core ML encoder, which runs on the Neural Engine, downloads with
 its model while the Neural Engine is on, and can be downloaded or deleted on
 its own; without it Whisper runs its encoder on the GPU or CPU. The memory

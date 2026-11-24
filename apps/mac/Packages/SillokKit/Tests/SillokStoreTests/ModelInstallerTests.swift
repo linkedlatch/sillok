@@ -130,6 +130,43 @@ struct ModelInstallerTests {
         #expect(left.isEmpty)
     }
 
+    @Test func aModelIsStartedOnlyByFilesOfItsOwn() throws {
+        let qwen = try Catalog.models().filter { $0.backend == "qwen" && $0.role == .transcription }
+        let q8 = try #require(qwen.first { $0.quantization == "q8_0" })
+        let bf16 = try #require(qwen.first { $0.quantization == "bf16" })
+        func isStarted(_ model: CatalogModel, besides other: CatalogModel, downloaded: [String: Int64]) -> Bool {
+            let pending = model.files.filter { downloaded[$0.file] != $0.size }.map {
+                PendingFile(file: $0, needsDownload: true, downloadedBytes: downloaded[$0.file] ?? 0)
+            }
+            return ModelInstaller.isStarted(model, sharingFilesWith: [other], pending: pending)
+        }
+        let first = q8.files[0]
+        #expect(!bf16.files.contains(first))
+        #expect(!isStarted(q8, besides: bf16, downloaded: [:]))
+        #expect(isStarted(q8, besides: bf16, downloaded: [first.file: 1]))
+        #expect(isStarted(q8, besides: bf16, downloaded: [first.file: first.size]))
+
+        let complete = Dictionary(uniqueKeysWithValues: q8.files.map { ($0.file, $0.size) })
+        #expect(bf16.files.contains { complete[$0.file] != nil })
+        #expect(!isStarted(bf16, besides: q8, downloaded: complete))
+    }
+
+    @Test func removesAPartlyDownloadedModelButKeepsFilesAnotherModelUses() throws {
+        let qwen = try Catalog.models().filter { $0.backend == "qwen" && $0.role == .transcription }
+        let q8 = try #require(qwen.first { $0.quantization == "q8_0" })
+        let bf16 = try #require(qwen.first { $0.quantization == "bf16" })
+        let models = root.appending(path: "models")
+        try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
+        for file in q8.files {
+            try Data().write(to: models.appending(path: file.file))
+        }
+        try Data().write(to: models.appending(path: bf16.files[0].file + ".partial"))
+
+        try ModelInstaller.remove(bf16, keepingFilesOf: [q8], from: models)
+        let left = try Set(FileManager.default.contentsOfDirectory(atPath: models.path()))
+        #expect(left == Set(q8.files.map(\.file)))
+    }
+
     @Test func removesOnlyTheEncoder() throws {
         let model = try #require(try Catalog.models().first { $0.id == "whisper-large-v3-turbo-q5_0" })
         let encoder = try #require(model.files.first { $0.zip })

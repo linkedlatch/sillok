@@ -140,20 +140,22 @@ private struct ModelSettingsView: View {
     @ViewBuilder
     private func control(for model: CatalogModel) -> some View {
         if let download = models.download, download.key == model.id {
-            progress(download)
+            progress(download) { deleting = model }
         } else if !models.isInstalled(model) {
-            downloadButton(key: model.id, size: models.downloadSizes[model.id] ?? 0) { models.install(model.id) }
+            HStack {
+                downloadButton(key: model.id, size: models.downloadSizes[model.id] ?? 0) { models.install(model.id) }
+                if models.partlyDownloaded.contains(model.id) {
+                    deleteButton(key: model.id) { deleting = model }
+                }
+            }
         } else if model.id == models.transcriptionModel?.id {
             Label("In Use", systemImage: "checkmark")
                 .foregroundStyle(.secondary)
         } else {
             HStack {
                 Button("Use") { models.choose(transcriptionModel: model.id) }
-                Button("Delete", systemImage: "trash") { deleting = model }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .help("Delete")
-                    .disabled(models.download != nil || models.check == .running || queue.uses(model.id))
+                deleteButton(key: model.id) { deleting = model }
+                    .disabled(queue.uses(model.id))
             }
         }
     }
@@ -161,16 +163,26 @@ private struct ModelSettingsView: View {
     @ViewBuilder
     private func control(for encoder: CatalogFile, of family: [CatalogModel]) -> some View {
         if let download = models.download, download.key == encoder.file {
-            progress(download)
+            progress(download) { deletingEncoder = encoder }
         } else if !models.isInstalled(encoder) {
-            downloadButton(key: encoder.file, size: models.downloadSize(of: encoder)) { models.install(encoder) }
+            HStack {
+                downloadButton(key: encoder.file, size: models.downloadSize(of: encoder)) { models.install(encoder) }
+                if models.partlyDownloaded.contains(encoder.file) {
+                    deleteButton(key: encoder.file) { deletingEncoder = encoder }
+                }
+            }
         } else {
-            Button("Delete", systemImage: "trash") { deletingEncoder = encoder }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .help("Delete")
-                .disabled(models.download != nil || models.check == .running || family.contains { queue.uses($0.id) })
+            deleteButton(key: encoder.file) { deletingEncoder = encoder }
+                .disabled(family.contains { queue.uses($0.id) })
         }
+    }
+
+    private func deleteButton(key: String, action: @escaping () -> Void) -> some View {
+        Button("Delete", systemImage: "trash", action: action)
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Delete")
+            .disabled((models.download != nil && models.download?.key != key) || models.check == .running)
     }
 
     private func downloadButton(key: String, size: Int64, action: @escaping () -> Void) -> some View {
@@ -179,11 +191,12 @@ private struct ModelSettingsView: View {
             .disabled(models.download != nil || models.check == .running)
     }
 
-    private func progress(_ download: ModelManager.Download) -> some View {
+    private func progress(_ download: ModelManager.Download, delete: @escaping () -> Void) -> some View {
         HStack {
             ProgressView(value: download.progress?.fraction ?? 0)
                 .frame(width: 100)
             Button("Pause") { models.pause() }
+            deleteButton(key: download.key, action: delete)
         }
     }
 }
