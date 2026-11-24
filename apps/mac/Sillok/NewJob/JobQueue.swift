@@ -238,16 +238,16 @@ final class JobQueue {
                     engine: engine, copy: store.audio(for: item.id), options: item.options,
                     checkpoint: store.checkpoint(for: item.id), events: events)
             }
+            guard self.item(item.id) != nil else { throw CancellationError() }
             try store.finish(item.id, transcriptJSON: result.json, durationMs: result.transcript.durationMs,
                              timingsMs: self.item(item.id)?.timings ?? [:])
             library.reload()
             items.removeAll { $0.id == item.id }
             completed = item.id
             Notifications.finished(item.title)
+        } catch _ where self.item(item.id) == nil {
+            try? store.delete(item.id)
         } catch is CancellationError {
-            if self.item(item.id) == nil {
-                try? store.delete(item.id)
-            }
         } catch {
             let message = Self.describe(error)
             try? store.update(item.id) { $0.error = message }
