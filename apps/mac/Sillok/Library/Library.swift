@@ -34,16 +34,20 @@ final class Library {
         recordings.first { $0.id == id }
     }
 
-    func search(_ query: String) async -> Set<UUID> {
-        let store = store
-        let recordings = recordings
-        return await Task.detached {
-            let found = recordings.filter { recording in
-                recording.title.localizedStandardContains(query)
-                    || (try? store.editedTranscript(for: recording.id))?.segments
-                        .contains { $0.text.localizedStandardContains(query) } == true
-            }
-            return Set(found.map(\.id))
-        }.value
+    func search(_ query: String) async throws -> Set<UUID> {
+        try await Self.search(query, in: recordings, of: store)
+    }
+
+    @concurrent
+    private nonisolated static func search(
+        _ query: String, in recordings: [Recording], of store: RecordingStore
+    ) async throws -> Set<UUID> {
+        let found = try recordings.filter { recording in
+            try Task.checkCancellation()
+            return recording.title.localizedStandardContains(query)
+                || (try? store.editedTranscript(for: recording.id))?.segments
+                    .contains { $0.text.localizedStandardContains(query) } == true
+        }
+        return Set(found.map(\.id))
     }
 }

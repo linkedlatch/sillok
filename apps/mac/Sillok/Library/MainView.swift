@@ -170,10 +170,12 @@ struct MainView: View {
         }
         do {
             try await Task.sleep(for: .milliseconds(200))
+            let found = try await library.search(query)
+            try Task.checkCancellation()
+            matches = found
         } catch {
             return
         }
-        matches = await library.search(query)
     }
 
     private var deletingTitle: Text {
