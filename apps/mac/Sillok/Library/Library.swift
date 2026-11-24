@@ -38,7 +38,6 @@ final class Library {
         try await Self.search(query, in: recordings, of: store)
     }
 
-    @concurrent
     private nonisolated static func search(
         _ query: String, in recordings: [Recording], of store: RecordingStore
     ) async throws -> Set<UUID> {

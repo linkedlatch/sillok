@@ -1,0 +1,33 @@
+name: mac
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "4.4.4"
+  NINJA_VERSION: "1.13.2"
+  CMAKE_GENERATOR: Ninja
+
+jobs:
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - name: Install CMake and Ninja
+        run: scripts/ci/install-cmake.sh
+      - name: Build the core
+        run: apps/mac/scripts/build-core.sh
+      - name: Test SillokKit
+        working-directory: apps/mac/Packages/SillokKit
+        run: swift test
+      - name: Build the app
+        working-directory: apps/mac
+        run: xcodebuild -project Sillok.xcodeproj -scheme Sillok -configuration Release -derivedDataPath "$RUNNER_TEMP/app" build
