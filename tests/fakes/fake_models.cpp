@@ -176,11 +176,11 @@ class FakeTranscriber : public Transcriber {
                                                    return a.second < b.second;
                                                  })->first;
     }
-    TranscribedWords piece{.words = {}, .language = language};
+    TranscribedWords piece{.words = {}, .language = language, .text = {}};
     const auto hand_over = [&] {
       const SampleIndex heard = ToSamples(piece.words.back().end);
       on_words(std::move(piece));
-      piece = {.words = {}, .language = language};
+      piece = {.words = {}, .language = language, .text = {}};
       on_progress(std::min(1.0, static_cast<double>(heard) / static_cast<double>(request.pcm.size())));
     };
     for (std::size_t i = 0; i < bursts.size(); ++i) {

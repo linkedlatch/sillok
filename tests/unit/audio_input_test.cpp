@@ -152,7 +152,7 @@ TEST(LoudnessTest, AShortLoudSoundDoesNotHoldTheGainDownAroundIt) {
   for (std::size_t i = 16000 * 20; i < 16000 * 20 + 160; ++i) pcm[i] = (i / 8) % 2 ? 1.0f : -1.0f;
   const auto out = EvenOut(pcm);
   ASSERT_EQ(out.size(), pcm.size());
-  const auto gain = [&](int from, int to) {
+  const auto gain = [&](std::size_t from, std::size_t to) {
     const std::span<const float> before(pcm.data() + 16000 * from, 16000 * (to - from));
     const std::span<const float> after(out.data() + 16000 * from, 16000 * (to - from));
     return Rms(after) / Rms(before);

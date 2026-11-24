@@ -63,7 +63,7 @@ void HandOver(whisper_context* context, Run& run) {
       std::vector<Word> words = AssembleWords(tokens, language);
       if (words.empty()) continue;
       const SampleIndex heard = std::min(ToSamples(words.back().end), run.samples);
-      run.on_words({.words = std::move(words), .language = language});
+      run.on_words({.words = std::move(words), .language = language, .text = {}});
       if (run.samples > 0) {
         run.on_progress(static_cast<double>(heard) / static_cast<double>(run.samples));
       }
