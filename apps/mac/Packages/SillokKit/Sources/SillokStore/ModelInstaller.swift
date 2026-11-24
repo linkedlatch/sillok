@@ -192,18 +192,23 @@ public enum ModelInstaller {
         let process = Process()
         process.executableURL = URL(filePath: "/usr/bin/ditto")
         process.arguments = ["-x", "-k", archive.path(percentEncoded: false), staging.path(percentEncoded: false)]
+        let running = Mutex(false)
         let status: Int32 = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
                 do {
-                    try process.run()
+                    try running.withLock { running in
+                        try Task.checkCancellation()
+                        try process.run()
+                        running = true
+                    }
                 } catch {
                     process.terminationHandler = nil
                     continuation.resume(throwing: error)
                 }
             }
         } onCancel: {
-            process.terminate()
+            running.withLock { if $0 { process.terminate() } }
         }
         try Task.checkCancellation()
 
@@ -245,8 +250,16 @@ final class PartialWriter: NSObject, URLSessionDataDelegate, Sendable {
         task.delegate = self
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                state.withLock { $0.continuation = continuation }
-                task.resume()
+                let cancelled = state.withLock { state in
+                    if Task.isCancelled { return true }
+                    state.continuation = continuation
+                    return false
+                }
+                if cancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    task.resume()
+                }
             }
         } onCancel: {
             task.cancel()

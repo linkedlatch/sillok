@@ -109,6 +109,28 @@ struct ModelInstallerTests {
         #expect(leftovers == ["encoder.mlmodelc"])
     }
 
+    @Test func anExtractionCancelledBeforeItStartsIsCancelled() async throws {
+        let archive = root.appending(path: "encoder.mlmodelc.zip")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data().write(to: archive)
+        let extraction = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            try await ModelInstaller.extract(archive, file: "encoder.mlmodelc.zip")
+        }
+        await #expect(throws: CancellationError.self) { try await extraction.value }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path()) == ["encoder.mlmodelc.zip"])
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aDownloadCancelledBeforeItStartsIsCancelled() async throws {
+        let file = try source("model.bin", contents: Data(repeating: 5, count: 1024))
+        let partial = root.appending(path: "model.bin.partial")
+        let download = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            try await ModelInstaller.download(file, to: partial, session: .shared) { _ in }
+        }
+        await #expect(throws: CancellationError.self) { try await download.value }
+    }
+
     @Test func removesAModelButKeepsFilesAnotherModelUses() throws {
         let catalog = try Catalog.models()
         let q5 = try #require(catalog.first { $0.id == "whisper-large-v3-turbo-q5_0" })
