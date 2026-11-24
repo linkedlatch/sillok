@@ -29,9 +29,11 @@ struct NewJobView: View {
                     Picker("Language", selection: $language) {
                         Text("Detect automatically").tag("auto")
                         Divider()
-                        ForEach(sortedLanguages, id: \.self) { code in
-                            Text(Self.name(of: code)).tag(code)
+                        if !systemLanguages.isEmpty {
+                            languageOptions(systemLanguages)
+                            Divider()
                         }
+                        languageOptions(otherLanguages)
                     }
                     Toggle("Identify speakers", isOn: $diarize)
                 }
@@ -86,8 +88,26 @@ struct NewJobView: View {
             .filter { !$0.isEmpty }
     }
 
-    private var sortedLanguages: [String] {
-        languages.sorted { Self.name(of: $0).localizedStandardCompare(Self.name(of: $1)) == .orderedAscending }
+    private var systemLanguages: [String] {
+        Self.systemLanguages.filter(languages.contains)
+    }
+
+    private var otherLanguages: [String] {
+        languages
+            .filter { !Self.systemLanguages.contains($0) }
+            .sorted { Self.name(of: $0).localizedStandardCompare(Self.name(of: $1)) == .orderedAscending }
+    }
+
+    private func languageOptions(_ codes: [String]) -> some View {
+        ForEach(codes, id: \.self) { code in
+            Text(Self.name(of: code)).tag(code)
+        }
+    }
+
+    private static var systemLanguages: [String] {
+        Locale.preferredLanguages
+            .compactMap { Locale(identifier: $0).language.languageCode?.identifier }
+            .reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
     }
 
     static func name(of code: String) -> String {
