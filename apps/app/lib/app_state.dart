@@ -120,9 +120,10 @@ class AppState extends ChangeNotifier {
         source: item.path,
         copyPath: copyPath,
         prepare: lane == Lane.prepare,
-        aligns: (transcriptionModels.where((m) => m.id == item.settings.transcriptionModel).firstOrNull ??
-                recommendedTranscription)
-            .aligner,
+        aligns:
+            (transcriptionModels.where((m) => m.id == item.settings.transcriptionModel).firstOrNull ??
+                    recommendedTranscription)
+                .aligner,
       ),
     );
     transcriber.addListener(notifyListeners);

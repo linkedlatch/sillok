@@ -49,8 +49,15 @@ List<PreviewSegment> parsePreview(String json) => [
 /// its draft, in the piece's place.
 List<PreviewSegment> addPreview(List<PreviewSegment> shown, String json) {
   final incoming = parsePreview(json);
-  final timed = {for (final p in incoming) if (!p.draft) p.chunk};
-  final all = [for (final p in shown) if (!(p.draft && timed.contains(p.chunk))) p, ...incoming];
+  final timed = {
+    for (final p in incoming)
+      if (!p.draft) p.chunk,
+  };
+  final all = [
+    for (final p in shown)
+      if (!(p.draft && timed.contains(p.chunk))) p,
+    ...incoming,
+  ];
   // By piece, keeping the order within one (List.sort is not stable).
   final order = [for (var i = 0; i < all.length; i++) i];
   order.sort((a, b) {

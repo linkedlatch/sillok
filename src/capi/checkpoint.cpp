@@ -2,7 +2,7 @@
 
 #include <exception>
 #include <fstream>
-#include <iterator>
+#include <sstream>
 #include <system_error>
 #include <utility>
 
@@ -29,7 +29,9 @@ std::optional<Checkpoint> CheckpointFile::Load() {
   {
     std::ifstream in(path_, std::ios::binary);
     if (!in) return std::nullopt;
-    text.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    std::ostringstream content;
+    content << in.rdbuf();
+    text = std::move(content).str();
   }
   Checkpoint checkpoint;
   std::string kept;  // the complete lines
