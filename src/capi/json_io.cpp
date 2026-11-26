@@ -120,13 +120,14 @@ JobOptions ParseJobOptions(std::string_view text) {
   PipelineOptions& options = job.pipeline;
   const Json json = Parse(text, "job options");
   RejectUnknownKeys(json, "job options",
-                    {"language", "diarize", "glossary", "even_loudness", "checkpoint"});
+                    {"language", "diarize", "glossary", "even_loudness", "checkpoint", "speech"});
   // Checked against the engine's model by sillok_job_create.
   options.language = Get<std::string>(json, "language", "auto");
   options.diarize = Get<bool>(json, "diarize", false);
   options.glossary = Get<std::vector<std::string>>(json, "glossary", {});
   job.even_loudness = Get<bool>(json, "even_loudness", true);
   job.checkpoint = PathFromUtf8(Get<std::string>(json, "checkpoint", ""));
+  job.speech = PathFromUtf8(Get<std::string>(json, "speech", ""));
   return job;
 }
 

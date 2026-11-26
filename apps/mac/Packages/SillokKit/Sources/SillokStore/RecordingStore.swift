@@ -31,6 +31,7 @@ public struct RecordingStore: Sendable {
     static let transcriptName = "transcript.json"
     static let metadataName = "meta.json"
     static let checkpointName = "checkpoint.jsonl"
+    static let speechName = "speech.bin"
     static let editsName = "edits.json"
 
     public let root: URL
@@ -51,6 +52,10 @@ public struct RecordingStore: Sendable {
         folder(for: id).appending(path: Self.checkpointName)
     }
 
+    public func speech(for id: UUID) -> URL {
+        folder(for: id).appending(path: Self.speechName)
+    }
+
     public func makeStaging() throws -> URL {
         let staging = root.appending(path: ".staging-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
@@ -66,6 +71,7 @@ public struct RecordingStore: Sendable {
         let staging = try makeStaging()
         do {
             try FileManager.default.copyItem(at: audio(for: source), to: staging.appending(path: Self.audioName))
+            try? FileManager.default.copyItem(at: speech(for: source), to: staging.appending(path: Self.speechName))
             try add(staging: staging, recording: recording)
         } catch {
             discard(staging: staging)

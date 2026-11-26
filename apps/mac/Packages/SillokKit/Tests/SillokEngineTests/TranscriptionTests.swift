@@ -77,6 +77,7 @@ struct RealModels {
     let audio: URL
     let copy = temporaryCopy()
     let checkpoint = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).jsonl")
+    let speech = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).bin")
 
     init() throws {
         let models = URL(filePath: Self.environment["SILLOK_TEST_MODELS"]!)
@@ -88,18 +89,23 @@ struct RealModels {
 @Test(.enabled(if: RealModels.available))
 func transcribesACopyOfARecording() async throws {
     let real = try RealModels()
-    defer { try? FileManager.default.removeItem(at: real.copy) }
+    defer {
+        try? FileManager.default.removeItem(at: real.copy)
+        try? FileManager.default.removeItem(at: real.speech)
+    }
     try await Transcription.copy(input: real.audio, output: real.copy) { _ in }
     #expect(FileManager.default.fileExists(atPath: real.copy.path()))
 
     let events = Mutex<[TranscriptionEvent]>([])
     let result = try await Transcription.run(
-        engine: real.engine, copy: real.copy, options: JobOptions(diarize: true), checkpoint: real.checkpoint
+        engine: real.engine, copy: real.copy, options: JobOptions(diarize: true), checkpoint: real.checkpoint,
+        speech: real.speech
     ) { event in events.withLock { $0.append(event) } }
 
     #expect(!result.transcript.segments.isEmpty)
     #expect(result.transcript.segments.allSatisfy { $0.speaker != nil })
     #expect(!FileManager.default.fileExists(atPath: real.checkpoint.path()))
+    #expect(FileManager.default.fileExists(atPath: real.speech.path()))
     let stages = events.withLock { $0.compactMap { if case .stage(let stage, _) = $0 { stage } else { nil } } }
     #expect(Set(stages).isSuperset(of: [.analyze, .transcribe, .diarize]))
     let previews = events.withLock { $0.contains { if case .preview = $0 { true } else { false } } }

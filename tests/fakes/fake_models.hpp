@@ -52,6 +52,8 @@ struct FakeOptions {
   // The longest glossary the transcriber takes, in bytes of its terms joined
   // by ", " (a token each).
   std::size_t glossary_room = 1000;
+  // Called at the start of every Detect call.
+  std::function<void()> on_detect;
   // Called at the start of every Transcribe call with its request.
   std::function<void(const TranscribeRequest&)> on_transcribe;
   // The transcriber hands over each request's text without word times, and

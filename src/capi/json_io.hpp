@@ -27,6 +27,7 @@ struct JobOptions {
   // already has, such as a job's copy for listening back.
   bool even_loudness = true;
   std::filesystem::path checkpoint;  // empty for none
+  std::filesystem::path speech;      // empty for none
 };
 
 JobOptions ParseJobOptions(std::string_view json);

@@ -47,11 +47,13 @@ public enum Transcription {
         copy: URL,
         options: JobOptions,
         checkpoint: URL,
+        speech: URL,
         events: @escaping @Sendable (TranscriptionEvent) -> Void
     ) async throws -> TranscriptionResult {
         let request = Job.Request(
             language: options.language, diarize: options.diarize, glossary: options.glossary,
-            evenLoudness: false, checkpoint: checkpoint.path(percentEncoded: false))
+            evenLoudness: false, checkpoint: checkpoint.path(percentEncoded: false),
+            speech: speech.path(percentEncoded: false))
         let job = try Job(engine: engine, request: request)
         return try await job.perform { try job.transcribe(input: copy, events: events) }
     }
@@ -64,6 +66,7 @@ final class Job: @unchecked Sendable {
         var glossary: [String] = []
         var evenLoudness = true
         var checkpoint: String?
+        var speech: String?
     }
 
     private let handle: OpaquePointer

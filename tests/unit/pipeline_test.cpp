@@ -5,6 +5,7 @@
 #include <span>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "core/cancel.hpp"
@@ -626,6 +627,57 @@ TEST(PipelineTest, StartsAnewFromACheckpointOfOtherOptions) {
   EXPECT_EQ(second.transcribe_calls(), first.transcribe_calls());
   EXPECT_EQ(sink.starts, 2);
   EXPECT_NE(sink.saved.key, resume.key);
+}
+
+// Keeps a run's detected speech in memory.
+class MemorySpeech : public SpeechStore {
+ public:
+  std::optional<DetectedSpeech> Load() override { return saved; }
+  void Save(const DetectedSpeech& speech) override {
+    saved = speech;
+    ++saves;
+  }
+
+  std::optional<DetectedSpeech> saved;
+  int saves = 0;
+};
+
+TEST(PipelineTest, DetectsSpeechOnceForEveryRunOfARecording) {
+  const auto script = TwoSpeakers();
+  const AudioBuffer audio = RenderScript(script, Milliseconds{62000});
+  FakeOptions fakes = OptionsFor(script);
+  int detections = 0;
+  fakes.on_detect = [&] { ++detections; };
+  MemorySpeech speech;
+  FakeModels first(fakes);
+  const Transcript expected =
+      RunPipeline(audio, {}, first, [](Stage, double) {}, {}, {}, nullptr, nullptr, &speech);
+  EXPECT_GT(detections, 0);
+  EXPECT_EQ(speech.saves, 1);
+
+  PipelineOptions english;
+  english.language = "en";
+  std::vector<std::pair<Stage, double>> analyzed;
+  FakeModels second(fakes);
+  detections = 0;
+  const Transcript again = RunPipeline(
+      audio, english, second,
+      [&](Stage stage, double fraction) {
+        if (stage == Stage::kAnalyze) analyzed.emplace_back(stage, fraction);
+      },
+      {}, {}, nullptr, nullptr, &speech);
+  EXPECT_EQ(detections, 0);
+  EXPECT_EQ(speech.saves, 1);
+  EXPECT_EQ(SaidIn(again), SaidIn(expected));
+  EXPECT_EQ(again.models.at("voice_detection").name, "fake-vad");
+  EXPECT_EQ(analyzed, (std::vector<std::pair<Stage, double>>{{Stage::kAnalyze, 0.0},
+                                                             {Stage::kAnalyze, 1.0}}));
+
+  const AudioBuffer other = RenderScript(Speech(0, 10, Milliseconds{500}), Milliseconds{5000});
+  FakeModels third(fakes);
+  RunPipeline(other, {}, third, [](Stage, double) {}, {}, {}, nullptr, nullptr, &speech);
+  EXPECT_GT(detections, 0);
+  EXPECT_EQ(speech.saves, 2);
 }
 
 }  // namespace

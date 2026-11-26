@@ -247,6 +247,32 @@ TEST_F(CapiTest, StartsAnewFromACheckpointOfAnotherRecording) {
   EXPECT_FALSE(std::filesystem::exists(file));
 }
 
+TEST_F(CapiTest, KeepsTheDetectedSpeechInAFile) {
+  const std::vector<float> pcm = ScriptPcm(10);
+  const std::filesystem::path file = models_dir_ / PathFromUtf8("음성 구간.bin");
+  {
+    std::ofstream damaged(file, std::ios::binary);
+    damaged << "{\"format\": 1, \"library\": \"another\", \"key\": \"\"}\n";
+  }
+  int detections = 0;
+  FakeBackendOptions().on_detect = [&detections] { ++detections; };
+  const auto run = [&](const char* language) {
+    const Json options = {{"language", language}, {"speech", PathToUtf8(file)}};
+    sillok_job* job = Job(Engine(), options.dump().c_str());
+    Push(job, pcm);
+    char* out = nullptr;
+    EXPECT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_OK) << sillok_last_error();
+    return Json::parse(Take(out))["segments"];
+  };
+
+  const Json first = run("auto");
+  EXPECT_GT(std::exchange(detections, 0), 0);
+  EXPECT_TRUE(std::filesystem::exists(file));
+  EXPECT_EQ(run("en"), first);
+  EXPECT_EQ(detections, 0);
+  EXPECT_TRUE(std::filesystem::exists(file));
+}
+
 TEST_F(CapiTest, DiarizesAndListsSpeakers) {
   FakeBackendOptions().speakers = {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
                                    {5, 1}, {6, 1}, {7, 1}, {8, 1}, {9, 1}};

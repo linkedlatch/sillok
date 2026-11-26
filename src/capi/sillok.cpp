@@ -26,6 +26,7 @@
 #include "backends/models.hpp"
 #include "capi/checkpoint.hpp"
 #include "capi/json_io.hpp"
+#include "capi/speech_file.hpp"
 #include "core/audio.hpp"
 #include "core/cancel.hpp"
 #include "core/files.hpp"
@@ -101,12 +102,14 @@ struct sillok_job {
       : engine(std::move(engine_state)),
         options(std::move(job_options.pipeline)),
         checkpoint(std::move(job_options.checkpoint)),
+        speech(std::move(job_options.speech)),
         input(audio, job_options.even_loudness ? sillok::AudioInput::Loudness::kEvenedOut
                                                : sillok::AudioInput::Loudness::kAsRecorded) {}
 
   std::shared_ptr<sillok::EngineState> engine;
   sillok::PipelineOptions options;
   std::filesystem::path checkpoint;  // empty for none
+  std::filesystem::path speech;      // empty for none
   sillok::AudioBuffer audio;
   sillok::AudioInput input;  // converts pushed audio into `audio`
   sillok::StopSource stop;
@@ -466,6 +469,8 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
       checkpoint.emplace(job->checkpoint, sillok_version(), job->engine->transcription_model);
       resume = checkpoint->Load();
     }
+    std::optional<sillok::SpeechFile> speech;
+    if (!job->speech.empty()) speech.emplace(job->speech, sillok_version());
     const sillok::Transcript transcript = sillok::RunPipeline(
         job->audio, job->options, models,
         [&](sillok::Stage stage, double fraction) {
@@ -477,7 +482,8 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
           const std::string json = sillok::PreviewToJson(preview);
           job->on_segments(job->segments_user_data, json.c_str());
         },
-        resume ? &*resume : nullptr, checkpoint ? &*checkpoint : nullptr);
+        resume ? &*resume : nullptr, checkpoint ? &*checkpoint : nullptr,
+        speech ? &*speech : nullptr);
     if (checkpoint) checkpoint->Remove();
     *out_json = sillok::CopyString(sillok::TranscriptToJson(transcript));
     return SILLOK_OK;

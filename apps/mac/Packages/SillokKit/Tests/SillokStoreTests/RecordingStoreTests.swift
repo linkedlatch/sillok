@@ -48,6 +48,15 @@ struct RecordingStoreTests {
         #expect(try store.list().map(\.id) == [recording.id])
     }
 
+    @Test func copiesTheDetectedSpeechWithTheRecording() throws {
+        let recording = try save("meeting", at: Date(timeIntervalSince1970: 1_000))
+        try Data("speech".utf8).write(to: store.speech(for: recording.id))
+        let copy = Recording(title: recording.title, sourceName: recording.sourceName,
+                             options: JobOptions(language: "en"), transcriptionModel: "qwen")
+        try store.add(copyOf: recording.id, as: copy)
+        #expect(try Data(contentsOf: store.speech(for: copy.id)) == Data("speech".utf8))
+    }
+
     @Test func finishingARecordingClearsItsError() throws {
         let recording = try add("meeting", at: Date(timeIntervalSince1970: 1_000))
         try store.update(recording.id) { $0.error = "The model failed." }
