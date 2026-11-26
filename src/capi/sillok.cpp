@@ -354,16 +354,18 @@ void sillok_engine_destroy(sillok_engine* engine) { delete engine; }
 sillok_status sillok_job_create(sillok_engine* engine, const char* options_json,
                                 sillok_job** out_job) {
   return Guard([&] {
-    RequireArgument(engine != nullptr && out_job != nullptr,
-                    "engine and out_job are required");
+    RequireArgument(out_job != nullptr, "out_job is required");
     *out_job = nullptr;
     sillok::JobOptions options = sillok::ParseJobOptions(options_json ? options_json : "");
-    const std::string& language = options.pipeline.language;
-    const std::vector<std::string> languages = engine->state->models->Languages();
-    RequireArgument(language == "auto" ||
-                        std::find(languages.begin(), languages.end(), language) != languages.end(),
-                    "\"language\" must be \"auto\" or a language the transcription model knows");
-    auto job = std::make_unique<sillok_job>(engine->state, std::move(options));
+    if (engine != nullptr) {
+      const std::string& language = options.pipeline.language;
+      const std::vector<std::string> languages = engine->state->models->Languages();
+      RequireArgument(language == "auto" ||
+                          std::find(languages.begin(), languages.end(), language) != languages.end(),
+                      "\"language\" must be \"auto\" or a language the transcription model knows");
+    }
+    auto job = std::make_unique<sillok_job>(engine != nullptr ? engine->state : nullptr,
+                                            std::move(options));
     *out_job = job.release();
     return SILLOK_OK;
   });
@@ -446,6 +448,7 @@ sillok_status sillok_job_run(sillok_job* job, sillok_progress_fn progress,
                     "job and out_json are required");
     *out_json = nullptr;
     RequireArgument(!job->ran, "a job runs only once");
+    RequireArgument(job->engine != nullptr, "a job without an engine cannot run");
     bool idle = false;
     if (!job->engine->busy.compare_exchange_strong(idle, true)) {
       return sillok::Fail(SILLOK_BUSY, "the engine is running another job");
