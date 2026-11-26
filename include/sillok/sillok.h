@@ -173,7 +173,10 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * speech, which takes some 15 s an hour of audio; a file of another
  * recording, speech model or library version is written anew. The file is
  * kept for the jobs to come; one that cannot be written is dropped and the
- * job carries on. */
+ * job carries on.
+ * With `engine` NULL, the job only reads audio and saves it
+ * (sillok_job_save_audio), which needs no models: the language is not
+ * checked, and sillok_job_run() returns SILLOK_INVALID_ARGUMENT. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);

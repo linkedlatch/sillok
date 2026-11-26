@@ -331,7 +331,7 @@ TEST_F(CapiTest, RejectsBadInput) {
   sillok_job* job = nullptr;
   EXPECT_EQ(sillok_job_create(Engine(), R"({"language": "fr"})", &job),
             SILLOK_INVALID_ARGUMENT);
-  EXPECT_EQ(sillok_job_create(nullptr, nullptr, &job), SILLOK_INVALID_ARGUMENT);
+  EXPECT_EQ(sillok_job_create(Engine(), nullptr, nullptr), SILLOK_INVALID_ARGUMENT);
 }
 
 TEST_F(CapiTest, JobRunsOnceAndTakesNoAudioAfterwards) {
@@ -584,6 +584,22 @@ TEST_F(CapiTest, SavesTheRecordingForListeningBack) {
   const auto missing_dir = models_dir_ / "no such dir" / "copy.m4a";
   EXPECT_EQ(sillok_job_save_audio(job, PathToUtf8(missing_dir).c_str(), nullptr, nullptr),
             SILLOK_MEDIA_ERROR);
+}
+
+TEST_F(CapiTest, SavesTheRecordingWithoutAnEngine) {
+  sillok_job* job = Job(nullptr, R"({"language": "xx"})");
+  ASSERT_EQ(sillok_job_push_file(job, PathToUtf8(MediaFile("tone.flac")).c_str(), nullptr,
+                                 nullptr),
+            SILLOK_OK)
+      << sillok_last_error();
+  ASSERT_EQ(sillok_job_end_audio(job), SILLOK_OK);
+  const auto copy = models_dir_ / "copy.m4a";
+  ASSERT_EQ(sillok_job_save_audio(job, PathToUtf8(copy).c_str(), nullptr, nullptr), SILLOK_OK)
+      << sillok_last_error();
+  EXPECT_TRUE(std::filesystem::exists(copy));
+  char* out = nullptr;
+  EXPECT_EQ(sillok_job_run(job, nullptr, nullptr, &out), SILLOK_INVALID_ARGUMENT);
+  EXPECT_EQ(out, nullptr);
 }
 
 TEST_F(CapiTest, CancelStopsReadingAFile) {

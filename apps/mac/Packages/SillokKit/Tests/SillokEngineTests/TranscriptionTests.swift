@@ -44,13 +44,38 @@ import Testing
     #expect(previews.pieces.allSatisfy { !$0.draft })
 }
 
+let tone = URL(filePath: #filePath).appending(path: "../../../../../../../tests/data/media/tone.flac").standardized
+
+func temporaryCopy() -> URL {
+    FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).m4a")
+}
+
+@Test func copiesARecordingWithoutModels() async throws {
+    let copy = temporaryCopy()
+    defer { try? FileManager.default.removeItem(at: copy) }
+    let events = Mutex<[TranscriptionEvent]>([])
+    try await Transcription.copy(input: tone, output: copy) { event in events.withLock { $0.append(event) } }
+    #expect(FileManager.default.fileExists(atPath: copy.path()))
+    #expect(events.withLock { $0.contains(.reading(1)) && $0.last == .saving(1) })
+}
+
+@Test func cancellingStopsTheCopy() async throws {
+    let copy = temporaryCopy()
+    let task = Task {
+        withUnsafeCurrentTask { $0?.cancel() }
+        try await Transcription.copy(input: tone, output: copy) { _ in }
+    }
+    await #expect(throws: CancellationError.self) { try await task.value }
+    #expect(!FileManager.default.fileExists(atPath: copy.path()))
+}
+
 struct RealModels {
     static let environment = ProcessInfo.processInfo.environment
     static let available = environment["SILLOK_TEST_MODELS"] != nil && environment["SILLOK_TEST_AUDIO"] != nil
 
     let engine: Engine
     let audio: URL
-    let copy = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).m4a")
+    let copy = temporaryCopy()
     let checkpoint = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).jsonl")
     let speech = FileManager.default.temporaryDirectory.appending(path: "sillok-\(UUID().uuidString).bin")
 
@@ -68,7 +93,7 @@ func transcribesACopyOfARecording() async throws {
         try? FileManager.default.removeItem(at: real.copy)
         try? FileManager.default.removeItem(at: real.speech)
     }
-    try await Transcription.copy(engine: real.engine, input: real.audio, output: real.copy) { _ in }
+    try await Transcription.copy(input: real.audio, output: real.copy) { _ in }
     #expect(FileManager.default.fileExists(atPath: real.copy.path()))
 
     let events = Mutex<[TranscriptionEvent]>([])
@@ -86,15 +111,4 @@ func transcribesACopyOfARecording() async throws {
     let previews = events.withLock { $0.contains { if case .preview = $0 { true } else { false } } }
     #expect(previews)
     print("TRANSCRIPT", result.transcript.segments.map { "[\($0.speaker ?? -1)] \($0.text)" })
-}
-
-@Test(.enabled(if: RealModels.available))
-func cancellingStopsTheCopy() async throws {
-    let real = try RealModels()
-    let task = Task {
-        try await Transcription.copy(engine: real.engine, input: real.audio, output: real.copy) { _ in }
-    }
-    task.cancel()
-    await #expect(throws: CancellationError.self) { try await task.value }
-    #expect(!FileManager.default.fileExists(atPath: real.copy.path()))
 }
