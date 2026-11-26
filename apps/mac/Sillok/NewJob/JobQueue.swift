@@ -69,7 +69,6 @@ final class JobQueue {
     private(set) var completed: UUID?
     private let models: ModelManager
     private let library: Library
-    private var copier: (config: EngineConfig, engine: Engine)?
     private var transcriber: (config: EngineConfig, engine: Engine)?
     private var adder: Task<Void, Never>?
     private var worker: Task<Void, Never>?
@@ -194,15 +193,11 @@ final class JobQueue {
         }
         let store = library.store
         do {
-            let config = EngineSettings.config(
-                modelsDirectory: models.directory, transcriptionModel: models.transcriptionModel?.id ?? item.modelID)
-            let engine = try cached(&copier, config)
             let staging = try store.makeStaging()
             do {
                 try await perform(item.id) { events in
                     try await Transcription.copy(
-                        engine: engine, input: source, output: staging.appending(path: RecordingStore.audioName),
-                        events: events)
+                        input: source, output: staging.appending(path: RecordingStore.audioName), events: events)
                 }
                 var recording = Recording(id: item.id, title: item.title, sourceName: item.sourceName,
                                           options: item.options, transcriptionModel: item.modelID)
