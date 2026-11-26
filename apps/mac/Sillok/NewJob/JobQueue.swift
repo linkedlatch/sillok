@@ -236,7 +236,8 @@ final class JobQueue {
             let result = try await perform(item.id) { events in
                 try await Transcription.run(
                     engine: engine, copy: store.audio(for: item.id), options: item.options,
-                    checkpoint: store.checkpoint(for: item.id), events: events)
+                    checkpoint: store.checkpoint(for: item.id), speech: store.speech(for: item.id),
+                    events: events)
             }
             guard self.item(item.id) != nil else { throw CancellationError() }
             try store.finish(item.id, transcriptJSON: result.json, durationMs: result.transcript.durationMs,
