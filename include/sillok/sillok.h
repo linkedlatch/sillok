@@ -165,7 +165,10 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * file anew. Detecting speech and diarization run again in full, as they are
  * quick. The file is removed when the job succeeds and kept when it fails or
  * is cancelled: a new job with the same file then goes on, as after a crash.
- * A file that cannot be written is dropped and the job carries on. */
+ * A file that cannot be written is dropped and the job carries on.
+ * With `engine` NULL, the job only reads audio and saves it
+ * (sillok_job_save_audio), which needs no models: the language is not
+ * checked, and sillok_job_run() returns SILLOK_INVALID_ARGUMENT. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);

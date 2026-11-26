@@ -34,12 +34,11 @@ public struct TranscriptionResult: Sendable {
 
 public enum Transcription {
     public static func copy(
-        engine: Engine,
         input: URL,
         output: URL,
         events: @escaping @Sendable (TranscriptionEvent) -> Void
     ) async throws {
-        let job = try Job(engine: engine, request: Job.Request())
+        let job = try Job(engine: nil, request: Job.Request())
         try await job.perform { try job.copy(input: input, output: output, events: events) }
     }
 
@@ -69,9 +68,9 @@ final class Job: @unchecked Sendable {
 
     private let handle: OpaquePointer
 
-    init(engine: Engine, request: Request) throws {
+    init(engine: Engine?, request: Request) throws {
         var job: OpaquePointer?
-        try check(sillok_job_create(engine.handle, try encodeJSON(request), &job))
+        try check(sillok_job_create(engine?.handle, try encodeJSON(request), &job))
         guard let job else { throw SillokError(code: .internalError, message: "no job") }
         handle = job
     }
