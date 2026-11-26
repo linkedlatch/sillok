@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -60,8 +61,8 @@ struct ChunkResult {
 
 // What an earlier run of the same recording, options and models finished,
 // chunk by chunk, for a run stopped part way to go on from there.
-// Transcription and alignment are kept; detecting speech, diarization and
-// splitting segments are quick and run again.
+// Transcription and alignment are kept; detected speech is kept apart
+// (SpeechStore); diarization and splitting segments are quick and run again.
 struct Checkpoint {
   std::string key;  // the recording, options and models it belongs to
   // The chunks' limit, set by the transcriber, so the same chunks follow
@@ -85,6 +86,22 @@ class CheckpointSink {
   virtual void AddModel(const std::string& stage, const ModelInfo& info) = 0;
 };
 
+// Each frame's speech probability in a recording, as the voice detector told
+// it, so that a later run of the recording need not detect speech again.
+struct DetectedSpeech {
+  std::string key;  // the recording and voice detector it belongs to
+  std::vector<float> probabilities;
+};
+
+// Where a run keeps the speech it detected.
+class SpeechStore {
+ public:
+  virtual ~SpeechStore() = default;
+  // What an earlier run kept, if anything.
+  virtual std::optional<DetectedSpeech> Load() = 0;
+  virtual void Save(const DetectedSpeech& speech) = 0;
+};
+
 // Transcribes `audio` (finished). Models are opened one stage at a time and
 // freed before the next stage, so the transcription, alignment and
 // diarization models are never in memory together. Throws Cancelled once `stop` is requested.
@@ -92,13 +109,16 @@ class CheckpointSink {
 // With `resume` of the same recording, options and models, the run skips the
 // chunks it holds, previewing them first, and gives the transcript one run
 // would have given; otherwise it starts anew. `checkpoints` (may be null)
-// records the progress either way.
+// records the progress either way. With `speech` (may be null), the run uses
+// the speech an earlier run of the same recording and voice detector
+// detected; otherwise it detects speech and saves it there.
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
                        StopToken stop,
                        const SegmentsCallback& on_segments = {},
                        const Checkpoint* resume = nullptr,
-                       CheckpointSink* checkpoints = nullptr);
+                       CheckpointSink* checkpoints = nullptr,
+                       SpeechStore* speech = nullptr);
 
 }  // namespace sillok
 

@@ -56,12 +56,15 @@ std::string LanguageOf(const FakeOptions& options, int id) {
 
 class FakeVoiceDetector : public VoiceDetector {
  public:
-  explicit FakeVoiceDetector(LiveModels& live) : live_(live) { ++live_.detectors; }
+  FakeVoiceDetector(const FakeOptions& options, LiveModels& live) : options_(options), live_(live) {
+    ++live_.detectors;
+  }
   ~FakeVoiceDetector() override { --live_.detectors; }
 
   ModelInfo Info() const override { return {"fake-vad", "CPU", false}; }
   int FrameSamples() const override { return 512; }
   std::vector<float> Detect(std::span<const float> pcm) override {
+    if (options_.on_detect) options_.on_detect();
     std::vector<float> probabilities;
     for (std::size_t begin = 0; begin < pcm.size(); begin += 512) {
       float peak = 0.0f;
@@ -74,6 +77,7 @@ class FakeVoiceDetector : public VoiceDetector {
   }
 
  private:
+  const FakeOptions& options_;
   LiveModels& live_;
 };
 
@@ -282,7 +286,7 @@ std::string WordText(int id, const std::string& language) {
 }
 
 std::unique_ptr<VoiceDetector> FakeModels::OpenVoiceDetector() {
-  return std::make_unique<FakeVoiceDetector>(live_);
+  return std::make_unique<FakeVoiceDetector>(options_, live_);
 }
 
 std::unique_ptr<Transcriber> FakeModels::OpenTranscriber() {

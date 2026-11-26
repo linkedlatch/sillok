@@ -34,42 +34,83 @@ struct Speech {
   int frame_samples = 1;
 };
 
-Speech DetectSpeech(const AudioBuffer& audio, const SegmenterOptions& options,
-                    ModelProvider& models, const ProgressCallback& progress,
-                    const StopToken& stop, Transcript& transcript) {
-  progress(Stage::kAnalyze,
-           0.0);  // before the model loads, which takes a while
-  ThrowIfStopped(stop);  // perhaps from the call above
-  const auto detector = models.OpenVoiceDetector();
-  Speech speech{.regions = {}, .probabilities = {}, .frame_samples = detector->FrameSamples()};
+void Add(Sha256& hash, std::string_view text) {
+  hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
+  hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
+}
+
+// Identifies a recording, for the keys of what a run keeps.
+std::string HashAudio(const AudioBuffer& audio) {
+  Sha256 hash;
+  constexpr SampleIndex kBlock = SampleIndex{kSampleRate} * 60;
+  for (SampleIndex begin = 0; begin < audio.size(); begin += kBlock) {
+    const std::vector<float> part = audio.Read({begin, begin + kBlock});
+    hash.Update(std::span(reinterpret_cast<const unsigned char*>(part.data()),
+                          part.size() * sizeof(float)));
+  }
+  return hash.HexDigest();
+}
+
+// Identifies the speech `detector` detects in the recording hashed as
+// `recording`. Bump the first line when the same input gives other
+// probabilities.
+std::string SpeechKey(const std::string& recording, const VoiceDetector& detector) {
+  Sha256 hash;
+  Add(hash, "sillok speech 1");
+  Add(hash, detector.Info().name);
+  Add(hash, recording);
+  return hash.HexDigest();
+}
+
+std::vector<float> DetectProbabilities(const AudioBuffer& audio, VoiceDetector& detector,
+                                       const ProgressCallback& progress, const StopToken& stop) {
+  std::vector<float> probabilities;
   // About 30 s per call, in whole frames so the detector state carries over.
-  const SampleIndex chunk =
-      std::max<SampleIndex>(1, SampleIndex{kSampleRate} * 30 / speech.frame_samples) *
-      speech.frame_samples;
+  const SampleIndex frame = detector.FrameSamples();
+  const SampleIndex chunk = std::max<SampleIndex>(1, SampleIndex{kSampleRate} * 30 / frame) * frame;
   for (SampleIndex begin = 0; begin < audio.size(); begin += chunk) {
     ThrowIfStopped(stop);
-    const std::vector<float> part =
-        detector->Detect(audio.Read({begin, begin + chunk}));
-    speech.probabilities.insert(speech.probabilities.end(), part.begin(), part.end());
+    const std::vector<float> part = detector.Detect(audio.Read({begin, begin + chunk}));
+    probabilities.insert(probabilities.end(), part.begin(), part.end());
     progress(Stage::kAnalyze,
              static_cast<double>(std::min(begin + chunk, audio.size())) /
                  static_cast<double>(audio.size()));
+  }
+  return probabilities;
+}
+
+// `store` (may be null) keeps the probabilities of the recording hashed as
+// `recording`.
+Speech DetectSpeech(const AudioBuffer& audio, const SegmenterOptions& options,
+                    ModelProvider& models, const ProgressCallback& progress,
+                    const StopToken& stop, SpeechStore* store, const std::string& recording,
+                    Transcript& transcript) {
+  const auto detector = models.OpenVoiceDetector();
+  Speech speech{.regions = {}, .probabilities = {}, .frame_samples = detector->FrameSamples()};
+  const auto frames = static_cast<std::size_t>((audio.size() + speech.frame_samples - 1) /
+                                               speech.frame_samples);
+  const std::string key = store != nullptr ? SpeechKey(recording, *detector) : "";
+  std::optional<DetectedSpeech> saved = store != nullptr ? store->Load() : std::nullopt;
+  if (saved && saved->key == key && saved->probabilities.size() == frames) {
+    speech.probabilities = std::move(saved->probabilities);
+    progress(Stage::kAnalyze, 1.0);
+  } else {
+    speech.probabilities = DetectProbabilities(audio, *detector, progress, stop);
+    if (store != nullptr) store->Save({.key = key, .probabilities = speech.probabilities});
   }
   transcript.models["voice_detection"] = detector->Info();
   speech.regions = FindSpeech(speech.probabilities, speech.frame_samples, audio.size(), options);
   return speech;
 }
 
-// Identifies what a checkpoint was made of: the recording and the options
-// that shape its chunks and their transcription. The models are the caller's
-// to tell apart (CheckpointSink). Bump the first line when the same input
-// gives other chunks or other results.
-std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& options) {
+// Identifies what a checkpoint was made of: the recording (hashed as
+// `recording`) and the options that shape its chunks and their
+// transcription. The models are the caller's to tell apart
+// (CheckpointSink). Bump the first line when the same input gives other
+// chunks or other results.
+std::string CheckpointKey(const std::string& recording, const PipelineOptions& options) {
   Sha256 hash;
-  const auto add = [&](std::string_view text) {
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>(text.data()), text.size()));
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>("\n"), 1));
-  };
+  const auto add = [&](std::string_view text) { Add(hash, text); };
   add("sillok checkpoint 5");
   add(options.language);
   for (const std::string& term : options.glossary) add(term);
@@ -82,12 +123,7 @@ std::string CheckpointKey(const AudioBuffer& audio, const PipelineOptions& optio
                                   segmenter.after, segmenter.max_chunk}) {
     add(std::to_string(time.count()));
   }
-  constexpr SampleIndex kBlock = SampleIndex{kSampleRate} * 60;
-  for (SampleIndex begin = 0; begin < audio.size(); begin += kBlock) {
-    const std::vector<float> part = audio.Read({begin, begin + kBlock});
-    hash.Update(std::span(reinterpret_cast<const unsigned char*>(part.data()),
-                          part.size() * sizeof(float)));
-  }
+  add(recording);
   return hash.HexDigest();
 }
 
@@ -353,7 +389,8 @@ std::vector<SpeakerTurn> Diarize(const AudioBuffer& audio,
 Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
                        ModelProvider& models, const ProgressCallback& progress,
                        StopToken stop, const SegmentsCallback& on_segments,
-                       const Checkpoint* resume, CheckpointSink* checkpoints) {
+                       const Checkpoint* resume, CheckpointSink* checkpoints,
+                       SpeechStore* speech_store) {
   if (!audio.finished()) throw std::logic_error("audio is not finished");
   if (options.language != "auto") {
     const std::vector<std::string> languages = models.Languages();
@@ -366,12 +403,18 @@ Transcript RunPipeline(const AudioBuffer& audio, const PipelineOptions& options,
   transcript.duration = ToMilliseconds(audio.size());
   if (audio.size() == 0) return transcript;
 
-  const Speech speech = DetectSpeech(
-      audio, options.segmenter, models, progress, stop, transcript);
+  // Before hashing the recording and loading the model, which take a while.
+  progress(Stage::kAnalyze, 0.0);
+  ThrowIfStopped(stop);  // perhaps from the call above
+  const bool checkpointed = resume != nullptr || checkpoints != nullptr;
+  const std::string recording =
+      checkpointed || speech_store != nullptr ? HashAudio(audio) : "";
+  const Speech speech = DetectSpeech(audio, options.segmenter, models, progress, stop,
+                                     speech_store, recording, transcript);
 
   Resumption run{.resume = nullptr, .sink = checkpoints, .key = {}};
-  if (resume != nullptr || checkpoints != nullptr) {
-    run.key = CheckpointKey(audio, options);
+  if (checkpointed) {
+    run.key = CheckpointKey(recording, options);
     if (resume != nullptr && resume->key == run.key) run.resume = resume;
   }
 

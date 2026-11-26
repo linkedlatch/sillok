@@ -138,7 +138,7 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
 
 /* One recording. `options_json`: {"language": "auto" | "<code>",
  * "diarize": false, "glossary": ["term", ...], "even_loudness": true,
- * "checkpoint": "<path>"}
+ * "checkpoint": "<path>", "speech": "<path>"}
  * "language": "auto" tells the language of each piece the model hears at
  * once (speech joined up to 30 s, or less for a model that takes less),
  * among the model's "languages", so a recording may switch language between
@@ -162,10 +162,18 @@ SILLOK_API void sillok_engine_destroy(sillok_engine* engine);
  * options and transcription model with the same file goes on after the
  * pieces it finds there, first passing them to the segment callback, and
  * gives the transcript one run would have given; otherwise it starts the
- * file anew. Detecting speech and diarization run again in full, as they are
- * quick. The file is removed when the job succeeds and kept when it fails or
- * is cancelled: a new job with the same file then goes on, as after a crash.
- * A file that cannot be written is dropped and the job carries on. */
+ * file anew. Diarization runs again in full, as it is quick, and so does
+ * detecting speech without "speech". The file is removed when the job
+ * succeeds and kept when it fails or is cancelled: a new job with the same
+ * file then goes on, as after a crash. A file that cannot be written is
+ * dropped and the job carries on.
+ * With "speech", the job keeps in that file where the recording has speech
+ * (about 0.5 MB an hour), once it has detected it. A later job of the same
+ * recording with the same file, whatever its options, skips detecting
+ * speech, which takes some 15 s an hour of audio; a file of another
+ * recording, speech model or library version is written anew. The file is
+ * kept for the jobs to come; one that cannot be written is dropped and the
+ * job carries on. */
 SILLOK_API sillok_status sillok_job_create(sillok_engine* engine,
                                            const char* options_json,
                                            sillok_job** out_job);
